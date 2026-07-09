@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/tx
+                           http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+    <!-- service / mapper 패키지 스캔 (controller 는 dispatcher 가 스캔) -->
+    <context:component-scan base-package="com.soldesk.service" />
+
+    <!-- 접속정보 파일 로딩 -->
+    <context:property-placeholder location="classpath:properties/db.properties" />
+
+    <!-- ① DataSource : DB 연결 정보 (참고 프로젝트와 동일한 DriverManagerDataSource) -->
+    <bean id="dataSource"
+          class="org.springframework.jdbc.datasource.DriverManagerDataSource">
+        <property name="driverClassName" value="${db.driver}" />
+        <property name="url" value="${db.url}" />
+        <property name="username" value="${db.username}" />
+        <property name="password" value="${db.password}" />
+    </bean>
+
+    <!-- ② SqlSessionFactory : MyBatis 핵심, mapper XML 파싱 -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <property name="mapperLocations" value="classpath*:mapper/*.xml" />
+        <!-- VO 클래스를 별칭으로 (mapper XML 에서 짧게 참조) -->
+        <property name="typeAliasesPackage" value="com.soldesk.vo" />
+    </bean>
+
+    <!-- ③ MapperScannerConfigurer : com.soldesk.mapper 인터페이스 자동 구현 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="com.soldesk.mapper" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
+    </bean>
+
+    <!-- ④ 트랜잭션 매니저 + @Transactional 활성화 -->
+    <bean id="transactionManager"
+          class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource" />
+    </bean>
+    <tx:annotation-driven transaction-manager="transactionManager" />
+
+</beans>

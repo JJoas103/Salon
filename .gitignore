@@ -1,0 +1,22 @@
+# Maven
+/target/
+
+# 민감정보 (실제 접속정보는 커밋하지 않음)
+src/main/resources/properties/db.properties
+
+# IDE
+/.idea/
+*.iml
+/.settings/
+/.classpath
+/.project
+/bin/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Logs
+*.log
+
+db.properties

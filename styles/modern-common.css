@@ -1,0 +1,241 @@
+/* ============================================
+   Modern Design System (2026 Trend)
+   ============================================ */
+
+:root {
+  /* Color Palette */
+  --primary: #2D3436;
+  --primary-light: #636E72;
+  --accent: #0984E3;
+  --accent-soft: rgba(9, 132, 227, 0.1);
+  --bg-main: #FFFFFF;
+  --bg-sub: #F8F9FA;
+  --text-main: #2D3436;
+  --text-sub: #636E72;
+  --text-light: #B2BEC3;
+  --border: #DFE6E9;
+  --white: #FFFFFF;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.08);
+  
+  /* Spacing & Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+  --container-max: 1200px;
+}
+
+/* Reset & Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-color: var(--bg-sub);
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+}
+
+button {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Layout Components */
+.app-wrapper {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 280px;
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  padding: 40px 24px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-sub);
+}
+
+.top-navbar {
+  height: 80px;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.content-section {
+  padding: 40px;
+  max-width: var(--container-max);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* UI Components */
+.logo {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nav-menu {
+  list-style: none;
+}
+
+.nav-item {
+  margin-bottom: 8px;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  color: var(--text-sub);
+  font-weight: 500;
+}
+
+.nav-link:hover {
+  background: var(--bg-sub);
+  color: var(--primary);
+}
+
+.nav-link.active {
+  background: var(--primary);
+  color: var(--white);
+  box-shadow: var(--shadow);
+}
+
+/* Cards */
+.modern-card {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  padding: 24px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.modern-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Buttons */
+.btn-modern {
+  padding: 12px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--white);
+}
+
+.btn-primary:hover {
+  background: #000;
+  transform: scale(1.02);
+}
+
+.btn-outline {
+  border: 1px solid var(--border);
+  color: var(--text-main);
+}
+
+.btn-outline:hover {
+  background: var(--bg-sub);
+}
+
+/* Inputs */
+.modern-input {
+  width: 100%;
+  padding: 14px 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--white);
+  font-size: 15px;
+  transition: all 0.2s ease;
+}
+
+.modern-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Typography */
+h1 { font-size: 36px; font-weight: 800; margin-bottom: 10px; }
+h2 { font-size: 24px; font-weight: 700; margin-bottom: 20px; }
+p { color: var(--text-sub); }
+
+/* Utilities */
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.gap-20 { gap: 20px; }
+.mt-40 { margin-top: 40px; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .sidebar { width: 80px; padding: 40px 10px; }
+  .nav-link span { display: none; }
+  .logo span { display: none; }
+}
+
+@media (max-width: 768px) {
+  .app-wrapper { flex-direction: column; }
+  .sidebar { 
+    width: 100%; 
+    height: auto; 
+    position: fixed; 
+    bottom: 0; 
+    top: auto; 
+    flex-direction: row; 
+    padding: 10px;
+    z-index: 1000;
+    border-top: 1px solid var(--border);
+    border-right: none;
+  }
+  .nav-menu { display: flex; width: 100%; justify-content: space-around; }
+  .nav-item { margin-bottom: 0; }
+  .content-section { padding: 20px; padding-bottom: 100px; }
+  .top-navbar { padding: 0 20px; }
+}

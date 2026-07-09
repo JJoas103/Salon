@@ -1,0 +1,27 @@
+/* ==========================================================================
+   common.css — 공통 디자인 토큰 & 리셋 (전 페이지 공통)
+   salu / HAIR RESERVE
+   각 페이지는 <link common.css> 를 먼저 불러온 뒤 섹션 CSS를 불러온다.
+   ========================================================================== */
+:root {
+  --primary: #2D3436;
+  --primary-light: #636E72;
+  --accent: #0984E3;
+  --accent-soft: rgba(9, 132, 227, 0.06);
+  --bg-main: #FFFFFF;
+  --bg-sub: #F8F9FA;
+  --text-main: #2D3436;
+  --text-sub: #636E72;
+  --text-light: #B2BEC3;
+  --border: #DFE6E9;
+  --white: #FFFFFF;
+  --success: #2ecc71;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.06);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-full: 9999px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
