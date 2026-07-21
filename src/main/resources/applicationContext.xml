@@ -10,11 +10,15 @@
                            http://www.springframework.org/schema/tx
                            http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-    <!-- service / mapper 패키지 스캔 (controller 는 dispatcher 가 스캔) -->
-    <context:component-scan base-package="com.soldesk.service" />
-
     <!-- 접속정보 파일 로딩 -->
-    <context:property-placeholder location="classpath:properties/db.properties" />
+    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties" />
+
+
+    <!-- service / mapper 패키지 스캔 (controller 는 dispatcher 가 스캔) -->
+    <context:component-scan base-package="com.soldesk.config, com.soldesk.security">
+
+    </context:component-scan>
+
 
     <!-- ① DataSource : DB 연결 정보 (참고 프로젝트와 동일한 DriverManagerDataSource) -->
     <bean id="dataSource"

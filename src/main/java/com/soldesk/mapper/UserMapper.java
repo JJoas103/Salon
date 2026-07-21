@@ -10,6 +10,18 @@ public interface UserMapper {
     /** 이메일로 회원 조회 (로그인 / 중복확인) */
     UserVO findByEmail(String email);
 
+    // user_id로 조회
+    UserVO findById(int userId);
+
+    // 이메일 기준 업데이트
+    void updateUser(UserVO userVO);
+
+    // user_id로 삭제
+    void deleteById(int userId);
+
+    // 사용가능여부
+    boolean isEmailAvailable(String userEmail);
+
     /** 이메일 중복 개수 */
     int countByEmail(String email);
 

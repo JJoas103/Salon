@@ -10,7 +10,6 @@
         <param-name>contextConfigLocation</param-name>
         <param-value>
             classpath:applicationContext.xml
-            classpath:security-context.xml
         </param-value>
     </context-param>
     <listener>
@@ -25,13 +24,29 @@
             <param-name>contextConfigLocation</param-name>
             <param-value>/WEB-INF/spring/dispatcher-servlet.xml</param-value>
         </init-param>
+        <init-param>
+            <param-name>throwExceptionIfNoHandlerFound</param-name>
+            <param-value>true</param-value>
+        </init-param>
         <load-on-startup>1</load-on-startup>
+        <multipart-config>
+            <max-file-size>5242880</max-file-size>
+            <max-request-size>5242880</max-request-size>
+        </multipart-config>
     </servlet>
     <servlet-mapping>
         <servlet-name>dispatcher</servlet-name>
         <url-pattern>/</url-pattern>
     </servlet-mapping>
 
+    <!-- JSP 기본 인코딩 -->
+    <jsp-config>
+        <jsp-property-group>
+        <url-pattern>*.jsp</url-pattern>
+        <page-encoding>UTF-8</page-encoding>
+        </jsp-property-group>
+    </jsp-config>
+    
     <!-- ③ 한글 인코딩 필터 (UTF-8 강제) -->
     <filter>
         <filter-name>encodingFilter</filter-name>
@@ -60,4 +75,5 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
+    
 </web-app>
