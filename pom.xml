@@ -84,6 +84,12 @@
             <artifactId>spring-security-config</artifactId>
             <version>${spring-security.version}</version>
         </dependency>
+        <!-- JSP <sec:...> 태그 (authorize, authentication 등) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-taglibs</artifactId>
+            <version>${spring-security.version}</version>
+        </dependency>
 
         <!-- ===== 로깅 ===== -->
         <dependency>

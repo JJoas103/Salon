@@ -13,8 +13,19 @@
     <!-- @Controller, @RequestMapping 등 활성화 -->
     <mvc:annotation-driven />
 
-    <!-- controller 패키지만 스캔 (service 는 루트 컨텍스트가 스캔) -->
-    <context:component-scan base-package="com.soldesk.controller" />
+    <!-- 접속정보 파일 로딩 -->
+    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties" />
+
+
+    <!-- 컴포넌트 스캔 -->
+    <context:component-scan base-package="com.soldesk.controller,
+                                            com.soldesk.service,
+                                            com.soldesk.config,
+                                            com.soldesk.validation,
+                                            com.soldesk.handler">
+        <context:include-filter type="assignable" expression="com.soldesk.config.WebSocketConfig" />
+    </context:component-scan>
+
 
     <!-- ViewResolver : "home" -> /WEB-INF/views/home.jsp -->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
@@ -24,5 +35,5 @@
 
     <!-- 정적 리소스 : /resources/** -> webapp/resources/ -->
     <mvc:resources mapping="/resources/**" location="/resources/" />
-
+    <!-- <mvc:resources mapping="/upload/**" location="file:${upload.path}/" /> -->
 </beans>

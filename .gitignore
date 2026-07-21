@@ -1,11 +1,9 @@
 # Maven
 /target/
 
-# 민감정보 (실제 접속정보는 커밋하지 않음)
-src/main/resources/properties/db.properties
-
 # IDE
 /.idea/
+/.vscode/
 *.iml
 /.settings/
 /.classpath
@@ -19,4 +17,5 @@ Thumbs.db
 # Logs
 *.log
 
-db.properties
+# 참고: DB 계정을 팀에서 공유하는 개발 단계이므로
+# app.properties 는 의도적으로 커밋한다. 운영 배포 시에는 분리할 것.

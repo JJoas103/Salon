@@ -6,9 +6,15 @@
         </encoder>
     </appender>
 
+    <!-- 로깅 레벨 -->
     <logger name="com.soldesk" level="DEBUG" />
+    <!-- com.soldesk 패키지 로깅 레벨(DEBUG: 디버그 레벨 - 자세한 정보 출력) -->
     <logger name="org.springframework" level="INFO" />
-
+    <!-- org.springframework 패키지 로깅 레벨(INFO: 정보 레벨 - 일반적인 정보 출력) -->
+    <logger name="root" level="INFO" />
+    <!-- org.mybatis 패키지 로깅 레벨(INFO: 정보 레벨 - 일반적인 정보 출력) -->
+    
+    <!-- 프로젝트 전체의 기본 로깅 규칙 -->
     <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
