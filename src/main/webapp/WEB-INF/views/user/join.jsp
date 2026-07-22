@@ -29,7 +29,7 @@
         </div>
         <div>
         <label class="role-label">이름 / 상호명</label>
-        <div class="input-wrapper"><i class="far fa-user"></i><input type="text" name="name" class="auth-input" placeholder="홍길동 또는 매장명"></div>
+        <div class="input-wrapper"><i class="far fa-user"></i><input type="text" name="userName" class="auth-input" placeholder="홍길동 또는 매장명"></div>
         </div>
         <div>
         <label class="role-label">이메일 주소</label>

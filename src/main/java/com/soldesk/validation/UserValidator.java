@@ -27,7 +27,7 @@ public class UserValidator implements Validator{
         //1) 필수값 체크(email, password, name)    
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "email", "email.required", "이메일은 필수입니다!");
         ValidationUtils.rejectIfEmptyOrWhitespace(errors, "password", "password.required", "비밀번호는 필수입니다!");
-        ValidationUtils.rejectIfEmptyOrWhitespace(errors, "name", "name.required", "이름은 필수입니다!");
+        ValidationUtils.rejectIfEmptyOrWhitespace(errors, "userName", "userName.required", "이름은 필수입니다!");
 
         // 2) 이메일 형식
         String email = user.getEmail();
