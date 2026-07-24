@@ -15,7 +15,7 @@ CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,               -- 사용자 고유 식별자
     email VARCHAR(255) UNIQUE NOT NULL,                   -- 이메일 (로그인 ID)
     password VARCHAR(255) NOT NULL,                       -- 비밀번호
-    name VARCHAR(100),
+    user_name VARCHAR(100),
     phone_number VARCHAR(20),
     user_type ENUM('customer', 'owner', 'admin') NOT NULL, -- 사용자 유형 (고객, 점주, 관리자)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -26,7 +26,7 @@ CREATE TABLE Users (
 CREATE TABLE Salons (
     salon_id INT AUTO_INCREMENT PRIMARY KEY,
     owner_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    salon_name VARCHAR(255) NOT NULL,
     address VARCHAR(255) NOT NULL,
     phone_number VARCHAR(20),
     description TEXT,
@@ -41,7 +41,7 @@ CREATE TABLE Salons (
 CREATE TABLE Services (
     service_id INT AUTO_INCREMENT PRIMARY KEY,
     salon_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    service_name VARCHAR(255) NOT NULL,
     price DECIMAL(10,2) NOT NULL,
     duration_minutes INT,
     description TEXT,
@@ -54,7 +54,7 @@ CREATE TABLE Services (
 CREATE TABLE Stylists (
     stylist_id INT AUTO_INCREMENT PRIMARY KEY,
     salon_id INT NOT NULL,
-    name VARCHAR(100) NOT NULL,
+    stylist_name VARCHAR(100) NOT NULL,
     phone_number VARCHAR(20),
     description TEXT,
     image_url VARCHAR(255),
