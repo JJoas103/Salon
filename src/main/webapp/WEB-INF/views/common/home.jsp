@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <!DOCTYPE html>
 <html lang="ko">
@@ -28,18 +29,39 @@
             </div>
             <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 20px;">인기 급상승 헤어샵 추천</h2>
             <div class="home-grid">
-                <div class="modern-card">
-                <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=600&q=80" class="salon-card-image" alt="salon">
-                <div class="salon-card-body">
-                    <div class="flex-between" style="margin-bottom: 12px;"><span class="tag">마포구 합정동</span><div class="rating-badge"><i class="fas fa-star"></i> 4.8</div></div>
-                    <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 700;">헤어 스튜디오 온</h3>
-                    <p style="font-size: 14px; color: var(--text-sub); margin-bottom: 20px; min-height: 42px;">따뜻한 분위기 속에서 즐기는 프라이빗 커스텀 헤어 케어</p>
-                    <div class="flex-between"><span style="font-weight: 800; font-size: 16px;">25,000원 ~</span><button class="btn-modern btn-primary" onclick="location.href='search.html'">예약하기</button></div>
-                </div>
-                </div>
-                <!-- 추가 카드 생략 가능 (팀원용 샘플이므로) -->
-            </div>
-        </main>
+                <c:forEach var="salon" items="${salons}">
+                    <div class="modern-card">
+                        <c:choose>
+                            <c:when test="${not empty salon.imageUrl}">
+                                <img src="<c:out value='${salon.imageUrl}'/>" class="salon-card-image" alt="<c:out value='${salon.salonName}'/>">
+                            </c:when>
+                            <c:otherwise>
+                                <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&amp;fit=crop&amp;w=600&amp;q=80" class="salon-card-image" alt="salon">
+                            </c:otherwise>
+                        </c:choose>
+                        <div class="salon-card-body">
+                            <div class="flex-between" style="margin-bottom: 12px;">
+                                <span class="tag"><c:out value="${salon.address}" /></span>
+                                <div class="rating-badge"><i class="fas fa-star"></i> <fmt:formatNumber value="${salon.averageRating}" pattern="0.0" /></div>
+                            </div>
+                            <h3 style="font-size: 18px; margin-bottom: 8px; font-weight: 700;"><c:out value="${salon.salonName}" /></h3>
+                            <p style="font-size: 14px; color: var(--text-sub); margin-bottom: 20px; min-height: 42px;"><c:out value="${salon.description}" /></p>
+                            <div class="flex-between">
+                                <span style="font-weight: 800; font-size: 16px;">
+                                    <c:choose>
+                                        <c:when test="${not empty salon.minimumPrice}"><fmt:formatNumber value="${salon.minimumPrice}" pattern="#,##0" />원~</c:when>
+                                        <c:otherwise>가격 문의</c:otherwise>
+                                    </c:choose>
+                                </span>
+                                <button type="button" class="btn-modern btn-primary"
+                                    onclick="location.href='<c:url value="/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">
+                                    예약하기
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </c:forEach>
+            </div>        </main>
     </div>
 </body>
 </html>

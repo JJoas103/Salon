@@ -13,6 +13,7 @@ public class SalonVO {
     private String description;
     private java.math.BigDecimal averageRating; // 평균 별점 (average_rating)
     private String imageUrl; // image_url
+    private java.math.BigDecimal minimumPrice;
     private String createdAt; // created_at
     private String updatedAt; // updated_at
 
@@ -32,6 +33,8 @@ public class SalonVO {
     public void setAverageRating(java.math.BigDecimal averageRating) { this.averageRating = averageRating; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public java.math.BigDecimal getMinimumPrice() { return minimumPrice; }
+    public void setMinimumPrice(java.math.BigDecimal minimumPrice) { this.minimumPrice = minimumPrice; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
