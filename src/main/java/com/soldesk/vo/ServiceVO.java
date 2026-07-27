@@ -7,7 +7,7 @@ public class ServiceVO {
 
     private int serviceId; // service_id
     private int salonId; // salon_id
-    private String name;
+    private String serviceName;
     private java.math.BigDecimal price;
     private int durationMinutes; // 소요시간(분) (duration_minutes)
     private String description;
@@ -18,8 +18,8 @@ public class ServiceVO {
     public void setServiceId(int serviceId) { this.serviceId = serviceId; }
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getServiceName() { return serviceName; }
+    public void setServiceName(String serviceName) { this.serviceName = serviceName; }
     public java.math.BigDecimal getPrice() { return price; }
     public void setPrice(java.math.BigDecimal price) { this.price = price; }
     public int getDurationMinutes() { return durationMinutes; }
