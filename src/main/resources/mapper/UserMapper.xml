@@ -34,6 +34,15 @@
         select count(*) from Users where email = #{email}
     </select>
 
+    <!-- 이메일 기준 업데이트 -->
+    <update id="updateUser" parameterType="com.soldesk.vo.UserVO">
+        update Users
+        set password = #{password},
+            user_name = #{userName},
+            phone_number = #{phoneNumber}
+        where email = #{email}
+    </update>
+
     <!-- 전체 회원 수 (연동 확인용) -->
     <select id="countAll" resultType="int">
         select count(*) from Users

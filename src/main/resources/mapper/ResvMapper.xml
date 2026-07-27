@@ -45,6 +45,14 @@
         join services se on se.service_id = r.service_id
         where u.user_id = #{userId} and r.reservation_time &lt;  now()
         order by r.reservation_time desc;
-        
+
+    </select>
+
+    <select id="countCompleted"
+            resultType="int"
+            parameterType="int" >
+        select count(*)
+        from reservations
+        where user_id = #{userId} and status = 'completed';
     </select>
 </mapper>
