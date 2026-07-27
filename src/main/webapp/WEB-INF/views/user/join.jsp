@@ -24,7 +24,7 @@
               <input type="hidden" name="userType" value="customer">
               <div class="form-field">
                 <label class="role-label">이름 / 상호명</label>
-                <spring:bind path="joinUser.name">
+                <spring:bind path="joinUser.userName">
                   <div class="input-wrapper"><i class="far fa-user"></i><input type="text" name="name"
                       value="${status.value}" class="auth-input ${status.error ? 'input-error' : ''}"
                       placeholder="홍길동 또는 매장명"></div>
