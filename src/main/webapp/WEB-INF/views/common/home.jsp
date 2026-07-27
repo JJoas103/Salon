@@ -19,9 +19,7 @@
     </jsp:include>
 
     <div class="app-container">
-        <header class="app-header" href="#">
-        <div class="user-badge"><span>김다정 고객님</span><div class="user-avatar-sm">DJ</div></div>
-        </header>
+        <jsp:include page="/WEB-INF/views/includes/header.jsp" />
         <main class="app-content">
             <div class="hero-section">
                 <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">나만을 위한 맞춤형 헤어 솔루션</h1>
