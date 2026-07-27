@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.PostMapper">
+
+    <resultMap id="postResultMap" type="com.soldesk.vo.PostVO">
+        <id     column="post_id"      property="postId" />
+        <result column="user_id"      property="userId" />
+        <result column="title"        property="title" />
+        <result column="content"      property="content" />
+        <result column="category"     property="category" />
+        <result column="view_count"   property="viewCount" />
+        <result column="like_count"   property="likeCount" />
+        <result column="dislike_count" property="dislikeCount" />
+        <result column="image_url"    property="imageUrl" />
+        <result column="salon_id"     property="salonId" />
+        <result column="created_at"   property="createdAt" />
+        <result column="updated_at"   property="updatedAt" />
+        <result column="author_name"  property="authorName" />
+        <result column="salon_name"   property="salonName" />
+    </resultMap>
+
+    <select id="findAll" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.created_at, p.updated_at,
+               COALESCE(u.name, '익명') AS author_name,
+               s.name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="findByCategory" parameterType="String" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.created_at, p.updated_at,
+               COALESCE(u.name, '익명') AS author_name,
+               s.name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.category = #{category}
+        ORDER BY p.created_at DESC
+    </select>
+
+    <select id="findById" parameterType="int" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.created_at, p.updated_at,
+               COALESCE(u.name, '익명') AS author_name,
+               s.name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.post_id = #{postId}
+    </select>
+
+    <select id="findPopular" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.created_at, p.updated_at,
+               COALESCE(u.name, '익명') AS author_name,
+               s.name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        ORDER BY p.like_count DESC, p.view_count DESC
+        LIMIT 50
+    </select>
+
+    <insert id="insert" parameterType="com.soldesk.vo.PostVO"
+            useGeneratedKeys="true" keyProperty="postId">
+        INSERT INTO Posts (user_id, title, content, category, image_url, salon_id)
+        VALUES (#{userId}, #{title}, #{content}, #{category}, #{imageUrl},
+                <if test="salonId > 0">#{salonId}</if><if test="salonId == 0">NULL</if>)
+    </insert>
+
+    <update id="update" parameterType="com.soldesk.vo.PostVO">
+        UPDATE Posts
+        SET title = #{title}, content = #{content}, category = #{category},
+            image_url = #{imageUrl},
+            salon_id = <if test="salonId > 0">#{salonId}</if><if test="salonId == 0">NULL</if>
+        WHERE post_id = #{postId}
+    </update>
+
+    <delete id="delete" parameterType="int">
+        DELETE FROM Posts WHERE post_id = #{postId}
+    </delete>
+
+    <update id="incrementViewCount" parameterType="int">
+        UPDATE Posts SET view_count = view_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementLikeCount" parameterType="int">
+        UPDATE Posts SET like_count = like_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="decrementLikeCount" parameterType="int">
+        UPDATE Posts SET like_count = GREATEST(like_count - 1, 0) WHERE post_id = #{postId}
+    </update>
+
+    <update id="incrementDislikeCount" parameterType="int">
+        UPDATE Posts SET dislike_count = dislike_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="decrementDislikeCount" parameterType="int">
+        UPDATE Posts SET dislike_count = GREATEST(dislike_count - 1, 0) WHERE post_id = #{postId}
+    </update>
+
+    <select id="search" resultMap="postResultMap">
+        SELECT DISTINCT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.created_at, p.updated_at,
+               COALESCE(u.name, '익명') AS author_name,
+               s.name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        <if test="searchType == 'comment'">
+        LEFT JOIN Comments c ON p.post_id = c.post_id
+        </if>
+        WHERE
+        <choose>
+            <when test="searchType == 'title_content'">
+                (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </when>
+            <when test="searchType == 'content'">
+                p.content LIKE #{keyword}
+            </when>
+            <when test="searchType == 'comment'">
+                c.content LIKE #{keyword}
+            </when>
+            <when test="searchType == 'author'">
+                u.name LIKE #{keyword}
+            </when>
+            <when test="searchType == 'salon'">
+                s.name LIKE #{keyword}
+            </when>
+            <otherwise>
+                (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </otherwise>
+        </choose>
+        ORDER BY p.created_at DESC
+    </select>
+
+</mapper>
