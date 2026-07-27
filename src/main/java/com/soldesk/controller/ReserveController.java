@@ -36,7 +36,7 @@ public class ReserveController {
 
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
         UserVO user = userService.getUser(userEmail); //여기가 null뜨는중
-        
+        model.addAttribute("categoryIdx", category);
         if(category == 1){
             List<ReservationVO> list = reservationService.getRevList(user.getUserId()); //예약 완료된 정보
             model.addAttribute("reservs", list);//예약 정보

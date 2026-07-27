@@ -12,6 +12,10 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import java.util.Map;
 
 // import com.soldesk.mapper.UserMapper;
 import com.soldesk.service.UserService;
@@ -56,5 +60,13 @@ public class UserController {
     public String loginForm() {
         return "user/login";
     }//로그인 페이지
-    
+
+    /** 이메일 중복확인 (AJAX) — {"available": true} = 사용 가능 */
+    @GetMapping("/check-email")
+    @ResponseBody
+    public Map<String, Boolean> checkEmail(@RequestParam("email") String email){
+        boolean available = userService.isEmailAvailable(email);
+        return Map.of("available", available);
+    }
+
 }
