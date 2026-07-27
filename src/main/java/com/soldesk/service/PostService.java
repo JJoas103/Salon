@@ -3,7 +3,9 @@ package com.soldesk.service;
 import com.soldesk.vo.CommentVO;
 import com.soldesk.vo.PostVO;
 import com.soldesk.vo.SalonVO;
+import java.io.IOException;
 import java.util.List;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface PostService {
 
@@ -11,9 +13,9 @@ public interface PostService {
 
     PostVO getPost(int postId);
 
-    void writePost(PostVO post);
+    void writePost(PostVO post, MultipartFile imageFile) throws IOException;
 
-    void editPost(PostVO post);
+    void editPost(PostVO post, MultipartFile imageFile) throws IOException;
 
     void removePost(int postId);
 

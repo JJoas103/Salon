@@ -24,8 +24,8 @@
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
-               COALESCE(u.name, '익명') AS author_name,
-               s.name AS salon_name
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
@@ -36,8 +36,8 @@
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
-               COALESCE(u.name, '익명') AS author_name,
-               s.name AS salon_name
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
@@ -49,8 +49,8 @@
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
-               COALESCE(u.name, '익명') AS author_name,
-               s.name AS salon_name
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
@@ -61,8 +61,8 @@
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
-               COALESCE(u.name, '익명') AS author_name,
-               s.name AS salon_name
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
@@ -113,8 +113,8 @@
         SELECT DISTINCT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
-               COALESCE(u.name, '익명') AS author_name,
-               s.name AS salon_name
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
@@ -133,10 +133,10 @@
                 c.content LIKE #{keyword}
             </when>
             <when test="searchType == 'author'">
-                u.name LIKE #{keyword}
+                u.user_name LIKE #{keyword}
             </when>
             <when test="searchType == 'salon'">
-                s.name LIKE #{keyword}
+                s.salon_name LIKE #{keyword}
             </when>
             <otherwise>
                 (p.title LIKE #{keyword} OR p.content LIKE #{keyword})

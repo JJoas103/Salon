@@ -15,7 +15,7 @@
 
     <select id="findByPostId" parameterType="int" resultMap="commentResultMap">
         SELECT c.comment_id, c.post_id, c.user_id, c.content, c.created_at, c.updated_at,
-               COALESCE(u.name, '익명') AS author_name
+               COALESCE(u.user_name, '익명') AS author_name
         FROM Comments c
         LEFT JOIN Users u ON c.user_id = u.user_id
         WHERE c.post_id = #{postId}

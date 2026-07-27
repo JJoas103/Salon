@@ -33,7 +33,7 @@
             <div>
               <div class="modern-card" style="margin-bottom: 30px;">
                 <h2 style="font-size: 24px;"><c:out value="${salon.salonName}"/></h2>
-                <p style="color: var(--text-sub); margin-top: 10px;"><c:out value="${salon.address}"/></p>
+                <p style="color: var(-  -text-sub); margin-top: 10px;"><c:out value="${salon.address}"/></p>
                 <p style="color: var(--text-sub); margin-top: 8px;"><c:out value="${salon.description}"/></p>
               </div>
               <h3 style="margin-bottom: 15px;">시술 메뉴 선택</h3>

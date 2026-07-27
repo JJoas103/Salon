@@ -1,7 +1,8 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <c:set var="ctx" value="${pageContext.request.contextPath}" />
-<c:set var="isEdit" value="${not empty post}" />
+<%-- 검증 실패 시 새 글 작성 폼에도 post(입력값)가 되돌아오므로 postId로 수정/작성을 구분한다 --%>
+<c:set var="isEdit" value="${not empty post and post.postId > 0}" />
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -9,68 +10,45 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HAIR RESERVE | ${isEdit ? '글 수정' : '글쓰기'}</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="${ctx}/resources/css/common.css">
-  <link rel="stylesheet" href="${ctx}/resources/css/user.css">
-  <style>
-    .write-card { background:var(--white); border-radius:var(--radius-lg); border:1px solid var(--border); padding:40px; max-width:800px; margin:0 auto; box-shadow:var(--shadow); }
-    .write-card h2 { font-size:22px; font-weight:700; margin-bottom:28px; }
-    .form-group { margin-bottom:20px; display:flex; flex-direction:column; gap:8px; }
-    .form-group label { font-size:14px; font-weight:600; color:var(--text-sub); }
-    .form-control { padding:12px 16px; border:1px solid var(--border); border-radius:var(--radius-md); font-size:15px; width:100%; color:var(--text-main); }
-    .form-control:focus { outline:none; border-color:var(--accent); }
-    textarea.form-control { resize:vertical; min-height:280px; line-height:1.7; }
-    .form-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:10px; }
-    .image-preview { margin-top:10px; max-width:100%; max-height:200px; border-radius:var(--radius-md); border:1px solid var(--border); display:none; }
-    .current-image { margin-top:8px; }
-    .current-image img { max-width:100%; max-height:160px; border-radius:var(--radius-md); border:1px solid var(--border); }
-    .file-input-wrap { position:relative; }
-    .file-label { display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border:1.5px dashed var(--border); border-radius:var(--radius-md); cursor:pointer; font-size:14px; color:var(--text-sub); background:var(--bg-sub); transition:border-color .2s; }
-    .file-label:hover { border-color:var(--accent); color:var(--accent); }
-    #imageFile { display:none; }
-  </style>
+  <link rel="stylesheet" href="/resources/css/common.css">
+  <link rel="stylesheet" href="/resources/css/user.css">
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="sidebar-brand">
-      <i class="fas fa-scissors" style="color:var(--accent);"></i>
-      <span>HAIR RESERVE</span>
-    </div>
-    <ul class="sidebar-menu">
-      <li class="sidebar-item"><a href="${ctx}/"><i class="fas fa-home"></i> 홈 메인</a></li>
-      <li class="sidebar-item"><a href="#"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
-      <li class="sidebar-item"><a href="#"><i class="fas fa-comments"></i> 1:1 상담 채팅</a></li>
-      <li class="sidebar-item active"><a href="${ctx}/community"><i class="fas fa-users"></i> 스타일 커뮤니티</a></li>
-      <li class="sidebar-item"><a href="${ctx}/community/popular"><i class="fas fa-fire"></i> 인기글</a></li>
-      <li class="sidebar-item"><a href="#"><i class="fas fa-calendar-alt"></i> 예약 내역</a></li>
-      <li class="sidebar-item"><a href="#"><i class="fas fa-user"></i> 마이페이지</a></li>
-    </ul>
-  </aside>
+  <!-- 사이드바 -->
+  <jsp:include page="../../includes/sidebar_common.jsp">
+    <jsp:param name="menu" value="community" />
+  </jsp:include>
 
   <div class="app-container">
+    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
     <main class="app-content">
       <div class="write-card">
         <h2>
-          <i class="fas fa-pen" style="color:var(--accent); margin-right:10px;"></i>
+          <i class="fas fa-pen icon-accent"></i>
           ${isEdit ? '글 수정' : '새 글 작성'}
         </h2>
 
+        <c:if test="${not empty errorMessage}">
+          <p class="error-text"><c:out value="${errorMessage}" /></p>
+        </c:if>
+
         <c:choose>
           <c:when test="${isEdit}">
-            <form action="${ctx}/community/${post.postId}/edit" method="post" enctype="multipart/form-data">
+            <form action="${ctx}/common/community/${post.postId}/edit" method="post" enctype="multipart/form-data">
           </c:when>
           <c:otherwise>
-            <form action="${ctx}/community/write" method="post" enctype="multipart/form-data">
+            <form action="${ctx}/common/community/write" method="post" enctype="multipart/form-data">
           </c:otherwise>
         </c:choose>
 
           <div class="form-group">
-            <label for="salonId">방문 미용실 <span style="font-weight:400; color:var(--text-light);">(선택)</span></label>
+            <label for="salonId">방문 미용실 <span class="label-optional">(선택)</span></label>
             <select name="salonId" id="salonId" class="form-control">
               <option value="0">-- 선택 안함 --</option>
               <c:forEach var="salon" items="${salons}">
                 <option value="${salon.salonId}"
                   ${post.salonId == salon.salonId ? 'selected' : ''}>
-                  <c:out value="${salon.name}" />
+                  <c:out value="${salon.salonName} "/>
                 </option>
               </c:forEach>
             </select>
@@ -101,7 +79,7 @@
           </div>
 
           <div class="form-group">
-            <label>이미지 첨부 <span style="font-weight:400; color:var(--text-light);">(선택)</span></label>
+            <label>이미지 첨부 <span class="label-optional">(선택)</span></label>
             <div class="file-input-wrap">
               <label for="imageFile" class="file-label">
                 <i class="fas fa-image"></i> 이미지 선택
@@ -114,15 +92,15 @@
             <%-- 수정 시: 기존 이미지 표시 + hidden으로 값 유지 --%>
             <c:if test="${isEdit and not empty post.imageUrl}">
               <div class="current-image">
-                <p style="font-size:12px; color:var(--text-light); margin-bottom:6px;">현재 이미지</p>
-                <img src="${ctx}/uploads/${post.imageUrl}" alt="현재 이미지">
+                <p>현재 이미지</p>
+                <img src="${ctx}/upload/${post.imageUrl}" alt="현재 이미지">
               </div>
               <input type="hidden" name="imageUrl" value="${post.imageUrl}">
             </c:if>
           </div>
 
           <div class="form-actions">
-            <a href="${ctx}/community" class="btn-modern btn-outline">취소</a>
+            <a href="${ctx}/common/community" class="btn-modern btn-outline">취소</a>
             <button type="submit" class="btn-modern btn-accent">
               ${isEdit ? '수정 완료' : '작성 완료'}
             </button>

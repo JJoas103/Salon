@@ -11,7 +11,9 @@ import com.soldesk.vo.SalonVO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -28,6 +30,9 @@ public class PostServiceImpl implements PostService {
 
     @Autowired
     private PostLikeMapper postLikeMapper;
+
+    @Autowired
+    private FileService fileService;
 
     @Override
     public List<PostVO> getPostList(String category) {
@@ -49,7 +54,8 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void writePost(PostVO post) {
+    public void writePost(PostVO post, MultipartFile imageFile) throws IOException {
+        post.setImageUrl(fileService.saveFile(imageFile));
         if (post.getContent() != null) post.setContent(post.getContent().trim());
         if (post.getTitle()   != null) post.setTitle(post.getTitle().trim());
         postMapper.insert(post);
@@ -57,7 +63,13 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void editPost(PostVO post) {
+    public void editPost(PostVO post, MultipartFile imageFile) throws IOException {
+        // 새 이미지가 올라온 경우에만 교체. 아니면 hidden 필드로 넘어온 기존 파일명 유지
+        String newImage = fileService.saveFile(imageFile);
+        if (newImage != null) {
+            fileService.deleteFile(post.getImageUrl());
+            post.setImageUrl(newImage);
+        }
         if (post.getContent() != null) post.setContent(post.getContent().trim());
         if (post.getTitle()   != null) post.setTitle(post.getTitle().trim());
         postMapper.update(post);
@@ -66,8 +78,12 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void removePost(int postId) {
+        PostVO post = postMapper.findById(postId);
         commentMapper.deleteByPostId(postId);
         postMapper.delete(postId);
+        if (post != null) {
+            fileService.deleteFile(post.getImageUrl());
+        }
     }
 
     @Override
@@ -89,7 +105,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<SalonVO> getSalonList() {
-        return salonMapper.findAll();
+        return salonMapper.findAllWithMinimumPrice();
     }
 
     @Override
