@@ -24,9 +24,9 @@
     <main class="app-content">
       <div class="res-tabs">
         <div class="res-tab ${categoryIdx == '1' ? 'active' : ''}">
-          <a href="/reserve/info?category=1">전체 예약 히스토리</a>
+          <a href="/common/reserve?category=1">전체 예약 히스토리</a>
         </div>
-        <div class="res-tab ${categoryIdx == '2' ? 'active' : ''}"><a href="/reserve/info?category=2">이용 완료</a></div>
+        <div class="res-tab ${categoryIdx == '2' ? 'active' : ''}"><a href="/common/reserve?category=2">이용 완료</a></div>
       </div>
       <div class="res-card">
         <c:choose>
