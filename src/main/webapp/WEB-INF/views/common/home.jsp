@@ -52,7 +52,7 @@
                                     </c:choose>
                                 </span>
                                 <button type="button" class="btn-modern btn-primary"
-                                    onclick="location.href='<c:url value="/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">
+                                    onclick="location.href='<c:url value="/common/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">
                                     예약하기
                                 </button>
                             </div>
