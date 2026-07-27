@@ -13,7 +13,7 @@
 </head>
 <body>
   <!-- 사이드바 -->
-  <jsp:include page="../includes/sidebar.jsp">
+  <jsp:include page="../includes/sidebar_common.jsp">
     <jsp:param name="menu" value="reservations" />
   </jsp:include>
 
