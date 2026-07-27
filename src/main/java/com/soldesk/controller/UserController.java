@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
-import com.soldesk.mapper.UserMapper;
+// import com.soldesk.mapper.UserMapper;
 import com.soldesk.service.UserService;
 import com.soldesk.validation.UserValidator;
 import com.soldesk.vo.UserVO;

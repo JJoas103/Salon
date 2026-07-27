@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -35,11 +36,11 @@
         </div>
         <div>
         <label class="role-label">비밀번호</label>
-        <div class="input-wrapper"><i class="fas fa-lock"></i><input type="password" name="userPassword" class="auth-input" value="••••••••"></div>
+        <div class="input-wrapper"><i class="fas fa-lock"></i><input type="password" name="userPassword" class="auth-input"></div>
         </div>
         <button class="btn-modern btn-primary" style="width: 100%; margin-top: 15px;">로그인 및 대시보드 이동</button>
     </form>
-    <div class="auth-footer">아직 계정이 없으신가요? <a href="signup.html" class="auth-link">회원가입</a></div>
+    <div class="auth-footer">아직 계정이 없으신가요? <a href="/user/join" class="auth-link">회원가입</a></div>
   </div>
 </body>
 </html>
