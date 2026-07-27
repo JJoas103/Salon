@@ -7,7 +7,7 @@ public class SalonVO {
 
     private int salonId; // salon_id
     private int ownerId; // 점주 user_id (owner_id)
-    private String name;
+    private String salonName;
     private String address;
     private String phoneNumber; // phone_number
     private String description;
@@ -20,8 +20,8 @@ public class SalonVO {
     public void setSalonId(int salonId) { this.salonId = salonId; }
     public int getOwnerId() { return ownerId; }
     public void setOwnerId(int ownerId) { this.ownerId = ownerId; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getSalonName() { return salonName; }
+    public void setSalonName(String salonName) { this.salonName = salonName; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public String getPhoneNumber() { return phoneNumber; }

@@ -22,10 +22,7 @@
                                             com.soldesk.service,
                                             com.soldesk.config,
                                             com.soldesk.validation,
-                                            com.soldesk.handler">
-        <context:include-filter type="assignable" expression="com.soldesk.config.WebSocketConfig" />
-    </context:component-scan>
-
+                                            com.soldesk.handler" />
 
     <!-- ViewResolver : "home" -> /WEB-INF/views/home.jsp -->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">

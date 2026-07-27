@@ -7,7 +7,7 @@ public class StylistVO {
 
     private int stylistId; // stylist_id
     private int salonId; // salon_id
-    private String name;
+    private String stylistName;
     private String phoneNumber; // phone_number
     private String description;
     private String imageUrl; // image_url
@@ -18,8 +18,8 @@ public class StylistVO {
     public void setStylistId(int stylistId) { this.stylistId = stylistId; }
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getStylistName() { return stylistName; }
+    public void setStylistName(String stylistName) { this.stylistName = stylistName; }
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getDescription() { return description; }
