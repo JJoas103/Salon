@@ -36,4 +36,14 @@ public class UserService {
         UserVO user = userMapper.findByEmail(email);
     return user;
     }//이메일로 회원정보 조회
+
+    @Transactional
+    public void changePassword(String email, String currentPassword, String newPassword){
+        UserVO user = userMapper.findByEmail(email);
+        if(!passwordEncoder.matches(currentPassword, user.getPassword())){
+            throw new IllegalArgumentException("현재 비밀번호가 일치하지 않습니다.");
+        }
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userMapper.updateUser(user);
+    }//비밀번호 변경
 }
