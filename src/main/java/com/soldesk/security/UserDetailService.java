@@ -2,7 +2,6 @@ package com.soldesk.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.method.P;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -25,12 +24,8 @@ public class UserDetailService implements UserDetailsService{
             throw new UsernameNotFoundException("회원을 찾을 수 없습니다:" + username);
         }//email과 일치하는 회원 없음
 
-        return User.builder()
-                        .username(user.getEmail())
-                        .password(user.getPassword())
-                        .roles(resolveRole(user.getUserType()))
-                        .build();
-        //User.builder(): 인증된 사용자 객체를 생
+        return new CustomUserDetails(user, resolveRole(user.getUserType()));
+        //CustomUserDetails: 인증된 사용자 객체(이름, userId 포함)를 생성
     }   
     //권한 설정(문자열 -> 권한으로 변환)
     private String resolveRole(String usertype){
