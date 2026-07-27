@@ -16,12 +16,36 @@
   --border: #DFE6E9;
   --white: #FFFFFF;
   --success: #2ecc71;
+  --danger: #e53935;          /* 에러/경고 (폼 검증 실패 등) */
+  --danger-soft: rgba(229, 57, 53, 0.06);
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.06);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-full: 9999px;
+  --container-max: 1200px;    /* 콘텐츠 최대 폭 (대시보드 계열) */
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* ---- 공통 유틸 ---- */
+/* 폼 검증 에러 문구: 인라인 style 대신 이 클래스를 사용할 것 */
+.error-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--danger);
+}
+/* 성공/통과 문구 (예: 사용 가능한 이메일) */
+.success-text {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--success);
+}
+/* 에러 상태의 입력 필드 (테두리 강조) */
+.input-error {
+  border-color: var(--danger) !important;
+  box-shadow: 0 0 0 3px var(--danger-soft);
+}

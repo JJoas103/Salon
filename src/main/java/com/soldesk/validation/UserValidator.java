@@ -1,15 +1,20 @@
 package com.soldesk.validation;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.ValidationUtils;
 import org.springframework.validation.Validator;
 
+import com.soldesk.service.UserService;
 import com.soldesk.vo.UserVO;
 
 @Component
 public class UserValidator implements Validator{
-    
+
+    @Autowired
+    private UserService userService;
+
     @Override
     public boolean supports(Class<?> clazz) {
         return UserVO.class.isAssignableFrom(clazz);
@@ -36,12 +41,24 @@ public class UserValidator implements Validator{
             errors.rejectValue("email", "email.invalid", "이메일 형식이 올바르지 않습니다.");
         }
 
+        // 2-1) 이메일 중복 확인 (회원가입 시에만 — 형식이 유효할 때만 DB 조회)
+        if (beanName.equals("joinUser") && !errors.hasFieldErrors("email")
+                && email != null && !email.isBlank() && !userService.isEmailAvailable(email)) {
+            errors.rejectValue("email", "email.duplicate", "이미 사용 중인 이메일입니다.");
+        }
+
         // 3) 비밀번호 형식
         String password = user.getPassword();
         if(password != null && password.length() < 8){
             errors.rejectValue("password", "password.tooShort", "비밀번호가 너무 짧습니다");
         }
-        
+
+        // 3-1) 비밀번호 확인 일치 여부
+        String confirmPassword = user.getConfirmPassword();
+        if(password != null && !password.equals(confirmPassword)){
+            errors.rejectValue("confirmPassword", "password.mismatch", "비밀번호가 일치하지 않습니다");
+        }
+
         // 4) phoneNumber
         String phone = user.getPhoneNumber();
         if (phone != null && !phone.isBlank() && !phone.matches("^01\\d-\\d{3,4}-\\d{4}$")) {

@@ -8,7 +8,7 @@
         <id     column="user_id"      property="userId" />
         <result column="email"        property="email" />
         <result column="password"     property="password" />
-        <result column="user_name"         property="userName" />
+        <result column="user_name"    property="name" />
         <result column="phone_number" property="phoneNumber" />
         <result column="user_type"    property="userType" />
         <result column="created_at"   property="createdAt" />
@@ -19,7 +19,7 @@
     <insert id="insertUser" parameterType="com.soldesk.vo.UserVO"
             useGeneratedKeys="true" keyProperty="userId">
         insert into Users (email, password, user_name, phone_number, user_type)
-        values (#{email}, #{password}, #{userName}, #{phoneNumber}, #{userType})
+        values (#{email}, #{password}, #{name}, #{phoneNumber}, #{userType})
     </insert>
 
     <!-- 이메일로 회원 조회 -->
