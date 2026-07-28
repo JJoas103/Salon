@@ -22,6 +22,7 @@ body {
 .sidebar-item:hover a, .sidebar-item.active a { color: var(--white); background: rgba(255, 255, 255, 0.08); }
 .sidebar-item.active a { background: var(--accent); font-weight: 600; }
 .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.sidebar-user { padding: 0 16px 10px; color: var(--text-light); font-weight: 600; font-size: 14px; }
 .sidebar-item-logout { display: flex; align-items: center; gap: 14px; color: var(--text-light); text-decoration: none; padding: 14px 16px; border-radius: var(--radius-md); font-weight: 500; font-size: 15px; }
 .sidebar-item-logout:hover { color: var(--white); background: rgba(255, 255, 255, 0.08); }
 

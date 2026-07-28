@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <%-- 현재 페이지가 넘겨준 메뉴 키. 예) <jsp:param name="menu" value="reservations"/> --%>
 <c:set var="menu" value="${param.menu}" />
 <aside class="sidebar">
@@ -14,6 +15,13 @@
     <li class="sidebar-item ${menu == 'mypage' ? 'active' : ''}"><a href="<c:url value='/common/mypage'/>"><i class="fas fa-user"></i> 마이페이지</a></li>
   </ul>
   <div class="sidebar-footer">
-    <a href="<c:url value='/user/logout'/>" class="sidebar-item-logout"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
+    <sec:authorize access="isAuthenticated()">
+      <div class="sidebar-user"><sec:authentication property="principal.userName"/> 고객님</div>
+      <a href="<c:url value='/user/logout'/>" class="sidebar-item-logout"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
+    </sec:authorize>
+    <sec:authorize access="!isAuthenticated()">
+      <a href="<c:url value='/user/login'/>" class="sidebar-item-logout"><i class="fas fa-sign-in-alt"></i> 로그인</a>
+      <a href="<c:url value='/user/join'/>" class="sidebar-item-logout"><i class="fas fa-user-plus"></i> 회원가입</a>
+    </sec:authorize>
   </div>
 </aside>
