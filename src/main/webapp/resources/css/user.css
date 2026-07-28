@@ -25,6 +25,8 @@ body {
 .sidebar-user { padding: 0 16px 10px; color: var(--text-light); font-weight: 600; font-size: 14px; }
 .sidebar-item-logout { display: flex; align-items: center; gap: 14px; color: var(--text-light); text-decoration: none; padding: 14px 16px; border-radius: var(--radius-md); font-weight: 500; font-size: 15px; }
 .sidebar-item-logout:hover { color: var(--white); background: rgba(255, 255, 255, 0.08); }
+.sidebar-auth-notice { opacity: 0; visibility: hidden; margin-bottom: 10px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--danger); color: var(--white); font-size: 13px; font-weight: 600; text-align: center; transition: opacity 0.5s ease, visibility 0.5s ease; }
+.sidebar-auth-notice.show { opacity: 1; visibility: visible; }
 
 /* ---- App shell ---- */
 .app-container { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }

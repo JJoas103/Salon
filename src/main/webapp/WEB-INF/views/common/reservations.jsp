@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
+  <link rel="stylesheet" href="/resources/css/auth.css">
 </head>
 <body>
   <!-- 사이드바 -->

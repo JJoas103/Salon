@@ -31,7 +31,7 @@
       <div class="index-logo"><i class="fas fa-scissors"></i> HAIR RESERVE</div>
       <h1 class="index-title">나만을 위한 완벽한 헤어스타일,<br>스마트 뷰티 에코시스템</h1>
       <div style="margin-top: 40px;">
-        <button class="btn-modern btn-primary" style="padding: 18px 40px; font-size: 18px; border-radius: var(--radius-full);" onclick="location.href='/user/login'">통합 플랫폼 로그인</button>
+        <button class="btn-modern btn-primary" style="padding: 18px 40px; font-size: 18px; border-radius: var(--radius-full);" onclick="location.href='/common/home'">통합 플랫폼</button>
       </div>
     </div>
   </div>
