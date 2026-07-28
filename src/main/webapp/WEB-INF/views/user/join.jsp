@@ -14,7 +14,7 @@
           <link rel="stylesheet" href="/resources/css/auth.css">
         </head>
 
-        <body class="signup-page">
+        <body class="signup-page auth-page">
           <div class="auth-card">
             <div class="auth-header">
               <div class="auth-logo"><i class="fas fa-user-plus"></i> 신규 회원가입</div>

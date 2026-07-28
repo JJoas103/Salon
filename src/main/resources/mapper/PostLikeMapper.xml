@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.PostLikeMapper">
+
+    <resultMap id="likeResultMap" type="com.soldesk.vo.PostLikeVO">
+        <id     column="like_id"       property="likeId" />
+        <result column="post_id"       property="postId" />
+        <result column="user_id"       property="userId" />
+        <result column="reaction_type" property="reactionType" />
+        <result column="created_at"    property="createdAt" />
+    </resultMap>
+
+    <select id="findByPostAndUser" resultMap="likeResultMap">
+        SELECT like_id, post_id, user_id, reaction_type, created_at
+        FROM post_likes
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO post_likes (post_id, user_id, reaction_type) VALUES (#{postId}, #{userId}, #{type})
+    </insert>
+
+    <delete id="delete">
+        DELETE FROM post_likes WHERE post_id = #{postId} AND user_id = #{userId}
+    </delete>
+
+    <update id="updateType">
+        UPDATE post_likes SET reaction_type = #{type} WHERE post_id = #{postId} AND user_id = #{userId}
+    </update>
+
+</mapper>

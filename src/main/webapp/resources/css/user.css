@@ -22,8 +22,11 @@ body {
 .sidebar-item:hover a, .sidebar-item.active a { color: var(--white); background: rgba(255, 255, 255, 0.08); }
 .sidebar-item.active a { background: var(--accent); font-weight: 600; }
 .sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
+.sidebar-user { padding: 0 16px 10px; color: var(--text-light); font-weight: 600; font-size: 14px; }
 .sidebar-item-logout { display: flex; align-items: center; gap: 14px; color: var(--text-light); text-decoration: none; padding: 14px 16px; border-radius: var(--radius-md); font-weight: 500; font-size: 15px; }
 .sidebar-item-logout:hover { color: var(--white); background: rgba(255, 255, 255, 0.08); }
+.sidebar-auth-notice { opacity: 0; visibility: hidden; margin-bottom: 10px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--danger); color: var(--white); font-size: 13px; font-weight: 600; text-align: center; transition: opacity 0.5s ease, visibility 0.5s ease; }
+.sidebar-auth-notice.show { opacity: 1; visibility: visible; }
 
 /* ---- App shell ---- */
 .app-container { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -37,6 +40,8 @@ body {
 .btn-primary { background: var(--primary); color: var(--white); }
 .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
 .btn-accent { background: var(--accent); color: var(--white); }
+.btn-danger { background: var(--danger-soft); color: var(--danger); border: 1px solid var(--danger); }
+.btn-sm { padding: 6px 14px; font-size: 13px; border-radius: var(--radius-sm); }
 
 /* ---- Shared components ---- */
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
@@ -58,6 +63,66 @@ body {
 .menu-item-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .summary-sticky-panel { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 30px; position: sticky; top: 0; }
 
+/* ==========================================================================
+   헤어샵 지도 검색 (map-search-page)
+   ※ 지도 영역(#kakao-map)은 카카오맵 API 연동 예정 — 지금은 자리만 잡아둔다
+   ========================================================================== */
+
+/* ---- 상단 검색 바 ---- */
+.map-search-bar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; align-items: center; gap: 16px; padding: 12px 12px 12px 24px; margin-bottom: 26px; }
+.map-search-bar > i { font-size: 19px; color: var(--text-light); flex-shrink: 0; }
+.map-search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: inherit; font-size: 16px; color: var(--text-main); }
+.map-search-input::placeholder { color: var(--text-light); }
+.map-search-btn { flex-shrink: 0; padding: 14px 42px; font-size: 15px; }
+
+/* ---- 지도 + 상세 2단 레이아웃 ---- */
+.map-layout { display: grid; grid-template-columns: 1fr 480px; gap: 26px; align-items: start; }
+
+/* ---- 지도 패널 ---- */
+.map-panel { position: relative; height: 620px; background: var(--bg-sub); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+#kakao-map { width: 100%; height: 100%; }
+.map-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text-light); font-size: 14px; pointer-events: none; }
+.map-placeholder i { font-size: 42px; }
+
+/* 지도 위에 떠 있는 범례 / 현재위치 버튼 */
+.map-legend { position: absolute; left: 20px; bottom: 20px; z-index: 5; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; }
+.map-legend-item { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.map-legend-item i { font-size: 17px; }
+.pin-selected { color: var(--primary); }
+.pin-normal { color: var(--accent); }
+.map-locate-btn { position: absolute; right: 20px; bottom: 20px; z-index: 5; width: 52px; height: 52px; border-radius: 50%; background: var(--white); border: 1px solid var(--border); box-shadow: var(--shadow-lg); color: var(--text-sub); font-size: 18px; cursor: pointer; }
+.map-locate-btn:hover { color: var(--accent); }
+.map-locate-btn:disabled { color: var(--text-light); cursor: default; }
+
+/* 지도 마커 — 카카오 기본 마커 대신 CustomOverlay 로 직접 그린다.
+   위 범례와 같은 .pin-selected / .pin-normal 색을 그대로 쓴다. */
+.map-pin { display: inline-block; font-size: 30px; line-height: 1; cursor: pointer; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); transition: font-size 0.12s ease; }
+.map-pin.pin-selected { font-size: 42px; }
+
+/* 현재 위치 표시 점 */
+.map-here { width: 16px; height: 16px; border-radius: 50%; background: var(--success); border: 3px solid var(--white); box-shadow: 0 0 0 5px rgba(46, 204, 113, 0.25); }
+
+/* ---- 선택한 헤어샵 상세 카드 ---- */
+.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 0; }
+.salon-detail-image { width: 100%; height: 230px; object-fit: cover; display: block; background: var(--bg-sub); }
+.salon-detail-body { padding: 26px 28px 28px; }
+.salon-detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.salon-detail-title-row h2 { font-size: 22px; font-weight: 800; }
+.salon-detail-address { margin-top: 6px; font-size: 14px; color: var(--text-sub); }
+.salon-detail-info { margin-top: 22px; padding-top: 6px; border-top: 1px solid var(--border); }
+.salon-info-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; }
+.salon-info-icon { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-sub); color: var(--text-sub); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.salon-info-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
+.salon-info-value { margin-left: auto; font-size: 15px; font-weight: 700; }
+.salon-detail-card .btn-reserve { width: 100%; margin-top: 18px; padding: 16px; font-size: 16px; }
+
+/* ---- 좁은 화면: 지도 아래로 상세 카드 ---- */
+@media (max-width: 1280px) {
+  .map-layout { grid-template-columns: 1fr; }
+  .map-panel { height: 460px; }
+  .salon-detail-card { position: static; }
+}
+
 /* ---- chat ---- */
 .chat-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; height: calc(100vh - 150px); }
 .chat-sidebar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; }
@@ -74,13 +139,126 @@ body {
 .outgoing .msg-bubble { background: var(--primary); color: var(--white); }
 .chat-footer { padding: 20px 30px; border-top: 1px solid var(--border); display: flex; gap: 15px; }
 
-/* ---- community ---- */
-.community-layout { display: grid; grid-template-columns: 380px 1fr; gap: 24px; height: calc(100vh - 150px); }
-.post-sidebar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
-.post-item-link { padding: 22px; border-bottom: 1px solid var(--border); cursor: pointer; }
-.post-item-link.active { background: var(--accent-soft); }
-.post-main { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; display: flex; flex-direction: column; }
-.post-detail-wrapper { flex: 1; padding: 35px; overflow-y: auto; }
+/* ==========================================================================
+   community (목록/인기글/상세/글쓰기)
+   ※ 페이지 자체 패딩을 쓰므로 .app-content 의 기본 패딩을 제거한다
+   ========================================================================== */
+.community-content { padding: 0; }
+
+/* ---- community: 페이지 헤더 ---- */
+.community-header { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px 0; }
+.community-header h1 { font-size: 22px; font-weight: 700; }
+.community-header h1 i { margin-right: 10px; }
+.icon-accent { color: var(--accent); }
+.icon-hot { color: var(--like); }
+.community-desc { padding: 8px 24px 0; font-size: 13px; color: var(--text-light); }
+
+/* ---- community: 검색 바 ---- */
+.post-search { padding: 12px 24px 0; }
+.post-search-form { display: flex; gap: 8px; align-items: center; }
+.post-search-type { padding: 9px 12px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 13px; color: var(--text-sub); background: var(--white); cursor: pointer; flex-shrink: 0; }
+.post-search-input { flex: 1; padding: 9px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; color: var(--text-main); }
+.post-search-type:focus, .post-search-input:focus { outline: none; border-color: var(--accent); }
+.post-search-btn { padding: 9px 18px; background: var(--accent); color: var(--white); border: none; border-radius: var(--radius-md); font-size: 14px; cursor: pointer; flex-shrink: 0; }
+.post-search-btn:hover { opacity: .88; }
+.post-search-clear { padding: 8px 12px; font-size: 13px; color: var(--text-light); text-decoration: none; border: 1.5px solid var(--border); border-radius: var(--radius-md); flex-shrink: 0; }
+.post-search-clear:hover { color: var(--accent); border-color: var(--accent); }
+.post-search-result { padding: 8px 24px 0; font-size: 13px; color: var(--text-sub); }
+.post-search-result strong { color: var(--accent); }
+
+/* ---- community: 카테고리 탭 ---- */
+.category-tabs { display: flex; gap: 8px; padding: 14px 24px 0; flex-wrap: wrap; }
+.category-tabs.is-disabled { opacity: .4; pointer-events: none; }
+.cat-tab { padding: 8px 18px; border-radius: var(--radius-full); font-size: 13px; font-weight: 600; text-decoration: none; border: 1.5px solid var(--border); color: var(--text-sub); background: var(--white); transition: all .15s; white-space: nowrap; }
+.cat-tab:hover, .cat-tab.active { background: var(--accent); color: var(--white); border-color: var(--accent); }
+
+/* ---- community: 게시글 카드 목록 ---- */
+.post-card-list { padding: 14px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
+.post-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 26px; text-decoration: none; color: inherit; display: flex; gap: 20px; align-items: flex-start; transition: box-shadow .15s, border-color .15s; }
+.post-card:hover { box-shadow: var(--shadow); border-color: var(--accent); }
+.post-card-body { flex: 1; min-width: 0; }
+.post-card-category { background: var(--accent-soft); color: var(--accent); padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; display: inline-block; margin-bottom: 8px; }
+.post-card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.post-card-preview { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.6; }
+.post-card-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-light); align-items: center; flex-wrap: wrap; }
+.post-card-thumb { width: 84px; height: 84px; object-fit: cover; border-radius: var(--radius-md); flex-shrink: 0; border: 1px solid var(--border); }
+
+/* 메타 강조 (좋아요 점수 / 방문 미용실) */
+.meta-like { color: var(--like); font-weight: 600; }
+.meta-dislike { color: var(--dislike); font-weight: 600; }
+.meta-salon { color: var(--accent); font-weight: 600; }
+
+/* ---- community: 인기글 (순위 뱃지) ---- */
+.post-card-list.ranked .post-card { position: relative; }
+.post-card-list.ranked .post-card-body { padding-left: 20px; }
+.post-card-list.ranked .meta-like, .post-card-list.ranked .meta-dislike { font-weight: 700; }
+.rank-badge { position: absolute; top: 16px; left: -4px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--white); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .15); }
+.rank-badge.top1 { background: #e8b800; }
+.rank-badge.top2 { background: #9e9e9e; }
+.rank-badge.top3 { background: #b06a2e; }
+
+/* ---- community: 빈 상태 ---- */
+.empty-state { text-align: center; padding: 80px 0; color: var(--text-light); }
+.empty-state i { font-size: 44px; display: block; margin-bottom: 14px; }
+
+/* ---- community: 상세 ---- */
+.detail-wrap { max-width: 900px; margin: 0 auto; padding: 12px 20px 48px; }
+.back-btn { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; color: var(--text-sub); text-decoration: none; margin-bottom: 12px; padding: 6px 12px; border-radius: var(--radius-md); transition: background .15s, color .15s; }
+.back-btn:hover { background: var(--bg-sub); color: var(--accent); }
+.detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.detail-header { padding: 20px 32px 14px; border-bottom: 1px solid var(--border); }
+.category-badge { background: var(--accent-soft); color: var(--accent); padding: 4px 12px; border-radius: var(--radius-full); font-size: 12px; font-weight: 700; display: inline-block; margin-bottom: 12px; }
+.detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; }
+.detail-title-row h1 { font-size: 22px; font-weight: 700; flex: 1; line-height: 1.45; }
+.detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.detail-meta { display: flex; gap: 18px; font-size: 13px; color: var(--text-light); flex-wrap: wrap; }
+.detail-body { padding: 0 32px 24px; font-size: 15px; line-height: 1.85; color: var(--text-main); white-space: pre-wrap; word-break: break-word; }
+.post-image { width: 100%; max-height: 500px; object-fit: contain; border-radius: var(--radius-md); margin-bottom: 24px; border: 1px solid var(--border); background: var(--bg-sub); display: block; }
+
+/* 좋아요 / 별로예요 */
+.reaction-bar { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 16px 32px; }
+.react-btn { display: inline-flex; align-items: center; gap: 7px; padding: 9px 22px; border-radius: var(--radius-full); font-size: 14px; font-weight: 600; border: 2px solid var(--border); background: var(--white); cursor: pointer; transition: all .15s; text-decoration: none; color: var(--text-sub); }
+.react-btn:hover { border-color: var(--accent); color: var(--accent); }
+.react-btn.active-like { background: var(--like-soft); border-color: var(--like); color: var(--like); }
+.react-btn.active-dislike { background: var(--dislike-soft); border-color: var(--dislike); color: var(--dislike); }
+.react-count { font-weight: 700; }
+
+/* 댓글 */
+.comment-section { padding: 24px 32px; background: var(--bg-sub); }
+.comment-section-title { font-weight: 700; font-size: 15px; margin-bottom: 16px; }
+.comment-count { color: var(--accent); }
+.comment-item { background: var(--white); border-radius: var(--radius-md); padding: 14px 18px; margin-bottom: 10px; border: 1px solid var(--border); }
+.comment-meta { font-size: 12px; color: var(--text-light); margin-bottom: 7px; display: flex; justify-content: space-between; align-items: center; }
+.comment-content { font-size: 14px; color: var(--text-main); line-height: 1.6; }
+.comment-delete-btn { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 12px; }
+.comment-delete-btn:hover { color: var(--danger); }
+.comment-form { display: flex; gap: 10px; margin-top: 16px; }
+.comment-input { flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; resize: none; font-family: inherit; }
+.comment-input:focus { outline: none; border-color: var(--accent); }
+.comment-submit { white-space: nowrap; }
+
+/* ---- community: 글쓰기/수정 ---- */
+.write-card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 40px; max-width: 800px; margin: 0 auto; box-shadow: var(--shadow); }
+.write-card h2 { font-size: 22px; font-weight: 700; margin-bottom: 28px; }
+.write-card h2 i { margin-right: 10px; }
+.write-card .form-group { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
+.write-card .form-group label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
+.write-card .form-control { padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 15px; width: 100%; color: var(--text-main); }
+.write-card .form-control:focus { outline: none; border-color: var(--accent); }
+.write-card textarea.form-control { resize: vertical; min-height: 280px; line-height: 1.7; }
+.label-optional { font-weight: 400; color: var(--text-light); }
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+.file-input-wrap { position: relative; }
+.file-label { display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border: 1.5px dashed var(--border); border-radius: var(--radius-md); cursor: pointer; font-size: 14px; color: var(--text-sub); background: var(--bg-sub); transition: border-color .2s; }
+.file-label:hover { border-color: var(--accent); color: var(--accent); }
+.file-input-wrap input[type="file"] { display: none; }
+.image-preview { margin-top: 10px; max-width: 100%; max-height: 200px; border-radius: var(--radius-md); border: 1px solid var(--border); display: none; }
+.current-image { margin-top: 8px; }
+.current-image p { font-size: 12px; color: var(--text-light); margin-bottom: 6px; }
+.current-image img { max-width: 100%; max-height: 160px; border-radius: var(--radius-md); border: 1px solid var(--border); }
+
+/* 폼/버튼을 한 줄에 배치할 때 쓰는 래퍼 (margin 제거용) */
+.inline-form { margin: 0; }
 
 /* ---- mypage ---- */
 .profile-hero { background: var(--white); border-radius: var(--radius-lg); padding: 35px 40px; display: flex; align-items: center; gap: 35px; margin-bottom: 30px; border: 1px solid var(--border); box-shadow: var(--shadow); }

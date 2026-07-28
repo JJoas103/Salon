@@ -32,6 +32,8 @@ CREATE TABLE Salons (
     description TEXT,
     average_rating DECIMAL(2,1) DEFAULT 0.0,
     image_url VARCHAR(255),
+    latitude DECIMAL(10,7),   -- 위도 (지도 마커용. NULL 이면 지도에 표시하지 않는다)
+    longitude DECIMAL(10,7),  -- 경도
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES Users(user_id)
@@ -170,10 +172,15 @@ CREATE TABLE Posts (
     title VARCHAR(255) NOT NULL,                         -- 게시글 제목
     content TEXT NOT NULL,                               -- 게시글 내용
     category VARCHAR(50),                                -- 게시글 카테고리
+    image_url VARCHAR(255),                              -- 첨부 이미지 파일명
+    salon_id INT,                                        -- 연관 미용실 ID (선택)
     view_count INT DEFAULT 0,                            -- 조회수
+    like_count INT DEFAULT 0,                            -- 좋아요 수
+    dislike_count INT DEFAULT 0,                         -- 별로예요 수
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    FOREIGN KEY (salon_id) REFERENCES Salons(salon_id)
 );
 
 -- ---------- Comments (커뮤니티 댓글) ----------
@@ -184,6 +191,18 @@ CREATE TABLE Comments (
     content TEXT NOT NULL,                               -- 댓글 내용
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES Posts(post_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+-- ---------- post_likes (게시글 좋아요/별로예요) ----------
+CREATE TABLE post_likes (
+    like_id INT AUTO_INCREMENT PRIMARY KEY,              -- 반응 고유 식별자
+    post_id INT NOT NULL,                                -- 대상 게시글 ID
+    user_id INT NOT NULL,                                -- 반응한 사용자 ID
+    reaction_type ENUM('like', 'dislike') NOT NULL,      -- 좋아요 / 별로예요
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_post_user (post_id, user_id),          -- 게시글당 1인 1반응
     FOREIGN KEY (post_id) REFERENCES Posts(post_id),
     FOREIGN KEY (user_id) REFERENCES Users(user_id)
 );

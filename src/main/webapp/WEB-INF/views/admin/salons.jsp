@@ -5,17 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HAIR RESERVE | 미용실관리</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="../css/common.css">
-  <link rel="stylesheet" href="../css/admin.css">
+  <link rel="stylesheet" href="/resources/css/common.css">
+  <link rel="stylesheet" href="/resources/css/admin.css">
 </head>
 <body>
   <aside class="sidebar">
     <div class="sidebar-brand"><i class="fas fa-shield-alt"></i> ADMIN PANEL</div>
     <ul class="sidebar-menu">
-      <li class="sidebar-item active"><a href="salons.html"><i class="fas fa-store"></i> 미용실관리</a></li>
-      <li class="sidebar-item"><a href="community.html"><i class="fas fa-user-shield"></i> 커뮤니티 제재</a></li>
-      <li class="sidebar-item"><a href="members.html"><i class="fas fa-users"></i> 회원관리</a></li>
-      <li class="sidebar-item"><a href="banners.html"><i class="fas fa-ad"></i> 광고와 배너관리</a></li>
+      <li class="sidebar-item active"><a href="/admin/salons"><i class="fas fa-store"></i> 미용실관리</a></li>
+      <li class="sidebar-item"><a href="/admin/community"><i class="fas fa-user-shield"></i> 커뮤니티 제재</a></li>
+      <li class="sidebar-item"><a href="/admin/members"><i class="fas fa-users"></i> 회원관리</a></li>
+      <li class="sidebar-item"><a href="/admin/banners"><i class="fas fa-ad"></i> 광고와 배너관리</a></li>
     </ul>
   </aside>
   <div class="app-container">

@@ -50,10 +50,10 @@ public class UserController {
                              BindingResult result){
         log.debug(user.getPassword());
         if(result.hasErrors()){
-            return "user/join"; // 검증 실패 -> 폼으로 돌아가기
+            return "user/join"; // 검증 실패 -> 이전으로 돌아가기
         }
         userService.join(user);
-        return "redirect:/user/login";
+        return "redirect:/common/home";
     }
     
     @GetMapping("/login")

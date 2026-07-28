@@ -13,8 +13,12 @@ public class SalonVO {
     private String description;
     private java.math.BigDecimal averageRating; // 평균 별점 (average_rating)
     private String imageUrl; // image_url
+    private java.math.BigDecimal minimumPrice;
     private String createdAt; // created_at
     private String updatedAt; // updated_at
+    private java.math.BigDecimal latitude;  //위도
+    private java.math.BigDecimal longitude; //경도
+
 
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
@@ -32,8 +36,27 @@ public class SalonVO {
     public void setAverageRating(java.math.BigDecimal averageRating) { this.averageRating = averageRating; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public java.math.BigDecimal getMinimumPrice() { return minimumPrice; }
+    public void setMinimumPrice(java.math.BigDecimal minimumPrice) { this.minimumPrice = minimumPrice; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+
+    public java.math.BigDecimal getLatitude() {
+        return this.latitude;
+    }
+
+    public void setLatitude(java.math.BigDecimal latitude) {
+        this.latitude = latitude;
+    }
+
+    public java.math.BigDecimal getLongitude() {
+        return this.longitude;
+    }
+
+    public void setLongitude(java.math.BigDecimal longitude) {
+        this.longitude = longitude;
+    }
+
 }

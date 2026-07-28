@@ -1,10 +1,13 @@
 package com.soldesk.controller;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -16,12 +19,17 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ReservationService;
+import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 import com.soldesk.validation.PasswordChangeValidator;
 import com.soldesk.vo.PasswordChangeVO;
+import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.UserVO;
 
 @Controller
@@ -35,28 +43,40 @@ public class CommonController {
     private ReservationService reservationService;
 
     @Autowired
+    private SalonService salonService;
+
+    @Autowired
     private PasswordChangeValidator passwordChangeValidator;
+
+    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${kakaoMapApiKey}")
+    private String kakaoMapApiKey;
+
 
     @InitBinder("changePassword")
     public void initBinder(WebDataBinder binder){
         binder.addValidators(passwordChangeValidator);
     }
 
+    //메인페이지
     @GetMapping("/home")
-    public String home() {
-        return "common/home";
+    public String home(Model model) {
+        model.addAttribute("salons", salonService.getSalons());
+        return "common/home";   
     }
 
-
+    //마이페이지
     @GetMapping("/mypage")
     public String mypage(Authentication authentication, Model model){
 
-    UserVO user = userService.getUser(authentication.getName());
+        UserVO user = userService.getUser(authentication.getName());
 
-    model.addAttribute("user", user);
-    model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
+        model.addAttribute("user", user);
+        model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
 
-    return "common/mypage";
+        return "common/mypage";
     }
 
     /** 비밀번호 변경 (마이페이지 모달에서 AJAX로 호출) */
@@ -81,5 +101,58 @@ public class CommonController {
             return Map.of("success", false, "errors", errors);
         }
         return Map.of("success", true);
+    }
+
+    //예약 내역 가져오기
+    @GetMapping("/reserve")
+    public String pageReserve(@RequestParam(defaultValue = "1") int category, Model model){
+
+        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
+        UserVO user = userService.getUser(userEmail);
+        model.addAttribute("categoryIdx", category);
+        if(category == 1){
+            List<ReservationVO> list = reservationService.getRevList(user.getUserId()); //예약 완료된 정보
+            model.addAttribute("reservs", list);//예약 정보
+        }
+        else if(category == 2){
+            List<ReservationVO> list = reservationService.getClearRevList(user.getUserId()); //예약 완료된 정보
+            model.addAttribute("reservs", list);//예약 정보
+
+        }
+        return "common/reservations";
+    }
+    
+    //미용실 지도 검색 (카카오맵)
+    @GetMapping("/salonmap")
+    public String salonMap(Model model) throws JsonProcessingException{
+
+        model.addAttribute("salonsJson", objectMapper.writeValueAsString(salonService.getSalons()));
+        model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
+        return "common/salonmap";
+    }
+
+    //미용실 검색하기
+    @GetMapping("/search")
+    public String search(@RequestParam(required = false) Integer salonId, Model model) {
+        if (salonId == null) {
+            //모든 미용실정보 가져오기
+            java.util.List<com.soldesk.vo.SalonVO> salons = salonService.getSalons();
+            if (salons.isEmpty()) {
+                model.addAttribute("salonNotFound", true);
+                return "common/search";
+            }
+            salonId = salons.get(0).getSalonId();
+        }
+        //id로 미용실 정보 가져오기
+        com.soldesk.vo.SalonVO salon = salonService.getSalon(salonId);
+        if (salon == null) {
+            model.addAttribute("salonNotFound", true);
+            return "common/search";
+        }
+
+        model.addAttribute("salon", salon);
+        //시술정보 가져오기
+        model.addAttribute("services", salonService.getServices(salonId));
+        return "common/search";
     }
 }

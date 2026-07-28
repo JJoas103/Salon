@@ -11,6 +11,7 @@ public class CommentVO {
     private String content;
     private String createdAt; // created_at
     private String updatedAt; // updated_at
+    private String authorName; // Users JOIN 조회 전용 (DB 컬럼 아님)
 
     public int getCommentId() { return commentId; }
     public void setCommentId(int commentId) { this.commentId = commentId; }
@@ -24,4 +25,6 @@ public class CommentVO {
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public String getAuthorName() { return authorName; }
+    public void setAuthorName(String authorName) { this.authorName = authorName; }
 }
