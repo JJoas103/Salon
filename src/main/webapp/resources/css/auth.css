@@ -5,7 +5,10 @@
    ========================================================================== */
 
 /* ---- Base (중앙 정렬) ---- */
-body {
+/* .auth-page: login/join/index 처럼 sidebar 없이 카드 하나만 중앙 정렬하는 페이지 전용.
+   sidebar가 있는 공통 페이지(홈/검색/커뮤니티 등)도 이 CSS를 로드하므로 body 전체에 걸면
+   sidebar 레이아웃이 깨진다 — 반드시 .auth-page로 스코프할 것. */
+.auth-page {
   font-family: 'Pretendard', -apple-system, sans-serif;
   background-color: var(--bg-sub);
   color: var(--text-main);
@@ -20,7 +23,7 @@ body {
 
 /* ---- Buttons ---- */
 .btn-modern { padding: 15px 24px; border-radius: var(--radius-md); font-weight: 700; font-size: 15px; cursor: pointer; border: none; display: flex; justify-content: center; align-items: center; transition: all 0.2s ease; }
-.btn-primary { background-color: var(--accent); color: var(--white); }
+.auth-page .btn-primary { background-color: var(--accent); color: var(--white); }
 /* signup: 성공(초록) 계열 */
 .signup-page .btn-primary { background-color: var(--success); }
 
@@ -29,10 +32,6 @@ body {
 .auth-header { text-align: center; margin-bottom: 30px; }
 .auth-logo { font-size: 28px; font-weight: 900; color: var(--primary); margin-bottom: 10px; display: inline-flex; align-items: center; gap: 10px; }
 .role-label { display: block; font-size: 14px; font-weight: 700; margin-bottom: 10px; color: var(--text-main); }
-.role-radio-group { display: flex; gap: 10px; background: var(--bg-sub); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 25px; }
-.role-radio-group input[type="radio"] { display: none; }
-.role-radio-label { flex: 1; text-align: center; padding: 12px 10px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; color: var(--text-sub); cursor: pointer; transition: all 0.2s; }
-.role-radio-group input[type="radio"]:checked + .role-radio-label { background: var(--primary); color: var(--white); }
 .input-wrapper { position: relative; margin-bottom: 16px; }
 .input-wrapper i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-sub); }
 .auth-input { width: 100%; padding: 15px 16px 15px 44px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; outline: none; }

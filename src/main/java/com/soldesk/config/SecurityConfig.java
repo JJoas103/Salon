@@ -29,12 +29,15 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/admin/**")
                 ).hasRole("ADMIN")
                 .requestMatchers(
-                    new AntPathRequestMatcher("/reserve/info"),
-                    new AntPathRequestMatcher("/common/mypage"),
-                    new AntPathRequestMatcher("/common/mypage/**")
-                )
-                .authenticated()
-                .anyRequest().permitAll())
+                    new AntPathRequestMatcher("/"),
+                    new AntPathRequestMatcher("/common/home"),
+                    new AntPathRequestMatcher("/user/login"),
+                    new AntPathRequestMatcher("/user/join"),
+                    new AntPathRequestMatcher("/user/check-email"),
+                    new AntPathRequestMatcher("/resources/**"),
+                    new AntPathRequestMatcher("/upload/**")
+                ).permitAll()
+                .anyRequest().authenticated())
             .formLogin(form -> form
                 .loginPage("/user/login")
                 .loginProcessingUrl("/user/login")
@@ -45,7 +48,7 @@ public class SecurityConfig {
                 .permitAll()) 
             .logout(logout -> logout
                 .logoutUrl("/user/logout")
-                .logoutSuccessUrl("/")
+                .logoutSuccessUrl("/common/home")
                 .permitAll())    //로그아웃 설정
             .csrf(csrf -> csrf.disable())   //임시 토큰 비활성화
             .authenticationProvider(authenticationProvider); 

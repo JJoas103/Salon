@@ -18,7 +18,7 @@ mvn clean package                  # build with tests (no test sources exist yet
 - No test framework is wired into `pom.xml` yet — there is no `mvn test` suite to run today.
 - DB init: `mysql -u root -p < sql/schema.sql` (creates the `salu` database + all tables). `dummydata_original.sql` has seed data.
 - Local DB credentials live in `src/main/resources/properties/db.properties`, which **is committed intentionally** (see comment in `.gitignore` — team shares dev DB credentials at this stage; this must change before any real deployment).
-- Deploy scripts (`deploy.sh` for Linux/root, `deploy.bat` for Windows) build the WAR and copy it into Tomcat as `ROOT.war`, so the app serves from context path `/`, not `/salu`, despite the WAR's `finalName`.
+- Deploy scripts (`deploy.sh` for Linux, `deploy.bat` for Windows) build the WAR and copy it into Tomcat as `ROOT.war`, so the app serves from context path `/`, not `/salu`, despite the WAR's `finalName`.
 
 ## Architecture
 
