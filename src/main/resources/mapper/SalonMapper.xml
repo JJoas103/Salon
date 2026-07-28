@@ -63,4 +63,22 @@
         WHERE salon_id = #{salonId}
         ORDER BY price, service_id
     </select>
+
+    <!-- 미용실 이름 / 주소 부분일치 검색.
+         WHERE 는 GROUP BY 보다 앞에 와야 한다 (FROM → WHERE → GROUP BY → ORDER BY).
+         집계(MIN)가 아니라 Salons 컬럼으로 거르는 조건이라 WHERE 가 맞다. HAVING 이 아니다. -->
+    <select id="searchByKeyword" resultMap="salonResultMap">
+        SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
+               s.phone_number, s.description, s.average_rating, s.image_url,
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at,
+               s.latitude, s.longitude
+        FROM Salons s
+        LEFT JOIN Services se ON se.salon_id = s.salon_id
+        WHERE s.salon_name LIKE CONCAT('%', #{keyword}, '%')
+           OR s.address    LIKE CONCAT('%', #{keyword}, '%')
+        GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
+                 s.phone_number, s.description, s.average_rating, s.image_url,
+                 s.created_at, s.updated_at
+        ORDER BY s.average_rating DESC, s.salon_id DESC
+    </select>
 </mapper>

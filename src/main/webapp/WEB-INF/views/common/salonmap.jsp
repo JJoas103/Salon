@@ -83,15 +83,25 @@
   
   <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapApiKey}&libraries=services&autoload=true"></script>
   <script>
-    /* SalonVO 목록을 컨트롤러에서 JSON 으로 직렬화해 넘겨받는다. 키 이름은 VO 필드명 그대로다. */
-    const SALONS = ${salonsJson};
+    /* SalonVO 목록을 컨트롤러에서 JSON 으로 직렬화해 넘겨받는다. 키 이름은 VO 필드명 그대로다.
+       ALL_SALONS 는 서버에서 받은 원본이라 바뀌지 않는다. 검색은 항상 이 배열을 대상으로 한다. */
+    const ALL_SALONS = ${salonsJson};
+    /* salons 는 지금 지도에 그려져 있는 목록. renderSalons() 가 통째로 갈아끼운다 */
+    let salons = ALL_SALONS;
 
     const CONTEXT_PATH = '<c:url value="/"/>';
     /* imageUrl 이 비어 있는 미용실용 대체 이미지 (home.jsp 와 동일) */
     const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';
     let selectedIndex = -1;
-    /* 지도 마커. PINS[미용실 index] = { element, overlay } — 좌표 없는 미용실 자리는 비어 있다 */
+    /* 지도 마커. PINS[salons 의 index] = { element, overlay } — 좌표 없는 미용실 자리는 비어 있다 */
     const PINS = [];
+
+    /* 지도는 renderSalons() 가 쓰므로 먼저 만들어 둔다 */
+    const map = new kakao.maps.Map(document.getElementById('kakao-map'), {
+      center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청. 마커가 있으면 renderSalons() 가 다시 맞춘다
+      level: 8
+    });
+    document.getElementById('map-placeholder').remove();
 
     /* 선택된 마커만 색/크기를 바꾼다 (범례의 pin-selected / pin-normal 과 동일한 색) */
     function updatePinStyles() {
@@ -109,7 +119,7 @@
     }
 
     function selectSalon(index) {
-      const salon = SALONS[index];
+      const salon = salons[index];
       if (!salon) return;
       selectedIndex = index;
 
@@ -122,79 +132,135 @@
       /* 운영시간은 Salon_Operating_Hours 를 아직 조회하지 않아 표시할 값이 없다 */
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
+      document.getElementById('btn-reserve').disabled = false;
       updatePinStyles();
+    }
+
+    /* 검색 결과가 0건이면 이전에 선택돼 있던 미용실이 그대로 남으므로 카드를 비운다 */
+    function clearDetail() {
+      const image = document.getElementById('detail-image');
+      image.src = FALLBACK_IMAGE;
+      image.alt = '';
+      document.getElementById('detail-name').textContent = '검색 결과가 없습니다';
+      document.getElementById('detail-address').textContent = '-';
+      document.getElementById('detail-rating').textContent = '-';
+      document.getElementById('detail-hours').textContent = '-';
+      document.getElementById('detail-price').textContent = '-';
+      document.getElementById('btn-reserve').disabled = true;
     }
 
     /* 예약하기 → 기존 시술 선택 페이지로 이동 */
     document.getElementById('btn-reserve').addEventListener('click', function () {
-      const salon = SALONS[selectedIndex];
+      const salon = salons[selectedIndex];
       if (!salon) return;
       location.href = CONTEXT_PATH + 'common/search?salonId=' + salon.salonId;
     });
     
-    /* 검색 — 지역 검색이냐 헤어샵 이름 검색이냐 정한 뒤 연결한다 */
-    document.getElementById('keyword').closest('form').addEventListener('submit', function () {
-      console.log('검색어:', document.getElementById('keyword').value);
-    });
-
-    selectSalon(0);
-
     /* ------------------------------------------------------------------
-       지도 — Salons.latitude / longitude 를 그대로 쓴다.
-       좌표가 없는(NULL) 미용실은 마커를 만들지 않는다. 미용실 등록 기능을 만들 때
-       등록 시점에 주소 → 좌표를 한 번 변환해 저장하면 여기는 손댈 필요가 없다.
+       지도에 그려진 미용실 목록을 list 로 통째로 갈아끼운다.
+       두 번 이상 호출되므로 "이전 마커 제거 → 상태 교체 → 다시 그리기" 순서를
+       지켜야 한다. 제거를 빼먹으면 검색할 때마다 핀이 지도에 쌓인다.
+
+       마커는 Salons.latitude / longitude 를 그대로 쓴다. 좌표가 없는(NULL) 미용실은
+       마커를 만들지 않는다. 미용실 등록 기능을 만들 때 등록 시점에 주소 → 좌표를
+       한 번 변환해 저장하면 여기는 손댈 필요가 없다.
        ------------------------------------------------------------------ */
-    const map = new kakao.maps.Map(document.getElementById('kakao-map'), {
-      center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청. 마커가 있으면 아래에서 다시 맞춘다
-      level: 8
-    });
-    document.getElementById('map-placeholder').remove();
+    function renderSalons(list) {
+      /* ① 이전 마커 제거 — 지도에서 떼고 배열도 비운다 */
+      PINS.forEach(function (pin) { pin.overlay.setMap(null); });
+      PINS.length = 0;
 
-    const bounds = new kakao.maps.LatLngBounds();
-    let markerCount = 0;
+      /* ② 상태 교체 — 이후 selectSalon / 예약하기가 보는 목록이 바뀐다 */
+      salons = list;
+      selectedIndex = -1;
 
-    SALONS.forEach(function (salon, i) {
-      if (salon.latitude == null || salon.longitude == null) {
-        console.warn('좌표 없음 — 마커 생략:', salon.salonName, salon.address);
-        return;
+      /* ③ 새 마커 */
+      const bounds = new kakao.maps.LatLngBounds();
+      let markerCount = 0;
+      let lastPosition = null;   // 마커가 하나뿐일 때 그 좌표로 중심을 옮기려고 들고 있는다
+
+      salons.forEach(function (salon, i) {
+        if (salon.latitude == null || salon.longitude == null) {
+          console.warn('좌표 없음 — 마커 생략:', salon.salonName, salon.address);
+          return;
+        }
+
+        const position = new kakao.maps.LatLng(salon.latitude, salon.longitude);
+
+        /* 기본 마커 대신 아이콘을 직접 그려서 선택/일반 색을 구분한다 */
+        const element = document.createElement('i');
+        element.className = 'fas fa-map-marker-alt map-pin pin-normal';
+        element.title = salon.salonName;
+        element.addEventListener('click', function () {
+          selectSalon(i);
+          map.panTo(position);
+        });
+
+        const overlay = new kakao.maps.CustomOverlay({
+          map: map,
+          position: position,
+          content: element,
+          xAnchor: 0.5,   // 아이콘 가로 중앙이
+          yAnchor: 1.0,   // 아이콘 아래 끝이 좌표에 오도록
+          clickable: true,
+          zIndex: 1
+        });
+
+        PINS[i] = { element: element, overlay: overlay };
+        bounds.extend(position);
+        lastPosition = position;
+        markerCount++;
+      });
+
+      /* ④ 지도 범위. 마커가 하나뿐이면 setBounds 가 최대로 확대돼 버려서 중심만 옮긴다.
+         카카오 LatLngBounds 에는 getCenter() 가 없으므로(구글 맵스 API 쪽 메서드다)
+         마지막으로 만든 좌표를 그대로 쓴다. 마커가 하나면 그게 곧 그 마커의 좌표다. */
+      if (markerCount === 1) {
+        map.setCenter(lastPosition);
+        map.setLevel(5);
+      } else if (markerCount > 1) {
+        map.setBounds(bounds);
       }
 
-      const position = new kakao.maps.LatLng(salon.latitude, salon.longitude);
-
-      /* 기본 마커 대신 아이콘을 직접 그려서 선택/일반 색을 구분한다 */
-      const element = document.createElement('i');
-      element.className = 'fas fa-map-marker-alt map-pin pin-normal';
-      element.title = salon.salonName;
-      element.addEventListener('click', function () {
-        selectSalon(i);
-        map.panTo(position);
-      });
-
-      const overlay = new kakao.maps.CustomOverlay({
-        map: map,
-        position: position,
-        content: element,
-        xAnchor: 0.5,   // 아이콘 가로 중앙이
-        yAnchor: 1.0,   // 아이콘 아래 끝이 좌표에 오도록
-        clickable: true,
-        zIndex: 1
-      });
-
-      PINS[i] = { element: element, overlay: overlay };
-      bounds.extend(position);
-      markerCount++;
-    });
-
-    /* 마커가 하나뿐이면 setBounds 가 최대로 확대돼 버려서 중심만 옮긴다 */
-    if (markerCount === 1) {
-      map.setCenter(bounds.getCenter());
-      map.setLevel(5);
-    } else if (markerCount > 1) {
-      map.setBounds(bounds);
+      /* ⑤ 상세 카드. selectSalon 이 updatePinStyles 까지 호출해 준다 */
+      if (salons.length > 0) {
+        selectSalon(0);
+      } else {
+        clearDetail();
+      }
     }
 
-    /* selectSalon(0) 이 마커 생성보다 먼저 실행되므로 여기서 한 번 색을 맞춰준다 */
-    updatePinStyles();
+    /* 검색 — 거르는 일은 서버(/common/salons/search)가 하고 여기는 결과를 그리기만 한다.
+       엘라스틱서치를 붙여도 이 코드는 그대로다. 바뀌는 건 서버 안쪽뿐이다. */
+    const searchButton = document.querySelector('.map-search-btn');
+
+    document.getElementById('keyword').closest('form').addEventListener('submit', function() {
+      const keyword = document.getElementById('keyword').value.trim();
+      /* 연타하면 늦게 도착한 이전 응답이 나중 결과를 덮어쓸 수 있어 요청 중에는 막는다 */
+      searchButton.disabled = true;
+      fetch(CONTEXT_PATH + 'common/salons/search?keyword=' + encodeURIComponent(keyword))
+      .then(function(response) {
+        if(!response.ok) {
+          throw new Error('검색 실패 (HTTP ' + response.status + ')');
+        }
+        /* 세션이 끊기면 스프링 시큐리티가 로그인 페이지로 리다이렉트하고,
+           fetch 는 그걸 따라가서 HTML 을 200 으로 받아온다. response.ok 로는 못 거른다 */
+        const contentType = response.headers.get('content-type') || '';
+        if(!contentType.includes('application/json')) {
+          throw new Error('로그인이 필요합니다. 다시 로그인해주세요');
+        }
+        return response.json();
+      })
+      .then(renderSalons)
+      .catch(function (error) {
+        console.error('검색 실패: ', error);
+        alert(error.message);
+      })
+      .finally(function () {
+        searchButton.disabled = false;
+      });
+    });
+    renderSalons(ALL_SALONS);
 
     /* ---- 현재 위치 ---- */
     let hereOverlay = null;
