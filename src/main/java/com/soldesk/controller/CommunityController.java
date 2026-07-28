@@ -1,9 +1,14 @@
 package com.soldesk.controller;
 
 import com.soldesk.service.PostService;
+import com.soldesk.service.UserService;
 import com.soldesk.vo.CommentVO;
 import com.soldesk.vo.PostVO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -20,22 +25,42 @@ public class CommunityController {
     @Autowired
     private PostService postService;
 
+    @Autowired
+    private UserService userService;
+
+    // 로그인한 사용자의 user_id 조회
+    private int currentUserId() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userService.getUser(email).getUserId();
+    }
+
+    // 로그인한 사용자면 user_id, 비로그인이면 null
+    private Integer currentUserIdOrNull() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return userService.getUser(auth.getName()).getUserId();
+    }
+
     // 게시글 목록 (카테고리 필터 + 검색)
     @GetMapping
     public String list(@RequestParam(required = false, defaultValue = "") String category,
                        @RequestParam(required = false, defaultValue = "") String keyword,
                        @RequestParam(required = false, defaultValue = "title_content") String searchType,
+                       @RequestParam(required = false, defaultValue = "latest") String sort,
                        Model model) {
         List<PostVO> posts;
         if (!keyword.trim().isEmpty()) {
-            posts = postService.searchPosts(searchType, keyword);
+            posts = postService.searchPosts(searchType, keyword, sort);
         } else {
-            posts = postService.getPostList(category);
+            posts = postService.getPostList(category, sort);
         }
         model.addAttribute("posts", posts);
         model.addAttribute("category", category);
         model.addAttribute("keyword", keyword);
         model.addAttribute("searchType", searchType);
+        model.addAttribute("sort", sort);
         return "common/community/list";
     }
 
@@ -46,9 +71,12 @@ public class CommunityController {
         if (post == null) {
             return "redirect:/common/community";
         }
+        Integer currentUserId = currentUserIdOrNull();
         model.addAttribute("selectedPost", post);
         model.addAttribute("comments", postService.getComments(postId));
-        model.addAttribute("userReaction", postService.getUserReaction(postId, 1));
+        model.addAttribute("userReaction",
+                currentUserId != null ? postService.getUserReaction(postId, currentUserId) : null);
+        model.addAttribute("currentUserId", currentUserId);
         return "common/community/detail";
     }
 
@@ -64,7 +92,7 @@ public class CommunityController {
     public String write(@ModelAttribute PostVO post,
                         @RequestParam(required = false) MultipartFile imageFile,
                         RedirectAttributes redirectAttributes) throws IOException {
-        post.setUserId(1); // TODO: 로그인 연동 후 SecurityContextHolder로 교체
+        post.setUserId(currentUserId());
         try {
             postService.writePost(post, imageFile);
         } catch (IllegalArgumentException e) {
@@ -81,7 +109,11 @@ public class CommunityController {
     public String editForm(@PathVariable int postId, Model model) {
         // 검증 실패로 되돌아온 경우 flash 로 넘어온 post(사용자가 입력하던 값)를 그대로 쓴다
         if (!model.containsAttribute("post")) {
-            model.addAttribute("post", postService.getPost(postId));
+            PostVO post = postService.getPost(postId);
+            if (post == null || post.getUserId() != currentUserId()) {
+                throw new AccessDeniedException("본인이 작성한 글만 수정할 수 있습니다.");
+            }
+            model.addAttribute("post", post);
         }
         model.addAttribute("salons", postService.getSalonList());
         return "common/community/write";
@@ -96,7 +128,7 @@ public class CommunityController {
         post.setPostId(postId);
         // imageFile 없으면 post.imageUrl은 hidden 필드로 넘어온 기존 값 유지
         try {
-            postService.editPost(post, imageFile);
+            postService.editPost(post, imageFile, currentUserId());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             redirectAttributes.addFlashAttribute("post", post);
@@ -108,7 +140,7 @@ public class CommunityController {
     // 글 삭제
     @PostMapping("/{postId}/delete")
     public String delete(@PathVariable int postId) {
-        postService.removePost(postId);
+        postService.removePost(postId, currentUserId());
         return "redirect:/common/community";
     }
 
@@ -117,7 +149,7 @@ public class CommunityController {
     public String writeComment(@PathVariable int postId,
                                @ModelAttribute CommentVO comment) {
         comment.setPostId(postId);
-        comment.setUserId(1); // TODO: 로그인 연동 후 교체
+        comment.setUserId(currentUserId());
         postService.writeComment(comment);
         return "redirect:/common/community/" + postId;
     }
@@ -126,7 +158,7 @@ public class CommunityController {
     @PostMapping("/{postId}/comment/{commentId}/delete")
     public String deleteComment(@PathVariable int postId,
                                 @PathVariable int commentId) {
-        postService.removeComment(commentId);
+        postService.removeComment(commentId, currentUserId());
         return "redirect:/common/community/" + postId;
     }
 
@@ -134,7 +166,7 @@ public class CommunityController {
     @PostMapping("/{postId}/react")
     public String react(@PathVariable int postId,
                         @RequestParam String type) {
-        postService.react(postId, 1, type); // TODO: 로그인 연동 후 실제 userId 사용
+        postService.react(postId, currentUserId(), type);
         return "redirect:/common/community/" + postId;
     }
 

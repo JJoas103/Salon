@@ -9,21 +9,21 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface PostService {
 
-    List<PostVO> getPostList(String category);
+    List<PostVO> getPostList(String category, String sort);
 
     PostVO getPost(int postId);
 
     void writePost(PostVO post, MultipartFile imageFile) throws IOException;
 
-    void editPost(PostVO post, MultipartFile imageFile) throws IOException;
+    void editPost(PostVO post, MultipartFile imageFile, int userId) throws IOException;
 
-    void removePost(int postId);
+    void removePost(int postId, int userId);
 
     List<CommentVO> getComments(int postId);
 
     void writeComment(CommentVO comment);
 
-    void removeComment(int commentId);
+    void removeComment(int commentId, int userId);
 
     List<SalonVO> getSalonList();
 
@@ -33,5 +33,5 @@ public interface PostService {
 
     List<PostVO> getPopularPosts();
 
-    List<PostVO> searchPosts(String searchType, String keyword);
+    List<PostVO> searchPosts(String searchType, String keyword, String sort);
 }

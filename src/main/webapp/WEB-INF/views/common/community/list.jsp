@@ -59,18 +59,42 @@
         </p>
       </c:if>
 
-      <%-- 카테고리 탭 (검색 중에는 비활성) --%>
-      <div class="category-tabs ${not empty keyword ? 'is-disabled' : ''}">
-        <a href="${ctx}/common/community"
-           class="cat-tab ${empty category ? 'active' : ''}">전체</a>
-        <a href="${ctx}/common/community?category=%ED%97%A4%EC%96%B4%EC%8A%A4%ED%83%80%EC%9D%BC"
-           class="cat-tab ${'헤어스타일' == category ? 'active' : ''}">헤어스타일</a>
-        <a href="${ctx}/common/community?category=%EC%8B%9C%EC%88%A0%ED%9B%84%EA%B8%B0"
-           class="cat-tab ${'시술후기' == category ? 'active' : ''}">시술후기</a>
-        <a href="${ctx}/common/community?category=%EC%B6%94%EC%B2%9C%2F%EC%A7%88%EB%AC%B8"
-           class="cat-tab ${'추천/질문' == category ? 'active' : ''}">추천/질문</a>
-        <a href="${ctx}/common/community?category=%EC%9E%90%EC%9C%A0"
-           class="cat-tab ${'자유' == category ? 'active' : ''}">자유</a>
+      <div class="tabs-row">
+        <%-- 카테고리 탭 (검색 중에는 비활성) --%>
+        <div class="category-tabs ${not empty keyword ? 'is-disabled' : ''}">
+          <a href="${ctx}/common/community"
+             class="cat-tab ${empty category ? 'active' : ''}">전체</a>
+          <a href="${ctx}/common/community?category=%ED%97%A4%EC%96%B4%EC%8A%A4%ED%83%80%EC%9D%BC"
+             class="cat-tab ${'헤어스타일' == category ? 'active' : ''}">헤어스타일</a>
+          <a href="${ctx}/common/community?category=%EC%8B%9C%EC%88%A0%ED%9B%84%EA%B8%B0"
+             class="cat-tab ${'시술후기' == category ? 'active' : ''}">시술후기</a>
+          <a href="${ctx}/common/community?category=%EC%B6%94%EC%B2%9C%2F%EC%A7%88%EB%AC%B8"
+             class="cat-tab ${'추천/질문' == category ? 'active' : ''}">추천/질문</a>
+          <a href="${ctx}/common/community?category=%EC%9E%90%EC%9C%A0"
+             class="cat-tab ${'자유' == category ? 'active' : ''}">자유</a>
+        </div>
+
+        <%-- 정렬 토글: 최신순 / 추천순 (현재 카테고리·검색 조건 유지) --%>
+        <div class="sort-toggle">
+          <c:url var="latestUrl" value="/common/community">
+            <c:param name="category" value="${category}"/>
+            <c:param name="keyword" value="${keyword}"/>
+            <c:param name="searchType" value="${searchType}"/>
+            <c:param name="sort" value="latest"/>
+          </c:url>
+          <c:url var="recommendUrl" value="/common/community">
+            <c:param name="category" value="${category}"/>
+            <c:param name="keyword" value="${keyword}"/>
+            <c:param name="searchType" value="${searchType}"/>
+            <c:param name="sort" value="recommend"/>
+          </c:url>
+          <a href="${latestUrl}" class="sort-tab ${sort != 'recommend' ? 'active' : ''}">
+            <i class="fas fa-clock"></i> 최신순
+          </a>
+          <a href="${recommendUrl}" class="sort-tab ${sort == 'recommend' ? 'active' : ''}">
+            <i class="fas fa-fire"></i> 추천순
+          </a>
+        </div>
       </div>
 
       <%-- 게시글 카드 목록 --%>
@@ -84,10 +108,14 @@
           </c:when>
           <c:otherwise>
             <c:forEach var="post" items="${posts}">
+              <c:set var="score" value="${post.likeCount - post.dislikeCount}" />
               <a href="${ctx}/common/community/${post.postId}" class="post-card">
                 <div class="post-card-body">
                   <c:if test="${not empty post.category}">
                     <span class="post-card-category"><c:out value="${post.category}" /></span>
+                  </c:if>
+                  <c:if test="${score >= 10}">
+                    <span class="hot-badge"><i class="fas fa-fire"></i> 인기</span>
                   </c:if>
                   <div class="post-card-title"><c:out value="${post.title}" /></div>
                   <div class="post-card-preview"><c:out value="${post.content}" /></div>
@@ -95,7 +123,6 @@
                     <span><i class="fas fa-user-circle"></i> <c:out value="${post.authorName}" /></span>
                     <span><i class="fas fa-clock"></i> ${fn:substring(post.createdAt, 0, 10)}</span>
                     <span><i class="fas fa-eye"></i> ${post.viewCount}</span>
-                    <c:set var="score" value="${post.likeCount - post.dislikeCount}" />
                     <c:choose>
                       <c:when test="${score >= 0}">
                         <span class="meta-like"><i class="fas fa-thumbs-up"></i> ${score}</span>

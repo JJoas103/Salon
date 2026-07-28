@@ -31,7 +31,13 @@ public class SecurityConfig {
                 .requestMatchers(
                     new AntPathRequestMatcher("/reserve/info"),
                     new AntPathRequestMatcher("/common/mypage"),
-                    new AntPathRequestMatcher("/common/mypage/**")
+                    new AntPathRequestMatcher("/common/mypage/**"),
+                    new AntPathRequestMatcher("/common/community/write"),
+                    new AntPathRequestMatcher("/common/community/*/edit"),
+                    new AntPathRequestMatcher("/common/community/*/delete"),
+                    new AntPathRequestMatcher("/common/community/*/comment"),
+                    new AntPathRequestMatcher("/common/community/*/comment/*/delete"),
+                    new AntPathRequestMatcher("/common/community/*/react")
                 )
                 .authenticated()
                 .anyRequest().permitAll())

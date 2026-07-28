@@ -6,9 +6,9 @@ import java.util.List;
 
 public interface PostMapper {
 
-    List<PostVO> findAll();
+    List<PostVO> findAll(@Param("sort") String sort);
 
-    List<PostVO> findByCategory(String category);
+    List<PostVO> findByCategory(@Param("category") String category, @Param("sort") String sort);
 
     PostVO findById(int postId);
 
@@ -27,5 +27,6 @@ public interface PostMapper {
     void incrementDislikeCount(int postId);
     void decrementDislikeCount(int postId);
 
-    List<PostVO> search(@Param("searchType") String searchType, @Param("keyword") String keyword);
+    List<PostVO> search(@Param("searchType") String searchType, @Param("keyword") String keyword,
+                         @Param("sort") String sort);
 }
