@@ -149,11 +149,6 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostVO> getPopularPosts() {
-        return postMapper.findPopular();
-    }
-
-    @Override
     public List<PostVO> searchPosts(String searchType, String keyword, String sort) {
         return postMapper.search(searchType, "%" + keyword + "%", sort);
     }

@@ -71,19 +71,6 @@
         WHERE p.post_id = #{postId}
     </select>
 
-    <select id="findPopular" resultMap="postResultMap">
-        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
-               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
-               p.created_at, p.updated_at,
-               COALESCE(u.user_name, '익명') AS author_name,
-               s.salon_name AS salon_name
-        FROM Posts p
-        LEFT JOIN Users u ON p.user_id = u.user_id
-        LEFT JOIN Salons s ON p.salon_id = s.salon_id
-        ORDER BY p.like_count DESC, p.view_count DESC
-        LIMIT 50
-    </select>
-
     <insert id="insert" parameterType="com.soldesk.vo.PostVO"
             useGeneratedKeys="true" keyProperty="postId">
         INSERT INTO Posts (user_id, title, content, category, image_url, salon_id)

@@ -20,8 +20,6 @@ public interface PostMapper {
 
     void incrementViewCount(int postId);
 
-    List<PostVO> findPopular();
-
     void incrementLikeCount(int postId);
     void decrementLikeCount(int postId);
     void incrementDislikeCount(int postId);

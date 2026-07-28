@@ -169,11 +169,4 @@ public class CommunityController {
         postService.react(postId, currentUserId(), type);
         return "redirect:/common/community/" + postId;
     }
-
-    // 인기글 목록
-    @GetMapping("/popular")
-    public String popular(Model model) {
-        model.addAttribute("posts", postService.getPopularPosts());
-        return "common/community/popular";
-    }
 }

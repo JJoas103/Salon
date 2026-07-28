@@ -31,7 +31,5 @@ public interface PostService {
 
     String getUserReaction(int postId, int userId);
 
-    List<PostVO> getPopularPosts();
-
     List<PostVO> searchPosts(String searchType, String keyword, String sort);
 }
