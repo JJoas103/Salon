@@ -20,7 +20,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
     <main class="app-content">
       <div class="write-card">
         <h2>
