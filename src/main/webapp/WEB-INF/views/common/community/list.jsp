@@ -19,7 +19,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
     <main class="app-content community-content">
 
       <%-- 헤더: 타이틀 + 글쓰기 버튼 --%>
