@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.SalonMapper">
+
+    <!-- DB 컬럼(snake_case) ↔ VO 프로퍼티(camelCase) 매핑 -->
+    <resultMap id="salonResultMap" type="com.soldesk.vo.SalonVO">
+        <id     column="salon_id"      property="salonId" />
+        <result column="owner_id"      property="ownerId" />
+        <result column="salon_name"    property="salonName" />
+        <result column="address"       property="address" />
+        <result column="phone_number"  property="phoneNumber" />
+        <result column="description"   property="description" />
+        <result column="average_rating" property="averageRating" />
+        <result column="image_url"     property="imageUrl" />
+        <result column="created_at"    property="createdAt" />
+        <result column="updated_at"    property="updatedAt" />
+    </resultMap>
+
+    <!-- 점주 기준 매장 조회 (점주 1명당 매장 1개라고 가정, 다중 매장은 추후 목록 조회로 확장) -->
+    <select id="findByOwnerId" parameterType="int" resultMap="salonResultMap">
+        select salon_id, owner_id, salon_name, address, phone_number, description, average_rating, image_url, created_at, updated_at
+        from Salons
+        where owner_id = #{ownerId}
+        limit 1
+    </select>
+
+</mapper>

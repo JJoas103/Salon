@@ -29,6 +29,9 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/admin/**")
                 ).hasRole("ADMIN")
                 .requestMatchers(
+                    new AntPathRequestMatcher("/owner/**")
+                ).hasRole("OWNER")
+                .requestMatchers(
                     new AntPathRequestMatcher("/reserve/info"),
                     new AntPathRequestMatcher("/common/mypage"),
                     new AntPathRequestMatcher("/common/mypage/**")
