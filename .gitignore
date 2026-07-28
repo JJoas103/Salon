@@ -17,6 +17,9 @@ Thumbs.db
 # Logs
 *.log
 
+# 업로드된 파일(런타임 생성물) — 소스가 아니므로 커밋하지 않는다
+/upload/
+
 # sh
 deploy.sh
 
