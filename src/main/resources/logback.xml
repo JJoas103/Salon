@@ -5,7 +5,7 @@
             <pattern>%d{HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
-
+<!-- 섹스 -->
     <!-- 로깅 레벨 -->
     <logger name="com.soldesk" level="DEBUG" />
     <!-- com.soldesk 패키지 로깅 레벨(DEBUG: 디버그 레벨 - 자세한 정보 출력) -->
