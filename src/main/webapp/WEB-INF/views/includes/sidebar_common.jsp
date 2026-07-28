@@ -7,7 +7,7 @@
   <div class="sidebar-brand"><i class="fas fa-scissors" style="color: var(--accent);"></i><span>HAIR RESERVE</span></div>
   <ul class="sidebar-menu">
     <li class="sidebar-item ${menu == 'home' ? 'active' : ''}"><a href="<c:url value='/common/home'/>"><i class="fas fa-home"></i> 홈 메인</a></li>
-    <li class="sidebar-item ${menu == 'search' ? 'active' : ''}"><a href="<c:url value='/common/search'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
+    <li class="sidebar-item ${menu == 'search' ? 'active' : ''}"><a href="<c:url value='/common/salonmap'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}"><a href="<c:url value='/common/chat'/>"><i class="fas fa-comments"></i> 1:1 상담 채팅</a></li>
     <li class="sidebar-item ${menu == 'community' ? 'active' : ''}"><a href="<c:url value='/common/community'/>"><i class="fas fa-users"></i> 스타일 커뮤니티</a></li>
     <li class="sidebar-item ${menu == 'popular' ? 'active' : ''}"><a href="<c:url value='/common/community/popular'/>"><i class="fas fa-fire"></i> 인기글</a></li>

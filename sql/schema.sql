@@ -32,6 +32,8 @@ CREATE TABLE Salons (
     description TEXT,
     average_rating DECIMAL(2,1) DEFAULT 0.0,
     image_url VARCHAR(255),
+    latitude DECIMAL(10,7),   -- 위도 (지도 마커용. NULL 이면 지도에 표시하지 않는다)
+    longitude DECIMAL(10,7),  -- 경도
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES Users(user_id)

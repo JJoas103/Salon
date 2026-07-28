@@ -1,5 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -17,7 +19,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
 
     <main class="app-content">
       <!-- 검색 바 -->
@@ -79,76 +80,163 @@
       </div>
     </main>
   </div>
-
+  
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapApiKey}&libraries=services&autoload=true"></script>
   <script>
-    /* ------------------------------------------------------------------
-       목업 데이터. 카카오맵 연동 시 이 배열을 서버 데이터로 갈아끼우고
-       마커 클릭 핸들러에서 selectSalon(i) 를 호출하면 우측 카드가 바뀐다.
-       ------------------------------------------------------------------ */
-    const SALONS = [
-      { salonId: 1, name: '헤어 스튜디오 온', address: '마포구 합정동', rating: '4.8',
-        hours: '10:00 - 20:00', price: '커트 25,000원부터', lat: 37.5495, lng: 126.9137,
-        image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80' },
-      { salonId: 2, name: '살롱 드 미르', address: '마포구 서교동', rating: '4.6',
-        hours: '11:00 - 21:00', price: '커트 30,000원부터', lat: 37.5533, lng: 126.9214,
-        image: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?auto=format&fit=crop&w=800&q=80' },
-      { salonId: 3, name: '바버샵 노드', address: '마포구 상수동', rating: '4.5',
-        hours: '12:00 - 22:00', price: '커트 22,000원부터', lat: 37.5478, lng: 126.9224,
-        image: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?auto=format&fit=crop&w=800&q=80' }
-    ];
+    /* SalonVO 목록을 컨트롤러에서 JSON 으로 직렬화해 넘겨받는다. 키 이름은 VO 필드명 그대로다. */
+    const SALONS = ${salonsJson};
 
     const CONTEXT_PATH = '<c:url value="/"/>';
-    let selectedIndex = 0;
+    /* imageUrl 이 비어 있는 미용실용 대체 이미지 (home.jsp 와 동일) */
+    const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';
+    let selectedIndex = -1;
+    /* 지도 마커. PINS[미용실 index] = { element, overlay } — 좌표 없는 미용실 자리는 비어 있다 */
+    const PINS = [];
+
+    /* 선택된 마커만 색/크기를 바꾼다 (범례의 pin-selected / pin-normal 과 동일한 색) */
+    function updatePinStyles() {
+      PINS.forEach(function (pin, i) {
+        const isSelected = (i === selectedIndex);
+        pin.element.classList.toggle('pin-selected', isSelected);
+        pin.element.classList.toggle('pin-normal', !isSelected);
+        pin.overlay.setZIndex(isSelected ? 10 : 1);
+      });
+    }
+
+    function formatPrice(price) {
+      if (price === null || price === undefined) return '-';
+      return Number(price).toLocaleString('ko-KR') + '원부터';
+    }
 
     function selectSalon(index) {
       const salon = SALONS[index];
       if (!salon) return;
       selectedIndex = index;
 
-      document.getElementById('detail-image').src = salon.image;
-      document.getElementById('detail-image').alt = salon.name;
-      document.getElementById('detail-name').textContent = salon.name;
+      const image = document.getElementById('detail-image');
+      image.src = salon.imageUrl || FALLBACK_IMAGE;
+      image.alt = salon.salonName;
+      document.getElementById('detail-name').textContent = salon.salonName;
       document.getElementById('detail-address').textContent = salon.address;
-      document.getElementById('detail-rating').textContent = salon.rating;
-      document.getElementById('detail-hours').textContent = salon.hours;
-      document.getElementById('detail-price').textContent = salon.price;
+      document.getElementById('detail-rating').textContent = salon.averageRating != null ? salon.averageRating : '-';
+      /* 운영시간은 Salon_Operating_Hours 를 아직 조회하지 않아 표시할 값이 없다 */
+      document.getElementById('detail-hours').textContent = '-';
+      document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
+      updatePinStyles();
     }
 
     /* 예약하기 → 기존 시술 선택 페이지로 이동 */
     document.getElementById('btn-reserve').addEventListener('click', function () {
-      location.href = CONTEXT_PATH + 'common/search?salonId=' + SALONS[selectedIndex].salonId;
+      const salon = SALONS[selectedIndex];
+      if (!salon) return;
+      location.href = CONTEXT_PATH + 'common/search?salonId=' + salon.salonId;
     });
-
-    /* 검색 / 현재위치 — 카카오맵 연동 후 실제 동작 연결 */
+    
+    /* 검색 — 지역 검색이냐 헤어샵 이름 검색이냐 정한 뒤 연결한다 */
     document.getElementById('keyword').closest('form').addEventListener('submit', function () {
       console.log('검색어:', document.getElementById('keyword').value);
-    });
-    document.getElementById('btn-locate').addEventListener('click', function () {
-      console.log('현재 위치로 이동');
     });
 
     selectSalon(0);
 
     /* ------------------------------------------------------------------
-       [카카오맵 연동 자리]
-       1) <head> 에 SDK 추가
-          <script src="//dapi.kakao.com/v2/maps/sdk.js?appkey=발급받은키"><\/script>
-       2) 아래 주석 해제
-       ------------------------------------------------------------------
+       지도 — Salons.latitude / longitude 를 그대로 쓴다.
+       좌표가 없는(NULL) 미용실은 마커를 만들지 않는다. 미용실 등록 기능을 만들 때
+       등록 시점에 주소 → 좌표를 한 번 변환해 저장하면 여기는 손댈 필요가 없다.
+       ------------------------------------------------------------------ */
     const map = new kakao.maps.Map(document.getElementById('kakao-map'), {
-      center: new kakao.maps.LatLng(SALONS[0].lat, SALONS[0].lng),
-      level: 4
+      center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울시청. 마커가 있으면 아래에서 다시 맞춘다
+      level: 8
     });
     document.getElementById('map-placeholder').remove();
 
+    const bounds = new kakao.maps.LatLngBounds();
+    let markerCount = 0;
+
     SALONS.forEach(function (salon, i) {
-      const marker = new kakao.maps.Marker({
-        map: map,
-        position: new kakao.maps.LatLng(salon.lat, salon.lng)
+      if (salon.latitude == null || salon.longitude == null) {
+        console.warn('좌표 없음 — 마커 생략:', salon.salonName, salon.address);
+        return;
+      }
+
+      const position = new kakao.maps.LatLng(salon.latitude, salon.longitude);
+
+      /* 기본 마커 대신 아이콘을 직접 그려서 선택/일반 색을 구분한다 */
+      const element = document.createElement('i');
+      element.className = 'fas fa-map-marker-alt map-pin pin-normal';
+      element.title = salon.salonName;
+      element.addEventListener('click', function () {
+        selectSalon(i);
+        map.panTo(position);
       });
-      kakao.maps.event.addListener(marker, 'click', function () { selectSalon(i); });
+
+      const overlay = new kakao.maps.CustomOverlay({
+        map: map,
+        position: position,
+        content: element,
+        xAnchor: 0.5,   // 아이콘 가로 중앙이
+        yAnchor: 1.0,   // 아이콘 아래 끝이 좌표에 오도록
+        clickable: true,
+        zIndex: 1
+      });
+
+      PINS[i] = { element: element, overlay: overlay };
+      bounds.extend(position);
+      markerCount++;
     });
-    */
+
+    /* 마커가 하나뿐이면 setBounds 가 최대로 확대돼 버려서 중심만 옮긴다 */
+    if (markerCount === 1) {
+      map.setCenter(bounds.getCenter());
+      map.setLevel(5);
+    } else if (markerCount > 1) {
+      map.setBounds(bounds);
+    }
+
+    /* selectSalon(0) 이 마커 생성보다 먼저 실행되므로 여기서 한 번 색을 맞춰준다 */
+    updatePinStyles();
+
+    /* ---- 현재 위치 ---- */
+    let hereOverlay = null;
+
+    document.getElementById('btn-locate').addEventListener('click', function () {
+      const button = this;
+
+      if (!navigator.geolocation) {
+        alert('이 브라우저에서는 현재 위치를 사용할 수 없습니다.');
+        return;
+      }
+
+      button.disabled = true;
+      navigator.geolocation.getCurrentPosition(
+        function (result) {
+          button.disabled = false;
+          const here = new kakao.maps.LatLng(result.coords.latitude, result.coords.longitude);
+
+          if (hereOverlay === null) {
+            const dot = document.createElement('div');
+            dot.className = 'map-here';
+            dot.title = '현재 위치';
+            hereOverlay = new kakao.maps.CustomOverlay({
+              map: map, position: here, content: dot, xAnchor: 0.5, yAnchor: 0.5, zIndex: 20
+            });
+          } else {
+            hereOverlay.setPosition(here);
+            hereOverlay.setMap(map);
+          }
+
+          map.setLevel(5);
+          map.panTo(here);
+        },
+        function (error) {
+          button.disabled = false;
+          console.warn('현재 위치 확인 실패:', error.message);
+          alert('현재 위치를 가져오지 못했습니다. 브라우저의 위치 권한을 확인해 주세요.');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+
   </script>
 </body>
 </html>

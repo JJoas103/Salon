@@ -90,6 +90,15 @@ body {
 .pin-normal { color: var(--accent); }
 .map-locate-btn { position: absolute; right: 20px; bottom: 20px; z-index: 5; width: 52px; height: 52px; border-radius: 50%; background: var(--white); border: 1px solid var(--border); box-shadow: var(--shadow-lg); color: var(--text-sub); font-size: 18px; cursor: pointer; }
 .map-locate-btn:hover { color: var(--accent); }
+.map-locate-btn:disabled { color: var(--text-light); cursor: default; }
+
+/* 지도 마커 — 카카오 기본 마커 대신 CustomOverlay 로 직접 그린다.
+   위 범례와 같은 .pin-selected / .pin-normal 색을 그대로 쓴다. */
+.map-pin { display: inline-block; font-size: 30px; line-height: 1; cursor: pointer; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); transition: font-size 0.12s ease; }
+.map-pin.pin-selected { font-size: 42px; }
+
+/* 현재 위치 표시 점 */
+.map-here { width: 16px; height: 16px; border-radius: 50%; background: var(--success); border: 3px solid var(--white); box-shadow: 0 0 0 5px rgba(46, 204, 113, 0.25); }
 
 /* ---- 선택한 헤어샵 상세 카드 ---- */
 .salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 0; }

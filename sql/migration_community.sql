@@ -18,3 +18,9 @@ CREATE TABLE post_likes (
     FOREIGN KEY (post_id) REFERENCES Posts(post_id),
     FOREIGN KEY (user_id) REFERENCES Users(user_id)
 );
+
+-- ------------salons 테이블 위도, 경도 추가 --------------
+ALTER TABLE salons
+    add column latitude decimal(10, 7),  -- 위도
+    add column longitude decimal(10, 7); -- 경도
+    
