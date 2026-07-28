@@ -30,6 +30,7 @@ import com.soldesk.service.UserService;
 import com.soldesk.validation.PasswordChangeValidator;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
 @Controller
@@ -129,6 +130,16 @@ public class CommonController {
         model.addAttribute("salonsJson", objectMapper.writeValueAsString(salonService.getSalons()));
         model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
         return "common/salonmap";
+    }
+
+    /** 지도 페이지 검색창이 호출한다. 뷰가 아니라 JSON 을 돌려주므로 Model 이 아니라
+     *  @ResponseBody + 반환값이 곧 응답 본문이 된다. JSON 키는 SalonVO 필드명 그대로 나가고,
+     *  salonmap.jsp 의 renderSalons() 가 그 이름을 그대로 읽는다.
+     *  (검색은 상태를 바꾸지 않는 조회라서 POST 가 아니라 GET) */
+    @GetMapping("/salons/search")
+    @ResponseBody
+    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword){
+        return salonService.searchSalons(keyword);
     }
 
     //미용실 검색하기
