@@ -30,4 +30,9 @@ public class SalonService {
     public List<ServiceVO> getServices(int salonId) {
         return salonMapper.findServicesBySalonId(salonId);
     }//ID로 시술정보 가져오기
+
+    @Transactional(readOnly = true)
+    public SalonVO getSalonByOwner(int ownerId){
+        return salonMapper.findByOwnerId(ownerId);
+    }//점주 소유 매장 조회
 }

@@ -63,4 +63,13 @@
         WHERE salon_id = #{salonId}
         ORDER BY price, service_id
     </select>
+
+    <!-- 점주 기준 매장 조회 (점주 1명당 매장 1개라고 가정, 다중 매장은 추후 목록 조회로 확장) -->
+    <select id="findByOwnerId" parameterType="int" resultMap="salonResultMap">
+        SELECT salon_id, owner_id, salon_name, address, phone_number, description,
+               average_rating, image_url, created_at, updated_at
+        FROM Salons
+        WHERE owner_id = #{ownerId}
+        LIMIT 1
+    </select>
 </mapper>
