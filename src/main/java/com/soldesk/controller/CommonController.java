@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -21,6 +22,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
@@ -44,6 +47,13 @@ public class CommonController {
 
     @Autowired
     private PasswordChangeValidator passwordChangeValidator;
+
+    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${kakaoMapApiKey}")
+    private String kakaoMapApiKey;
+
 
     @InitBinder("changePassword")
     public void initBinder(WebDataBinder binder){
@@ -112,6 +122,15 @@ public class CommonController {
         return "common/reservations";
     }
     
+    //미용실 지도 검색 (카카오맵)
+    @GetMapping("/salonmap")
+    public String salonMap(Model model) throws JsonProcessingException{
+
+        model.addAttribute("salonsJson", objectMapper.writeValueAsString(salonService.getSalons()));
+        model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
+        return "common/salonmap";
+    }
+
     //미용실 검색하기
     @GetMapping("/search")
     public String search(@RequestParam(required = false) Integer salonId, Model model) {

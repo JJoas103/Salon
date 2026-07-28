@@ -22,9 +22,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <header class="app-header">
-      <div class="user-badge"><span>${user.userName} 고객님</span><div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div></div>
-    </header>
     <main class="app-content">
       <c:if test="${param.passwordChanged == 'true'}">
         <p class="success-text" style="margin-bottom:20px; font-size:14px;">비밀번호가 변경되었습니다.</p>
