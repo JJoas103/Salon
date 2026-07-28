@@ -112,6 +112,12 @@ public class CommonController {
         return "common/reservations";
     }
     
+    //미용실 지도 검색 (목업 — 카카오맵 연동 예정)
+    @GetMapping("/salonmap")
+    public String salonMap() {
+        return "common/salonmap";
+    }
+
     //미용실 검색하기
     @GetMapping("/search")
     public String search(@RequestParam(required = false) Integer salonId, Model model) {

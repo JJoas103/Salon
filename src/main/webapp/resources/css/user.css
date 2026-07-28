@@ -60,6 +60,57 @@ body {
 .menu-item-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .summary-sticky-panel { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 30px; position: sticky; top: 0; }
 
+/* ==========================================================================
+   헤어샵 지도 검색 (map-search-page)
+   ※ 지도 영역(#kakao-map)은 카카오맵 API 연동 예정 — 지금은 자리만 잡아둔다
+   ========================================================================== */
+
+/* ---- 상단 검색 바 ---- */
+.map-search-bar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); display: flex; align-items: center; gap: 16px; padding: 12px 12px 12px 24px; margin-bottom: 26px; }
+.map-search-bar > i { font-size: 19px; color: var(--text-light); flex-shrink: 0; }
+.map-search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; font-family: inherit; font-size: 16px; color: var(--text-main); }
+.map-search-input::placeholder { color: var(--text-light); }
+.map-search-btn { flex-shrink: 0; padding: 14px 42px; font-size: 15px; }
+
+/* ---- 지도 + 상세 2단 레이아웃 ---- */
+.map-layout { display: grid; grid-template-columns: 1fr 480px; gap: 26px; align-items: start; }
+
+/* ---- 지도 패널 ---- */
+.map-panel { position: relative; height: 620px; background: var(--bg-sub); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+#kakao-map { width: 100%; height: 100%; }
+.map-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; color: var(--text-light); font-size: 14px; pointer-events: none; }
+.map-placeholder i { font-size: 42px; }
+
+/* 지도 위에 떠 있는 범례 / 현재위치 버튼 */
+.map-legend { position: absolute; left: 20px; bottom: 20px; z-index: 5; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; }
+.map-legend-item { display: flex; align-items: center; gap: 12px; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.map-legend-item i { font-size: 17px; }
+.pin-selected { color: var(--primary); }
+.pin-normal { color: var(--accent); }
+.map-locate-btn { position: absolute; right: 20px; bottom: 20px; z-index: 5; width: 52px; height: 52px; border-radius: 50%; background: var(--white); border: 1px solid var(--border); box-shadow: var(--shadow-lg); color: var(--text-sub); font-size: 18px; cursor: pointer; }
+.map-locate-btn:hover { color: var(--accent); }
+
+/* ---- 선택한 헤어샵 상세 카드 ---- */
+.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 0; }
+.salon-detail-image { width: 100%; height: 230px; object-fit: cover; display: block; background: var(--bg-sub); }
+.salon-detail-body { padding: 26px 28px 28px; }
+.salon-detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.salon-detail-title-row h2 { font-size: 22px; font-weight: 800; }
+.salon-detail-address { margin-top: 6px; font-size: 14px; color: var(--text-sub); }
+.salon-detail-info { margin-top: 22px; padding-top: 6px; border-top: 1px solid var(--border); }
+.salon-info-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; }
+.salon-info-icon { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-sub); color: var(--text-sub); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.salon-info-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
+.salon-info-value { margin-left: auto; font-size: 15px; font-weight: 700; }
+.salon-detail-card .btn-reserve { width: 100%; margin-top: 18px; padding: 16px; font-size: 16px; }
+
+/* ---- 좁은 화면: 지도 아래로 상세 카드 ---- */
+@media (max-width: 1280px) {
+  .map-layout { grid-template-columns: 1fr; }
+  .map-panel { height: 460px; }
+  .salon-detail-card { position: static; }
+}
+
 /* ---- chat ---- */
 .chat-layout { display: grid; grid-template-columns: 320px 1fr; gap: 24px; height: calc(100vh - 150px); }
 .chat-sidebar { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; }
