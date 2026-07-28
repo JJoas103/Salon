@@ -1,50 +1,110 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!DOCTYPE mapper PUBLIC
+        "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.soldesk.mapper.ResvMapper">
 
-    <resultMap id="ResvResultMap" type="com.soldesk.vo.ReservationVO">
-        <id column="reservation_id" property="reservationId" />
-        <result column="user_id" property="userId" />
-        <result column="salon_id" property="salonId" />
-        <result column="stylist_id" property="stylistId" />
-        <result column="service_id" property="serviceId" />
-        <result column="reservation_time" property="reservationTime" />
-        <result column="status" property="status" />
-        <result column="salon_name" property="salonName" />
-        <result column="transaction_id" property="transactionId" />
-        <result column="payment_method" property="paymentMethod" />
-        <result column="amount" property="amount" />
-        <result column="service_name" property="serviceName" />
+    <resultMap id="ResvResultMap"
+               type="com.soldesk.vo.ReservationVO">
+
+        <id column="reservation_id"
+            property="reservationId" />
+
+        <result column="user_id"
+                property="userId" />
+
+        <result column="salon_id"
+                property="salonId" />
+
+        <result column="stylist_id"
+                property="stylistId" />
+
+        <result column="service_id"
+                property="serviceId" />
+
+        <result column="reservation_time"
+                property="reservationTime" />
+
+        <result column="status"
+                property="status" />
+
+        <result column="salon_name"
+                property="salonName" />
+
+        <result column="transaction_id"
+                property="transactionId" />
+
+        <result column="payment_method"
+                property="paymentMethod" />
+
+        <result column="amount"
+                property="amount" />
+
+        <result column="service_name"
+                property="serviceName" />
 
     </resultMap>
 
-    <select id="getRevList" 
-            resultMap="ResvResultMap"
-            parameterType="int" >
-        select  r.reservation_time, r.status, s.salon_name,
-                p.transaction_id, p.payment_method, p.amount, se.service_name
-        from reservations r 
-        join salons s on s.salon_id = r.salon_id
-        join users u on u.user_id = r.user_id 
-        join payments p on r.reservation_id = p.reservation_id 
-        join services se on se.service_id = r.service_id
-        where u.user_id = #{userId}
-        order by r.reservation_time desc;
+    <!-- 전체 예약 히스토리 -->
+    <select id="getRevList"
+            parameterType="int"
+            resultMap="ResvResultMap">
+
+        SELECT
+            r.reservation_id,
+            r.user_id,
+            r.salon_id,
+            r.stylist_id,
+            r.service_id,
+            r.reservation_time,
+            r.status,
+            s.salon_name AS salon_name,
+            p.transaction_id,
+            p.payment_method,
+            p.amount,
+            se.service_name AS service_name
+        FROM Reservations r
+        JOIN Salons s
+          ON s.salon_id = r.salon_id
+        JOIN Services se
+          ON se.service_id = r.service_id
+        LEFT JOIN Payments p
+          ON p.reservation_id = r.reservation_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.reservation_time DESC
+
     </select>
 
-    <select id="getClearRevList" 
-            resultMap="ResvResultMap"
-            parameterType="int" >
-        select  r.reservation_time, r.status, s.salon_name,
-                p.transaction_id, p.payment_method, p.amount, se.service_name
-        from reservations r 
-        join salons s on s.salon_id = r.salon_id
-        join users u on u.user_id = r.user_id 
-        join payments p on r.reservation_id = p.reservation_id 
-        join services se on se.service_id = r.service_id
-        where u.user_id = #{userId} and r.reservation_time &lt;  now()
-        order by r.reservation_time desc;
-        
+    <!-- 이용 완료 -->
+    <select id="getClearRevList"
+            parameterType="int"
+            resultMap="ResvResultMap">
+
+        SELECT
+            r.reservation_id,
+            r.user_id,
+            r.salon_id,
+            r.stylist_id,
+            r.service_id,
+            r.reservation_time,
+            r.status,
+            s.salon_name AS salon_name,
+            p.transaction_id,
+            p.payment_method,
+            p.amount,
+            se.service_name AS service_name
+        FROM Reservations r
+        JOIN Salons s
+          ON s.salon_id = r.salon_id
+        JOIN Services se
+          ON se.service_id = r.service_id
+        LEFT JOIN Payments p
+          ON p.reservation_id = r.reservation_id
+        WHERE r.user_id = #{userId}
+          AND r.status = 'completed'
+        ORDER BY r.reservation_time DESC
+
     </select>
+
 </mapper>

@@ -46,6 +46,7 @@ public class ReserveController {
             model.addAttribute("reservs", list);//예약 정보
 
         }
+        model.addAttribute("category", category);
         return "reserve/info";
     }
      

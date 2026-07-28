@@ -39,7 +39,7 @@
         </div>
         <button class="btn-modern btn-primary" style="width: 100%; margin-top: 15px;">로그인 및 대시보드 이동</button>
     </form>
-    <div class="auth-footer">아직 계정이 없으신가요? <a href="signup.html" class="auth-link">회원가입</a></div>
+    <div class="auth-footer">아직 계정이 없으신가요? <a href="${pageContext.request.contextPath}/user/join"class="auth-link">회원가입</a></div>
   </div>
 </body>
 </html>

@@ -23,10 +23,17 @@
     </header>
     <main class="app-content">
       <div class="res-tabs">
-        <div class="res-tab active"><a href="/reserve/info?category=1">전체 예약 히스토리</a></div>
-        <div class="res-tab">확정 대기</div>
-        <div class="res-tab"><a href="/reserve/info?category=2">이용 완료</a></div>
-      </div>
+
+  <div class="res-tab ${category == 1 ? 'active' : ''}">
+    <a href="/reserve/info?category=1">전체 예약 히스토리</a>
+  </div>
+  <div class="res-tab">
+    확정 대기
+  </div>
+  <div class="res-tab ${category == 2 ? 'active' : ''}">
+    <a href="/reserve/info?category=2">이용 완료</a>
+  </div>
+</div>
       <div class="res-card">
         <c:choose>
           <c:when test="${empty reservs}">
@@ -36,7 +43,27 @@
             <c:forEach var="reserve" items="${reservs}">
               <div class="res-card-header">
                 <span style="font-size: 14px; color: var(--text-sub); font-weight: 600;">주문번호:${reserve.transactionId}</span>
-                <span class="status-badge status-upcoming">이용 예정 (확정)</span>
+                <c:choose>
+  <c:when test="${reserve.status eq 'pending'}">
+    <span class="status-badge status-upcoming">확정 대기</span>
+  </c:when>
+
+  <c:when test="${reserve.status eq 'confirmed'}">
+    <span class="status-badge status-upcoming">이용 예정 (확정)</span>
+  </c:when>
+
+  <c:when test="${reserve.status eq 'completed'}">
+    <span class="status-badge">이용 완료</span>
+  </c:when>
+
+  <c:when test="${reserve.status eq 'cancelled'}">
+    <span class="status-badge">예약 취소</span>
+  </c:when>
+
+  <c:otherwise>
+    <span class="status-badge">${reserve.status}</span>
+  </c:otherwise>
+</c:choose>
               </div>
               <div class="res-card-body">
                 <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80" style="width: 110px; height: 110px; border-radius: var(--radius-md); object-fit: cover;" alt="salon">
@@ -48,7 +75,9 @@
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
                   <button class="btn-modern btn-outline" onclick="location.href='chat.html'">1:1 문의</button>
-                  <button class="btn-modern btn-primary" style="background:#FF4757; border-color:#FF4757;">예약 취소</button>
+                  <c:if test="${reserve.status eq 'pending' or reserve.status eq 'confirmed'}">
+                  <button class="btn-modern btn-primary"style="background:#FF4757; border-color:#FF4757;">예약 취소</button>
+                  </c:if>
                 </div>
               </div>
             </c:forEach>
