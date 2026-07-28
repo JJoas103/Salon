@@ -7,7 +7,7 @@
 /* ---- Base (중앙 정렬) ---- */
 /* .auth-page: login/join/index 처럼 sidebar 없이 카드 하나만 중앙 정렬하는 페이지 전용.
    sidebar가 있는 공통 페이지(홈/검색/커뮤니티 등)도 이 CSS를 로드하므로 body 전체에 걸면
-   sidebar 레이아웃이 깨진다 — 반드시 .auth-page로 스코프할 것. */
+   sidebar 레이아웃이 깨진다 — .auth-page로 스코프할 것. */
 .auth-page {
   font-family: 'Pretendard', -apple-system, sans-serif;
   background-color: var(--bg-sub);
