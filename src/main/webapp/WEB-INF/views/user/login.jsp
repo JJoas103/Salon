@@ -16,22 +16,11 @@
   <div class="auth-card">
     <div class="auth-header">
       <div class="auth-logo"><i class="fas fa-scissors"></i> HAIR RESERVE</div>
-      <p style="font-size: 14px; color: var(--text-sub);">접속하실 계정의 시스템 권한을 선택해 주세요</p>
+      <p style="font-size: 14px; color: var(--text-sub);">이메일과 비밀번호를 입력해 주세요</p>
     </div>
     <c:if test="${param.error != null}">
       <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 이메일 또는 비밀번호가 올바르지 않습니다.</div>
     </c:if>
-    <div class="role-selector-container">
-      <label class="role-label">시스템 권한 선택</label>
-      <div class="role-radio-group">
-        <input type="radio" id="role-customer" name="user-role" value="CUSTOMER" checked>
-        <label for="role-customer" class="role-radio-label">일반 사용자</label>
-        <input type="radio" id="role-owner" name="user-role" value="OWNER">
-        <label for="role-owner" class="role-radio-label">매장 점주</label>
-        <input type="radio" id="role-admin" name="user-role" value="ADMIN">
-        <label for="role-admin" class="role-radio-label">최고 관리자</label>
-      </div>
-    </div>
     <form action="/user/login" method="post">
         <div>
         <label class="role-label">이메일 계정</label>
