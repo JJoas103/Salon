@@ -21,6 +21,9 @@
     <c:if test="${param.error != null}">
       <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 이메일 또는 비밀번호가 올바르지 않습니다.</div>
     </c:if>
+    <c:if test="${param.required != null}">
+      <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 로그인이 필요합니다.</div>
+    </c:if>
     <form action="/user/login" method="post">
         <div>
         <label class="role-label">이메일 계정</label>
