@@ -14,6 +14,9 @@ import com.soldesk.vo.ServiceVO;
 public class SalonService {
 
     @Autowired
+    private SalonSearchService salonSearchService;
+
+    @Autowired
     private SalonMapper salonMapper;
 
     @Transactional(readOnly = true)
@@ -35,11 +38,14 @@ public class SalonService {
     public SalonVO getSalonByOwner(int ownerId){
         return salonMapper.findByOwnerId(ownerId);
     }//점주 소유 매장 조회
-    public List<SalonVO> searchSalons(String keyword){
+
+    @Transactional(readOnly = true)
+    public List<SalonVO> searchSalons(String keyword) throws Exception{
         //검색창을 비우고 검색하면 지도가 원래대로(전체 미용실) 돌아온다
         if(keyword == null || keyword.isBlank()){
             return getSalons();
         }
-        return salonMapper.searchByKeyword(keyword.trim());
+
+        return salonSearchService.search(keyword, 1, 50);
     }//키워드(미용실 이름 / 주소)로 검색하기
 }

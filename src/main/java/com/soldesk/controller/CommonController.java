@@ -138,7 +138,7 @@ public class CommonController {
      *  (검색은 상태를 바꾸지 않는 조회라서 POST 가 아니라 GET) */
     @GetMapping("/salons/search")
     @ResponseBody
-    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword){
+    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword) throws Exception{
         return salonService.searchSalons(keyword);
     }
 

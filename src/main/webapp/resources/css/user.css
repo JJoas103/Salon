@@ -96,14 +96,42 @@ body {
 
 /* 지도 마커 — 카카오 기본 마커 대신 CustomOverlay 로 직접 그린다.
    위 범례와 같은 .pin-selected / .pin-normal 색을 그대로 쓴다. */
-.map-pin { display: inline-block; font-size: 30px; line-height: 1; cursor: pointer; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); transition: font-size 0.12s ease; }
+.map-pin { display: inline-block; font-size: 30px; line-height: 1; cursor: pointer; text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3); transition: font-size 0.12s ease, transform 0.12s ease; transform-origin: bottom center; }
 .map-pin.pin-selected { font-size: 42px; }
+/* 목록 항목에 마우스를 올렸을 때 — 선택 상태(font-size)와 겹쳐도 되도록 transform 으로 준다 */
+.map-pin.is-hover { transform: scale(1.2); }
 
 /* 현재 위치 표시 점 */
 .map-here { width: 16px; height: 16px; border-radius: 50%; background: var(--success); border: 3px solid var(--white); box-shadow: 0 0 0 5px rgba(46, 204, 113, 0.25); }
 
+/* ---- 우측 패널 : 검색 결과 목록 ⇄ 선택한 헤어샵 상세 ----
+   sticky 는 그리드 항목인 .salon-side-panel 이 갖는다 (예전엔 상세 카드가 그리드 항목이었다) */
+.salon-side-panel { position: sticky; top: 0; }
+
+.salon-list-panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.salon-list-header { padding: 18px 24px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-sub); }
+.salon-list { list-style: none; max-height: 552px; overflow-y: auto; }
+.salon-list-item { display: flex; gap: 14px; padding: 18px 24px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s ease; }
+.salon-list-item:last-child { border-bottom: none; }
+/* .is-hover 는 지도 마커에 마우스를 올렸을 때 JS 가 붙인다 (마우스로 직접 올린 것과 같은 모양) */
+.salon-list-item:hover,
+.salon-list-item.is-hover { background: var(--bg-sub); }
+.salon-list-item.is-active { background: var(--accent-soft); }
+/* 목록의 순번 = 지도 마커의 순번 */
+.salon-list-rank { flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); color: var(--white); font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.salon-list-item.is-active .salon-list-rank { background: var(--primary); }
+.salon-list-body { flex: 1; min-width: 0; }
+.salon-list-title-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.salon-list-name { font-size: 16px; font-weight: 700; }
+.salon-list-address { margin-top: 4px; font-size: 13px; color: var(--text-sub); }
+.salon-list-price { margin-top: 6px; font-size: 13px; font-weight: 700; color: var(--accent); }
+.salon-list-empty { padding: 70px 24px; text-align: center; font-size: 14px; line-height: 1.7; color: var(--text-light); }
+
+.salon-back-btn { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px; padding: 10px 18px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-full); box-shadow: var(--shadow); font-family: inherit; font-size: 14px; font-weight: 600; color: var(--text-sub); cursor: pointer; }
+.salon-back-btn:hover { color: var(--accent); }
+
 /* ---- 선택한 헤어샵 상세 카드 ---- */
-.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; position: sticky; top: 0; }
+.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
 .salon-detail-image { width: 100%; height: 230px; object-fit: cover; display: block; background: var(--bg-sub); }
 .salon-detail-body { padding: 26px 28px 28px; }
 .salon-detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
@@ -120,7 +148,7 @@ body {
 @media (max-width: 1280px) {
   .map-layout { grid-template-columns: 1fr; }
   .map-panel { height: 460px; }
-  .salon-detail-card { position: static; }
+  .salon-side-panel { position: static; }
 }
 
 /* ---- chat ---- */
