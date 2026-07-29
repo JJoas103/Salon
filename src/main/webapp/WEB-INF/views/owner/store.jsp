@@ -5,20 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>HAIR RESERVE | 매장정보 관리</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="../css/common.css">
-  <link rel="stylesheet" href="../css/owner.css">
+  <link rel="stylesheet" href="/resources/css/common.css">
+  <link rel="stylesheet" href="/resources/css/owner.css">
 </head>
 <body class="store-page">
-  <aside class="sidebar">
-    <div class="sidebar-brand"><i class="fas fa-cut"></i> HAIR RESERVE</div>
-    <ul class="sidebar-menu">
-      <li class="sidebar-item"><a href="reservations.html"><i class="fas fa-calendar-check"></i> 예약현황관리</a></li>
-      <li class="sidebar-item"><a href="staff.html"><i class="fas fa-users"></i> 직원관리</a></li>
-      <li class="sidebar-item active"><a href="store.html"><i class="fas fa-store"></i> 매장정보 관리</a></li>
-      <li class="sidebar-item"><a href="chat.html"><i class="fas fa-comments"></i> 1대1 면담</a></li>
-      <li class="sidebar-item"><a href="events.html"><i class="fas fa-bullhorn"></i> 이벤트/공지사항</a></li>
-    </ul>
-  </aside>
+  <jsp:include page="../includes/sidebar_owner.jsp">
+      <jsp:param name="menu" value="store" />
+  </jsp:include>
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">매장정보 관리</div>

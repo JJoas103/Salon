@@ -32,6 +32,9 @@ public class SalonService {
     }//ID로 시술정보 가져오기
 
     @Transactional(readOnly = true)
+    public SalonVO getSalonByOwner(int ownerId){
+        return salonMapper.findByOwnerId(ownerId);
+    }//점주 소유 매장 조회
     public List<SalonVO> searchSalons(String keyword){
         //검색창을 비우고 검색하면 지도가 원래대로(전체 미용실) 돌아온다
         if(keyword == null || keyword.isBlank()){
