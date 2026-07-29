@@ -2,6 +2,7 @@ package com.soldesk.service;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -34,6 +35,14 @@ public class FileService {
     private static final Set<String> ALLOWED_CONTENT_TYPES =
             new HashSet<>(Arrays.asList("image/jpeg", "image/png", "image/gif", "image/webp"));
 
+    private static final Set<String> ADVERTISEMENT_EXTENSIONS =
+            new HashSet<>(Arrays.asList("jpg", "jpeg", "png", "webp"));
+
+    private static final Set<String> ADVERTISEMENT_CONTENT_TYPES =
+            new HashSet<>(Arrays.asList("image/jpeg", "image/png", "image/webp"));
+
+    private static final long ADVERTISEMENT_MAX_SIZE = 5L * 1024L * 1024L;
+
     @Autowired
     private UploadConfig uploadConfig;
 
@@ -51,6 +60,33 @@ public class FileService {
     }
 
     /**
+     * 광고 배너 전용 저장. 확장자/MIME뿐 아니라 파일 시그니처도 확인하고 5MB로 제한한다.
+     */
+    public String saveAdvertisementImage(MultipartFile multipartFile) throws IOException {
+        if (multipartFile == null || multipartFile.isEmpty()) {
+            return null;
+        }
+        if (multipartFile.getSize() > ADVERTISEMENT_MAX_SIZE) {
+            throw new IllegalArgumentException("광고 이미지는 5MB 이하만 업로드할 수 있습니다.");
+        }
+
+        String original = multipartFile.getOriginalFilename();
+        String ext = StringUtils.getFilenameExtension(original);
+        if (ext == null) {
+            throw new IllegalArgumentException("확장자가 없는 파일은 업로드할 수 없습니다.");
+        }
+        ext = ext.toLowerCase(Locale.ROOT);
+        String contentType = multipartFile.getContentType();
+        if (!ADVERTISEMENT_EXTENSIONS.contains(ext)
+                || contentType == null
+                || !ADVERTISEMENT_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))
+                || !hasValidImageSignature(multipartFile, ext)) {
+            throw new IllegalArgumentException("jpg, jpeg, png, webp 형식의 올바른 이미지 파일만 업로드할 수 있습니다.");
+        }
+        return saveValidatedFileToDir(multipartFile, uploadConfig.getUploadPath(), ext);
+    }
+
+    /**
      * upload.path 에서 파일을 삭제한다. null·빈 문자열·없는 파일은 무시.
      */
     public void deleteFile(String fileName) {
@@ -62,7 +98,11 @@ public class FileService {
 
     private String saveFileToDir(MultipartFile multipartFile, String uploadDirPath) throws IOException {
         String ext = resolveExtension(multipartFile);
+        return saveValidatedFileToDir(multipartFile, uploadDirPath, ext);
+    }
 
+    private String saveValidatedFileToDir(MultipartFile multipartFile, String uploadDirPath, String ext)
+            throws IOException {
         File dir = new File(uploadDirPath);
         // mkdirs()는 다른 스레드가 먼저 만들었을 때도 false를 돌려주므로 마지막에 다시 확인한다.
         if (!dir.isDirectory() && !dir.mkdirs() && !dir.isDirectory()) {
@@ -73,6 +113,31 @@ public class FileService {
         String fileName = UUID.randomUUID().toString() + "." + ext;
         multipartFile.transferTo(new File(dir, fileName));
         return fileName;
+    }
+
+    private boolean hasValidImageSignature(MultipartFile multipartFile, String ext) throws IOException {
+        byte[] header = new byte[12];
+        int length;
+        try (InputStream input = multipartFile.getInputStream()) {
+            length = input.read(header);
+        }
+        if (length < 4) {
+            return false;
+        }
+        if ("jpg".equals(ext) || "jpeg".equals(ext)) {
+            return (header[0] & 0xff) == 0xff && (header[1] & 0xff) == 0xd8
+                    && (header[2] & 0xff) == 0xff;
+        }
+        if ("png".equals(ext)) {
+            return length >= 8
+                    && (header[0] & 0xff) == 0x89 && header[1] == 0x50
+                    && header[2] == 0x4e && header[3] == 0x47
+                    && header[4] == 0x0d && header[5] == 0x0a
+                    && header[6] == 0x1a && header[7] == 0x0a;
+        }
+        return length >= 12
+                && header[0] == 'R' && header[1] == 'I' && header[2] == 'F' && header[3] == 'F'
+                && header[8] == 'W' && header[9] == 'E' && header[10] == 'B' && header[11] == 'P';
     }
 
     /**

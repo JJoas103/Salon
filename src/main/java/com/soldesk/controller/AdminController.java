@@ -44,6 +44,6 @@ public class AdminController {
 
     @GetMapping("/banners")
     public String banners() {
-        return "admin/banners";
+        return "redirect:/admin/advertisements";
     }
 }

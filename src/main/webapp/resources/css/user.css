@@ -50,6 +50,36 @@ body {
 
 /* ---- home ---- */
 .hero-section { background: linear-gradient(135deg, #2D3436 0%, #111111 100%); border-radius: var(--radius-lg); padding: 50px 60px; color: var(--white); margin-bottom: 40px; }
+.advertisement-slider { position: relative; height: 360px; margin-bottom: 40px; border-radius: var(--radius-lg); overflow: hidden; background: #202426; color: var(--white); box-shadow: var(--shadow-lg); isolation: isolate; }
+.advertisement-slides, .advertisement-slide { position: absolute; inset: 0; }
+.advertisement-slide { opacity: 0; visibility: hidden; transform: scale(1.015); transition: opacity .65s ease, transform .8s ease, visibility .65s; cursor: default; }
+.advertisement-slide[data-target]:not([data-target=""]) { cursor: pointer; }
+.advertisement-slide.is-active { opacity: 1; visibility: visible; transform: scale(1); z-index: 1; }
+.advertisement-slide > img { width: 100%; height: 100%; display: block; object-fit: cover; object-position: center; }
+.advertisement-slide-overlay { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(12, 16, 18, .82) 0%, rgba(12, 16, 18, .54) 38%, rgba(12, 16, 18, .12) 68%, transparent 100%); }
+.advertisement-slide-copy { position: absolute; z-index: 2; left: 60px; top: 52px; width: min(560px, 60%); text-shadow: 0 2px 14px rgba(0,0,0,.28); }
+.advertisement-slide-copy h1 { font-size: clamp(28px, 3vw, 42px); line-height: 1.18; font-weight: 900; letter-spacing: -.035em; margin-bottom: 14px; }
+.advertisement-slide-copy p { color: rgba(255,255,255,.82); font-size: 16px; line-height: 1.65; }
+.advertisement-controls { position: absolute; z-index: 4; left: 60px; bottom: 38px; display: flex; align-items: center; gap: 10px; }
+.advertisement-pager { height: 44px; padding: 0 8px; border-radius: var(--radius-full); background: rgba(255,255,255,.96); color: var(--text-main); display: flex; align-items: center; box-shadow: 0 8px 22px rgba(0,0,0,.16); }
+.advertisement-arrow { width: 38px; height: 38px; border: 0; border-radius: 50%; background: transparent; color: var(--text-main); cursor: pointer; transition: .2s; }
+.advertisement-arrow:hover:not(:disabled) { background: var(--bg-sub); color: var(--accent); }
+.advertisement-arrow:disabled { opacity: .28; cursor: default; }
+.advertisement-counter { min-width: 70px; padding: 0 12px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); display: flex; justify-content: center; gap: 8px; font-size: 13px; color: var(--text-sub); }
+.advertisement-counter strong { color: var(--text-main); }
+.advertisement-list-button { width: 44px; height: 44px; border: 0; border-radius: 50%; background: rgba(255,255,255,.96); color: var(--text-main); cursor: pointer; box-shadow: 0 8px 22px rgba(0,0,0,.16); transition: .2s; }
+.advertisement-list-button:hover { color: var(--accent); transform: translateY(-1px); }
+.advertisement-list-overlay { position: absolute; z-index: 10; inset: 0; padding: 28px; display: flex; align-items: flex-end; background: rgba(15,19,21,.65); opacity: 0; visibility: hidden; transition: .25s; }
+.advertisement-list-overlay.is-open { opacity: 1; visibility: visible; }
+.advertisement-list-panel { width: 100%; max-height: 82%; padding: 20px; border-radius: var(--radius-lg); background: rgba(255,255,255,.97); color: var(--text-main); box-shadow: var(--shadow-lg); transform: translateY(20px); transition: .25s; }
+.advertisement-list-overlay.is-open .advertisement-list-panel { transform: translateY(0); }
+.advertisement-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.advertisement-list-close { width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--bg-sub); cursor: pointer; }
+.advertisement-list-items { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; overflow-y: auto; }
+.advertisement-list-item { min-width: 0; padding: 8px; border: 2px solid transparent; border-radius: var(--radius-md); background: var(--bg-sub); cursor: pointer; text-align: left; transition: .2s; }
+.advertisement-list-item.is-selected { border-color: var(--accent); background: var(--accent-soft); }
+.advertisement-list-item img { width: 100%; height: 72px; border-radius: var(--radius-sm); object-fit: cover; display: block; margin-bottom: 8px; }
+.advertisement-list-item span { display: block; padding: 0 3px 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 700; }
 .home-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
 .modern-card { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
 .salon-card-image { width: 100%; height: 220px; object-fit: cover; }
@@ -292,3 +322,21 @@ body {
 .res-meta-item { display: flex; flex-direction: column; gap: 4px; }
 .res-meta-item span { font-size: 12px; color: var(--text-light); font-weight: 600; }
 .res-meta-item strong { font-size: 15px; color: var(--text-main); font-weight: 600; }
+
+@media (max-width: 760px) {
+  .advertisement-slider { height: 280px; border-radius: var(--radius-md); margin-bottom: 28px; }
+  .advertisement-slide-copy { left: 24px; top: 30px; width: calc(100% - 48px); }
+  .advertisement-slide-copy h1 { font-size: 25px; margin-bottom: 9px; }
+  .advertisement-slide-copy p { font-size: 13px; line-height: 1.5; max-width: 90%; }
+  .advertisement-slide-overlay { background: linear-gradient(90deg, rgba(12,16,18,.84), rgba(12,16,18,.4) 75%, rgba(12,16,18,.18)); }
+  .advertisement-controls { left: 24px; bottom: 22px; }
+  .advertisement-pager { height: 38px; }
+  .advertisement-arrow { width: 32px; height: 32px; }
+  .advertisement-counter { min-width: 58px; padding: 0 8px; }
+  .advertisement-list-button { width: 38px; height: 38px; }
+  .advertisement-list-overlay { padding: 14px; }
+  .advertisement-list-panel { padding: 15px; max-height: 88%; }
+  .advertisement-list-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .advertisement-list-item img { height: 58px; }
+  .home-grid { grid-template-columns: 1fr; gap: 20px; }
+}

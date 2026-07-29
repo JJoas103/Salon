@@ -21,10 +21,55 @@
 
     <div class="app-container">
         <main class="app-content">
-            <div class="hero-section">
-                <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">나만을 위한 맞춤형 헤어 솔루션</h1>
-                <p style="font-size: 16px; color: var(--text-light); line-height: 1.6;">2026년 트렌드 스타일 분석부터 간편한 결제 및 실시간 예약 조율까지 한번에 경험해 보세요.</p>
-            </div>
+            <c:choose>
+                <c:when test="${not empty advertisements}">
+                    <section class="advertisement-slider" id="advertisementSlider"
+                             aria-roledescription="carousel" aria-label="프로모션 광고">
+                        <div class="advertisement-slides">
+                            <c:forEach var="ad" items="${advertisements}" varStatus="status">
+                                <article class="advertisement-slide ${status.first ? 'is-active' : ''}"
+                                         data-index="${status.index}"
+                                         data-target="<c:out value='${ad.targetUrl}'/>"
+                                         aria-hidden="${status.first ? 'false' : 'true'}">
+                                    <img src="<c:url value='${ad.imageUrl}'/>" alt="">
+                                    <div class="advertisement-slide-overlay"></div>
+                                    <div class="advertisement-slide-copy">
+                                        <h1><c:out value="${ad.title}"/></h1>
+                                        <c:if test="${not empty ad.description}"><p><c:out value="${ad.description}"/></p></c:if>
+                                    </div>
+                                </article>
+                            </c:forEach>
+                        </div>
+                        <div class="advertisement-controls">
+                            <div class="advertisement-pager">
+                                <button type="button" class="advertisement-arrow advertisement-prev" aria-label="이전 광고"><i class="fas fa-chevron-left"></i></button>
+                                <span class="advertisement-counter"><strong id="advertisementCurrent">1</strong><span>/</span><span id="advertisementTotal">${advertisements.size()}</span></span>
+                                <button type="button" class="advertisement-arrow advertisement-next" aria-label="다음 광고"><i class="fas fa-chevron-right"></i></button>
+                            </div>
+                            <button type="button" class="advertisement-list-button" aria-label="전체 광고 목록 열기" aria-expanded="false"><i class="fas fa-bars"></i></button>
+                        </div>
+                        <div class="advertisement-list-overlay" aria-hidden="true">
+                            <div class="advertisement-list-panel" role="dialog" aria-modal="true" aria-label="전체 광고 목록">
+                                <div class="advertisement-list-header"><strong>전체 프로모션</strong><button type="button" class="advertisement-list-close" aria-label="목록 닫기"><i class="fas fa-times"></i></button></div>
+                                <div class="advertisement-list-items">
+                                    <c:forEach var="ad" items="${advertisements}" varStatus="status">
+                                        <button type="button" class="advertisement-list-item ${status.first ? 'is-selected' : ''}" data-index="${status.index}">
+                                            <img src="<c:url value='${ad.imageUrl}'/>" alt="">
+                                            <span><c:out value="${ad.title}"/></span>
+                                        </button>
+                                    </c:forEach>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </c:when>
+                <c:otherwise>
+                    <div class="hero-section">
+                        <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">나만을 위한 맞춤형 헤어 솔루션</h1>
+                        <p style="font-size: 16px; color: var(--text-light); line-height: 1.6;">2026년 트렌드 스타일 분석부터 간편한 결제 및 실시간 예약 조율까지 한번에 경험해 보세요.</p>
+                    </div>
+                </c:otherwise>
+            </c:choose>
             <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 20px;">인기 급상승 헤어샵 추천</h2>
             <div class="home-grid">
                 <c:forEach var="salon" items="${salons}">
@@ -61,5 +106,115 @@
                 </c:forEach>
             </div>        </main>
     </div>
+<script>
+(function () {
+    const slider = document.getElementById('advertisementSlider');
+    if (!slider) return;
+
+    const slides = Array.from(slider.querySelectorAll('.advertisement-slide'));
+    const listItems = Array.from(slider.querySelectorAll('.advertisement-list-item'));
+    const previousButton = slider.querySelector('.advertisement-prev');
+    const nextButton = slider.querySelector('.advertisement-next');
+    const listButton = slider.querySelector('.advertisement-list-button');
+    const listOverlay = slider.querySelector('.advertisement-list-overlay');
+    const closeButton = slider.querySelector('.advertisement-list-close');
+    const currentLabel = document.getElementById('advertisementCurrent');
+    let currentIndex = 0;
+    let timer = null;
+    let paused = false;
+
+    function showSlide(index) {
+        currentIndex = (index + slides.length) % slides.length;
+        slides.forEach(function (slide, slideIndex) {
+            const active = slideIndex === currentIndex;
+            slide.classList.toggle('is-active', active);
+            slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+        });
+        listItems.forEach(function (item, itemIndex) {
+            item.classList.toggle('is-selected', itemIndex === currentIndex);
+        });
+        currentLabel.textContent = String(currentIndex + 1);
+    }
+
+    function stopAutoPlay() {
+        if (timer) window.clearInterval(timer);
+        timer = null;
+    }
+
+    function startAutoPlay() {
+        stopAutoPlay();
+        if (slides.length > 1 && !paused && !listOverlay.classList.contains('is-open')) {
+            timer = window.setInterval(function () { showSlide(currentIndex + 1); }, 5000);
+        }
+    }
+
+    function moveTo(index) {
+        showSlide(index);
+        startAutoPlay();
+    }
+
+    function openList() {
+        paused = true;
+        stopAutoPlay();
+        listOverlay.classList.add('is-open');
+        listOverlay.setAttribute('aria-hidden', 'false');
+        listButton.setAttribute('aria-expanded', 'true');
+        closeButton.focus();
+    }
+
+    function closeList() {
+        listOverlay.classList.remove('is-open');
+        listOverlay.setAttribute('aria-hidden', 'true');
+        listButton.setAttribute('aria-expanded', 'false');
+        paused = false;
+        listButton.focus();
+        startAutoPlay();
+    }
+
+    previousButton.addEventListener('click', function () { moveTo(currentIndex - 1); });
+    nextButton.addEventListener('click', function () { moveTo(currentIndex + 1); });
+    listButton.addEventListener('click', openList);
+    closeButton.addEventListener('click', closeList);
+    listOverlay.addEventListener('click', function (event) { if (event.target === listOverlay) closeList(); });
+    listItems.forEach(function (item) {
+        item.addEventListener('click', function () {
+            showSlide(Number(item.dataset.index));
+            closeList();
+        });
+    });
+    slides.forEach(function (slide) {
+        slide.addEventListener('click', function () {
+            const target = slide.dataset.target;
+            if (target) {
+                window.open(target, '_blank', 'noopener,noreferrer');
+            }
+        });
+    });
+    slider.addEventListener('mouseenter', function () { paused = true; stopAutoPlay(); });
+    slider.addEventListener('mouseleave', function () { paused = false; startAutoPlay(); });
+    slider.addEventListener('focusin', function () { paused = true; stopAutoPlay(); });
+    slider.addEventListener('focusout', function (event) {
+        if (!slider.contains(event.relatedTarget) && !listOverlay.classList.contains('is-open')) {
+            paused = false;
+            startAutoPlay();
+        }
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && listOverlay.classList.contains('is-open')) {
+            closeList();
+        } else if (!listOverlay.classList.contains('is-open') && event.key === 'ArrowLeft') {
+            moveTo(currentIndex - 1);
+        } else if (!listOverlay.classList.contains('is-open') && event.key === 'ArrowRight') {
+            moveTo(currentIndex + 1);
+        }
+    });
+
+    if (slides.length === 1) {
+        previousButton.disabled = true;
+        nextButton.disabled = true;
+    }
+    startAutoPlay();
+}());
+</script>
 </body>
 </html>
