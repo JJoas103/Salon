@@ -13,8 +13,9 @@ public class UserVO {
     private String userType; // 사용자 유형: customer/owner/admin (user_type)
     private String createdAt; // 생성일시 (created_at)
     private String updatedAt; // 수정일시 (updated_at)
+    private String deletedAt; // 삭제일시 (deleted_at)
     private String confirmPassword; // 비밀번호 확인용 (DB 미저장, 폼 검증 전용)
-
+    
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
     public String getEmail() { return email; }
@@ -31,6 +32,8 @@ public class UserVO {
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public String getDeletedAt() { return deletedAt; }
+    public void setDeletedAt(String deletedAt) { this.deletedAt = deletedAt; }
     public String getConfirmPassword() { return confirmPassword; }
     public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
 }

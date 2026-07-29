@@ -20,7 +20,12 @@ CREATE TABLE post_likes (
 );
 
 -- ------------salons 테이블 위도, 경도 추가 --------------
-ALTER TABLE salons
+ALTER TABLE Salons
     add column latitude decimal(10, 7),  -- 위도
     add column longitude decimal(10, 7); -- 경도
     
+
+-- ------------ 회원 탈퇴 컬럼 추가 --------------
+ALTER TABLE Users
+    add column deleted_at 
+    DATETIME NULL DEFAULT NULL after updated_at;
