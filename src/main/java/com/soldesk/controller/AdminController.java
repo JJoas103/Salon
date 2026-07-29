@@ -89,8 +89,7 @@ public class AdminController {
     }
 
     @GetMapping("/banners")
-    public String banners(Authentication authentication, Model model) {
-        model.addAttribute("user", userService.getUser(authentication.getName()));
-        return "admin/banners";
+    public String banners() {
+        return "redirect:/admin/advertisements";
     }
 }

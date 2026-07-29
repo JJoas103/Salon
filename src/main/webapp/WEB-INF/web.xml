@@ -31,7 +31,8 @@
         <load-on-startup>1</load-on-startup>
         <multipart-config>
             <max-file-size>5242880</max-file-size>
-            <max-request-size>5242880</max-request-size>
+            <!-- multipart 경계/폼 필드 오버헤드는 허용하되 개별 파일은 5MB로 제한 -->
+            <max-request-size>6291456</max-request-size>
         </multipart-config>
     </servlet>
     <servlet-mapping>
