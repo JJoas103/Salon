@@ -5,13 +5,25 @@
 <aside class="sidebar">
   <div class="sidebar-brand"><i class="fas fa-scissors" style="color: var(--accent);"></i><span>HAIR RESERVE</span></div>
   <ul class="sidebar-menu">
-    <li class="sidebar-item ${menu == 'home' ? 'active' : ''}"><a href="<c:url value='/'/>"><i class="fas fa-home"></i> 홈 메인</a></li>
-    <li class="sidebar-item ${menu == 'search' ? 'active' : ''}"><a href="<c:url value='/search'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
-    <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}"><a href="<c:url value='/chat'/>"><i class="fas fa-comments"></i> 1:1 상담 채팅</a></li>
-    <li class="sidebar-item ${menu == 'community' ? 'active' : ''}"><a href="<c:url value='/community'/>"><i class="fas fa-users"></i> 스타일 커뮤니티</a></li>
-    <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}"><a href="<c:url value='/reserve/info?category=1'/>"><i class="fas fa-calendar-alt"></i> 예약 내역</a></li>
-    <li class="sidebar-item ${menu == 'mypage' ? 'active' : ''}"><a href="<c:url value='/mypage'/>"><i class="fas fa-user"></i> 마이페이지</a></li>
-  </ul>
+  <li class="sidebar-item ${menu == 'store' ? 'active' : ''}">
+    <a href="<c:url value='/owner/store'/>"><i class="fas fa-store"></i> 매장정보 관리</a>
+  </li>
+  <li class="sidebar-item ${menu == 'staff' ? 'active' : ''}">
+    <a href="<c:url value='/owner/staff'/>"><i class="fas fa-users"></i> 직원관리</a>
+  </li>
+  <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}">
+    <a href="<c:url value='/owner/reservations'/>"><i class="fas fa-calendar-check"></i> 예약현황관리</a>
+  </li>
+  <li class="sidebar-item ${menu == 'events' ? 'active' : ''}">
+    <a href="<c:url value='/owner/events'/>"><i class="fas fa-bullhorn"></i> 이벤트/공지사항</a>
+  </li>
+  <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}">
+    <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담</a>
+  </li>
+  <li class="sidebar-item ${menu == 'mypage' ? 'active' : ''}">
+    <a href="<c:url value='/owner/mypage'/>"><i class="fas fa-user"></i> 마이페이지</a>
+  </li>
+</ul>
   <div class="sidebar-footer">
     <a href="<c:url value='/user/logout'/>" class="sidebar-item-logout"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
   </div>

@@ -71,7 +71,8 @@
         FROM Salons
         WHERE owner_id = #{ownerId}
         LIMIT 1
-        
+    </select>
+    
     <!-- 미용실 이름 / 주소 부분일치 검색.
          WHERE 는 GROUP BY 보다 앞에 와야 한다 (FROM → WHERE → GROUP BY → ORDER BY).
          집계(MIN)가 아니라 Salons 컬럼으로 거르는 조건이라 WHERE 가 맞다. HAVING 이 아니다. -->
