@@ -22,6 +22,14 @@
         ORDER BY c.created_at ASC
     </select>
 
+    <select id="findById" parameterType="int" resultMap="commentResultMap">
+        SELECT c.comment_id, c.post_id, c.user_id, c.content, c.created_at, c.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name
+        FROM Comments c
+        LEFT JOIN Users u ON c.user_id = u.user_id
+        WHERE c.comment_id = #{commentId}
+    </select>
+
     <insert id="insert" parameterType="com.soldesk.vo.CommentVO"
             useGeneratedKeys="true" keyProperty="commentId">
         INSERT INTO Comments (post_id, user_id, content)
