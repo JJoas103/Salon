@@ -55,6 +55,27 @@ body {
 .salon-card-image { width: 100%; height: 220px; object-fit: cover; }
 .salon-card-body { padding: 24px; }
 .rating-badge { display: flex; align-items: center; gap: 4px; color: #FFB800; font-weight: 700; font-size: 14px; }
+.salon-recommendation-header { position: relative; z-index: 12; display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+.salon-recommendation-header h2 { color: var(--text-main); font-size: 20px; font-weight: 700; }
+.salon-category-selector { position: relative; display: flex; align-items: center; gap: 10px; }
+.salon-category-current { color: var(--text-main); font-size: 15px; font-weight: 700; }
+.salon-category-button { width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 50%; background: var(--white); color: var(--text-main); cursor: pointer; box-shadow: var(--shadow); transition: .2s; }
+.salon-category-button:hover, .salon-category-button[aria-expanded="true"] { border-color: var(--primary); background: var(--bg-sub); }
+.salon-category-menu { position: absolute; z-index: 20; top: calc(100% + 10px); right: 0; width: 170px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--white); box-shadow: var(--shadow-lg); opacity: 0; visibility: hidden; transform: translateY(-6px); transition: .2s; }
+.salon-category-menu.is-open { opacity: 1; visibility: visible; transform: translateY(0); }
+.salon-category-menu button { width: 100%; padding: 11px 13px; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--text-main); font-family: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.salon-category-menu button:hover { background: var(--bg-sub); }
+.salon-category-menu button.is-selected { background: var(--accent-soft); color: var(--text-main); }
+.salon-category-message { min-height: 18px; margin: -12px 0 14px; color: var(--text-sub); font-size: 12px; text-align: right; }
+
+@media (max-width: 760px) {
+  .salon-recommendation-header { align-items: flex-start; gap: 12px; }
+  .salon-recommendation-header h2 { font-size: 18px; line-height: 1.4; }
+  .salon-category-current { font-size: 13px; white-space: nowrap; }
+  .salon-category-button { width: 38px; height: 38px; }
+  .salon-category-menu { width: 150px; }
+  .salon-category-message { text-align: left; }
+}
 
 /* ---- search (.search-page 스코프: 카드 패딩 필요) ---- */
 .search-layout { display: grid; grid-template-columns: 1fr 450px; gap: 30px; }
