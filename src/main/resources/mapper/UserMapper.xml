@@ -13,6 +13,7 @@
         <result column="user_type"    property="userType" />
         <result column="created_at"   property="createdAt" />
         <result column="updated_at"   property="updatedAt" />
+        <result column="deleted_at"   property="deletedAt" />
     </resultMap>
 
     <!-- 회원가입 -->
@@ -27,6 +28,13 @@
         select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at
         from Users
         where email = #{email}
+    </select>
+
+    <!-- user_id(PK)로 회원 조회 (탈퇴/강등 처리 전 최신 상태 재확인용) -->
+    <select id="findById" parameterType="int" resultMap="userResultMap">
+        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at
+        from Users
+        where user_id = #{userId}
     </select>
 
     <!-- 이메일 중복 개수 -->
@@ -48,4 +56,85 @@
         select count(*) from Users
     </select>
 
+    <!-- 회원 목록: 이름/이메일 부분검색 + 유형(user role) 필터 + 활성/탈퇴 상태, 전부 선택사항 + 페이지네이션 -->
+    <select id="findMembers" resultMap="userResultMap">
+        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at
+        from Users
+        where 1=1
+        <choose>
+            <when test="status == 'deleted'">
+                and deleted_at is not null
+            </when>
+            <otherwise>
+                and deleted_at is null
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            and (user_name like concat('%', #{keyword}, '%') or email like concat('%', #{keyword}, '%'))
+        </if>
+        <if test="userType != null and userType != ''">
+            and user_type = #{userType}
+        </if>
+        order by user_id desc
+        limit #{offset}, #{size}
+    </select>
+
+    <!-- findMembers와 동일한 검색조건의 총 건수 (페이지네이션 총 페이지 수 계산용) -->
+    <select id="countMembers" resultType="int">
+        select count(*) from Users
+        where 1=1
+        <choose>
+            <when test="status == 'deleted'">
+                and deleted_at is not null
+            </when>
+            <otherwise>
+                and deleted_at is null
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            and (user_name like concat('%', #{keyword}, '%') or email like concat('%', #{keyword}, '%'))
+        </if>
+        <if test="userType != null and userType != ''">
+            and user_type = #{userType}
+        </if>
+    </select>
+
+    <!-- 관리자 회원관리 대시보드 통계 카드용 -->
+    <select id="countActiveMembers" resultType="int">
+        select count(*) from Users where deleted_at is null
+    </select>
+
+    <select id="countNewMembersThisMonth" resultType="int">
+        select count(*) from Users
+        where deleted_at is null
+          and created_at >= date_format(now(), '%Y-%m-01')
+    </select>
+
+    <select id="countDeletedMembers" resultType="int">
+        select count(*) from Users where deleted_at is not null
+    </select>
+
+    <!-- 점주/관리자 → 일반회원 강등 (탈퇴 전 선행) -->
+    <update id="demoteToCustomer" parameterType="int">
+        update Users
+        set user_type = 'customer'
+        where user_id = #{userId}
+    </update>
+
+    <!-- 회원 탈퇴: customer만 대상, 이미 탈퇴된 회원 재처리 방지 -->
+    <update id="softDeleteById" parameterType="int">
+        update Users
+        set deleted_at = NOW()
+        where user_id = #{userId}
+          and deleted_at is null
+          and user_type = 'customer'
+    </update>
+
+    <!-- 회원 제거 -->
+    <delete id="deleteById" parameterType="int" >
+        delete 
+        from Users
+        where user_id = #{userId}
+    </delete>
+        
 </mapper>

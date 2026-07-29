@@ -29,10 +29,17 @@
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
-        ORDER BY p.created_at DESC
+        <choose>
+            <when test="sort == 'recommend'">
+                ORDER BY p.like_count DESC, p.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY p.created_at DESC
+            </otherwise>
+        </choose>
     </select>
 
-    <select id="findByCategory" parameterType="String" resultMap="postResultMap">
+    <select id="findByCategory" resultMap="postResultMap">
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
                p.created_at, p.updated_at,
@@ -42,7 +49,14 @@
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
         WHERE p.category = #{category}
-        ORDER BY p.created_at DESC
+        <choose>
+            <when test="sort == 'recommend'">
+                ORDER BY p.like_count DESC, p.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY p.created_at DESC
+            </otherwise>
+        </choose>
     </select>
 
     <select id="findById" parameterType="int" resultMap="postResultMap">
@@ -55,19 +69,6 @@
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
         WHERE p.post_id = #{postId}
-    </select>
-
-    <select id="findPopular" resultMap="postResultMap">
-        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
-               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
-               p.created_at, p.updated_at,
-               COALESCE(u.user_name, '익명') AS author_name,
-               s.salon_name AS salon_name
-        FROM Posts p
-        LEFT JOIN Users u ON p.user_id = u.user_id
-        LEFT JOIN Salons s ON p.salon_id = s.salon_id
-        ORDER BY p.like_count DESC, p.view_count DESC
-        LIMIT 50
     </select>
 
     <insert id="insert" parameterType="com.soldesk.vo.PostVO"
@@ -142,7 +143,14 @@
                 (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
             </otherwise>
         </choose>
-        ORDER BY p.created_at DESC
+        <choose>
+            <when test="sort == 'recommend'">
+                ORDER BY p.like_count DESC, p.created_at DESC
+            </when>
+            <otherwise>
+                ORDER BY p.created_at DESC
+            </otherwise>
+        </choose>
     </select>
 
 </mapper>

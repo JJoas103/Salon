@@ -169,11 +169,19 @@ body {
 .post-search-result { padding: 8px 24px 0; font-size: 13px; color: var(--text-sub); }
 .post-search-result strong { color: var(--accent); }
 
+/* ---- community: 카테고리 탭 + 정렬 토글을 한 줄에 배치 ---- */
+.tabs-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding: 14px 24px 0; }
+
 /* ---- community: 카테고리 탭 ---- */
-.category-tabs { display: flex; gap: 8px; padding: 14px 24px 0; flex-wrap: wrap; }
+.category-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
 .category-tabs.is-disabled { opacity: .4; pointer-events: none; }
 .cat-tab { padding: 8px 18px; border-radius: var(--radius-full); font-size: 13px; font-weight: 600; text-decoration: none; border: 1.5px solid var(--border); color: var(--text-sub); background: var(--white); transition: all .15s; white-space: nowrap; }
 .cat-tab:hover, .cat-tab.active { background: var(--accent); color: var(--white); border-color: var(--accent); }
+
+/* ---- community: 정렬 토글 (최신순/추천순) ---- */
+.sort-toggle { display: flex; gap: 8px; justify-content: flex-end; }
+.sort-tab { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border-radius: var(--radius-full); font-size: 12px; font-weight: 600; text-decoration: none; border: 1px solid transparent; color: var(--text-sub); background: var(--bg-sub); transition: all .15s; white-space: nowrap; }
+.sort-tab:hover, .sort-tab.active { background: var(--like); color: var(--white); }
 
 /* ---- community: 게시글 카드 목록 ---- */
 .post-card-list { padding: 14px 24px 24px; display: flex; flex-direction: column; gap: 12px; }
@@ -181,6 +189,7 @@ body {
 .post-card:hover { box-shadow: var(--shadow); border-color: var(--accent); }
 .post-card-body { flex: 1; min-width: 0; }
 .post-card-category { background: var(--accent-soft); color: var(--accent); padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; display: inline-block; margin-bottom: 8px; }
+.hot-badge { background: var(--danger-soft); color: var(--danger); padding: 3px 10px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; display: inline-block; margin-bottom: 8px; margin-left: 6px; }
 .post-card-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .post-card-preview { font-size: 13px; color: var(--text-sub); margin-bottom: 12px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.6; }
 .post-card-meta { display: flex; gap: 14px; font-size: 12px; color: var(--text-light); align-items: center; flex-wrap: wrap; }
@@ -190,15 +199,6 @@ body {
 .meta-like { color: var(--like); font-weight: 600; }
 .meta-dislike { color: var(--dislike); font-weight: 600; }
 .meta-salon { color: var(--accent); font-weight: 600; }
-
-/* ---- community: 인기글 (순위 뱃지) ---- */
-.post-card-list.ranked .post-card { position: relative; }
-.post-card-list.ranked .post-card-body { padding-left: 20px; }
-.post-card-list.ranked .meta-like, .post-card-list.ranked .meta-dislike { font-weight: 700; }
-.rank-badge { position: absolute; top: 16px; left: -4px; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: var(--white); font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0, 0, 0, .15); }
-.rank-badge.top1 { background: #e8b800; }
-.rank-badge.top2 { background: #9e9e9e; }
-.rank-badge.top3 { background: #b06a2e; }
 
 /* ---- community: 빈 상태 ---- */
 .empty-state { text-align: center; padding: 80px 0; color: var(--text-light); }

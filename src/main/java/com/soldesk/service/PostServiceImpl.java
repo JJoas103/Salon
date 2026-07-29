@@ -9,6 +9,7 @@ import com.soldesk.vo.PostLikeVO;
 import com.soldesk.vo.PostVO;
 import com.soldesk.vo.SalonVO;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,11 +36,11 @@ public class PostServiceImpl implements PostService {
     private FileService fileService;
 
     @Override
-    public List<PostVO> getPostList(String category) {
+    public List<PostVO> getPostList(String category, String sort) {
         if (category == null || category.isEmpty()) {
-            return postMapper.findAll();
+            return postMapper.findAll(sort);
         }
-        return postMapper.findByCategory(category);
+        return postMapper.findByCategory(category, sort);
     }
 
     @Override
@@ -63,7 +64,11 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void editPost(PostVO post, MultipartFile imageFile) throws IOException {
+    public void editPost(PostVO post, MultipartFile imageFile, int userId) throws IOException {
+        PostVO existing = postMapper.findById(post.getPostId());
+        if (existing == null || existing.getUserId() != userId) {
+            throw new AccessDeniedException("본인이 작성한 글만 수정할 수 있습니다.");
+        }
         // 새 이미지가 올라온 경우에만 교체. 아니면 hidden 필드로 넘어온 기존 파일명 유지
         String newImage = fileService.saveFile(imageFile);
         if (newImage != null) {
@@ -77,13 +82,14 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void removePost(int postId) {
+    public void removePost(int postId, int userId) {
         PostVO post = postMapper.findById(postId);
+        if (post == null || post.getUserId() != userId) {
+            throw new AccessDeniedException("본인이 작성한 글만 삭제할 수 있습니다.");
+        }
         commentMapper.deleteByPostId(postId);
         postMapper.delete(postId);
-        if (post != null) {
-            fileService.deleteFile(post.getImageUrl());
-        }
+        fileService.deleteFile(post.getImageUrl());
     }
 
     @Override
@@ -99,7 +105,11 @@ public class PostServiceImpl implements PostService {
 
     @Override
     @Transactional
-    public void removeComment(int commentId) {
+    public void removeComment(int commentId, int userId) {
+        CommentVO comment = commentMapper.findById(commentId);
+        if (comment == null || comment.getUserId() != userId) {
+            throw new AccessDeniedException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+        }
         commentMapper.delete(commentId);
     }
 
@@ -139,12 +149,7 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostVO> getPopularPosts() {
-        return postMapper.findPopular();
-    }
-
-    @Override
-    public List<PostVO> searchPosts(String searchType, String keyword) {
-        return postMapper.search(searchType, "%" + keyword + "%");
+    public List<PostVO> searchPosts(String searchType, String keyword, String sort) {
+        return postMapper.search(searchType, "%" + keyword + "%", sort);
     }
 }

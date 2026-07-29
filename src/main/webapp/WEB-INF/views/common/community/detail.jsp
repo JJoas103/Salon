@@ -36,14 +36,16 @@
             </c:if>
             <div class="detail-title-row">
               <h1><c:out value="${selectedPost.title}" /></h1>
-              <div class="detail-actions">
-                <a href="${ctx}/common/community/${selectedPost.postId}/edit"
-                   class="btn-modern btn-outline btn-sm">수정</a>
-                <form action="${ctx}/common/community/${selectedPost.postId}/delete" method="post"
-                      onsubmit="return confirm('정말 삭제하시겠습니까?')" class="inline-form">
-                  <button type="submit" class="btn-modern btn-danger btn-sm">삭제</button>
-                </form>
-              </div>
+              <c:if test="${selectedPost.userId == currentUserId}">
+                <div class="detail-actions">
+                  <a href="${ctx}/common/community/${selectedPost.postId}/edit"
+                     class="btn-modern btn-outline btn-sm">수정</a>
+                  <form action="${ctx}/common/community/${selectedPost.postId}/delete" method="post"
+                        onsubmit="return confirm('정말 삭제하시겠습니까?')" class="inline-form">
+                    <button type="submit" class="btn-modern btn-danger btn-sm">삭제</button>
+                  </form>
+                </div>
+              </c:if>
             </div>
             <div class="detail-meta">
               <span><i class="fas fa-user-circle"></i> <c:out value="${selectedPost.authorName}" /></span>
@@ -98,14 +100,16 @@
                     <c:out value="${comment.authorName}" />
                     &nbsp;·&nbsp; ${fn:substring(comment.createdAt, 0, 16)}
                   </span>
-                  <form action="${ctx}/common/community/${selectedPost.postId}/comment/${comment.commentId}/delete"
-                        method="post"
-                        onsubmit="return confirm('댓글을 삭제하시겠습니까?')"
-                        class="inline-form">
-                    <button type="submit" class="comment-delete-btn">
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </form>
+                  <c:if test="${comment.userId == currentUserId}">
+                    <form action="${ctx}/common/community/${selectedPost.postId}/comment/${comment.commentId}/delete"
+                          method="post"
+                          onsubmit="return confirm('댓글을 삭제하시겠습니까?')"
+                          class="inline-form">
+                      <button type="submit" class="comment-delete-btn">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </c:if>
                 </div>
                 <p class="comment-content"><c:out value="${comment.content}" /></p>
               </div>

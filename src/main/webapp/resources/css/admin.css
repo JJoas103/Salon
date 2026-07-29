@@ -72,3 +72,29 @@ body {
 
 /* ---- banners ---- */
 .banner-preview { width: 100%; height: 120px; background: #eee; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 13px; }
+
+/* ---- community: 커뮤니티 / 신고접수 2대 섹션 (세그먼트 컨트롤) ---- */
+.section-switch { display: inline-flex; gap: 4px; margin-bottom: 22px; background: var(--white); padding: 6px; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.section-btn { padding: 10px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 700; color: var(--text-main); cursor: pointer; border: none; background: none; display: flex; align-items: center; gap: 9px; transition: background 0.15s ease, color 0.15s ease; }
+.section-btn:hover:not(.on) { background: var(--bg-sub); }
+.section-btn.on { background: #6C5CE7; color: #fff; box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3); }
+.section-btn .cnt { font-size: 10.5px; font-weight: 800; background: #eb4d4b; color: #fff; padding: 1px 7px; border-radius: var(--radius-full); }
+.section-btn.on .cnt { background: rgba(255, 255, 255, 0.9); color: #6C5CE7; }
+.section-view { display: none; }
+.section-view.on { display: block; }
+
+/* ---- community: 카테고리 탭 (일반 사용자 게시판과 같은 느낌) ---- */
+.cat-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.cat-tab { padding: 7px 16px; border-radius: var(--radius-full); font-size: 12.5px; font-weight: 600; border: 1.5px solid var(--border); color: var(--text-sub); background: var(--white); cursor: pointer; }
+.cat-tab.on { background: var(--primary); color: var(--white); border-color: var(--primary); }
+
+/* ---- 신고접수: 게시글 신고 / 유저 신고 하위 탭 (세그먼트 컨트롤, section-switch와 같은 계열) ---- */
+.subtab-row { display: inline-flex; gap: 4px; margin-bottom: 18px; background: var(--white); padding: 5px; border-radius: 12px; border: 1px solid var(--border); }
+.subtab { padding: 8px 18px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: none; background: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.15s ease, color 0.15s ease; }
+.subtab:hover:not(.on) { background: var(--bg-sub); }
+.subtab.on { background: #6C5CE7; color: #fff; }
+.subtab .cnt { font-size: 10.5px; font-weight: 800; background: var(--bg-sub); color: var(--text-sub); padding: 1px 6px; border-radius: var(--radius-full); }
+.subtab.on .cnt { background: rgba(255, 255, 255, 0.9); color: #6C5CE7; }
+.report-view { display: none; }
+.report-view.on { display: block; }
+.reason-chip { font-size: 11px; color: #eb4d4b; font-weight: 700; }

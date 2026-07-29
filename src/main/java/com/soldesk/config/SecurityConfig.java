@@ -38,7 +38,16 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/user/join"),
                     new AntPathRequestMatcher("/user/check-email"),
                     new AntPathRequestMatcher("/resources/**"),
-                    new AntPathRequestMatcher("/upload/**")
+                    new AntPathRequestMatcher("/upload/**"),
+                    new AntPathRequestMatcher("/reserve/info"),
+                    new AntPathRequestMatcher("/common/mypage"),
+                    new AntPathRequestMatcher("/common/mypage/**"),
+                    new AntPathRequestMatcher("/common/community/write"),
+                    new AntPathRequestMatcher("/common/community/*/edit"),
+                    new AntPathRequestMatcher("/common/community/*/delete"),
+                    new AntPathRequestMatcher("/common/community/*/comment"),
+                    new AntPathRequestMatcher("/common/community/*/comment/*/delete"),
+                    new AntPathRequestMatcher("/common/community/*/react")
                 ).permitAll()
                 .anyRequest().authenticated())
             .formLogin(form -> form
