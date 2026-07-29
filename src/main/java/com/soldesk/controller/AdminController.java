@@ -18,32 +18,30 @@ public class AdminController {
 
     @GetMapping("/home")
     public String home() {
-        return "redirect:/admin/mypage";
-    }
-
-    @GetMapping("/mypage")
-    public String mypage(Authentication authentication, Model model){
-        model.addAttribute("user", userService.getUser(authentication.getName()));
-        return "admin/mypage";
+        return "redirect:/admin/salons";
     }
 
     @GetMapping("/salons")
-    public String salons() {
+    public String salons(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/salons";
     }
 
     @GetMapping("/members")
-    public String members() {
+    public String members(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/members";
     }
 
     @GetMapping("/community")
-    public String community() {
+    public String community(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/community";
     }
 
     @GetMapping("/banners")
-    public String banners() {
+    public String banners(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/banners";
     }
 }
