@@ -15,15 +15,18 @@ body {
 }
 
 /* ---- Sidebar (다크 테마) ---- */
-.sidebar { width: 260px; background: #1e272e; color: var(--white); padding: 30px 20px; display: flex; flex-direction: column; height: 100vh; }
-.sidebar-brand { font-size: 20px; font-weight: 900; margin-bottom: 40px; display: flex; align-items: center; gap: 10px; }
-.sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 8px; }
-.sidebar-item a { display: flex; align-items: center; gap: 14px; color: #a4b0be; text-decoration: none; padding: 14px 16px; border-radius: var(--radius-md); font-weight: 500; transition: 0.2s; }
-.sidebar-item:hover a, .sidebar-item.active a { color: var(--white); background: rgba(255, 255, 255, 0.1); }
-.sidebar-item.active a { background: #57606f; font-weight: 600; }
-.sidebar-footer { margin-top: auto; padding-top: 20px; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.sidebar-item-logout { display: flex; align-items: center; gap: 14px; color: #a4b0be; text-decoration: none; padding: 14px 16px; border-radius: var(--radius-md); font-weight: 500; }
-.sidebar-item-logout:hover { color: var(--white); background: rgba(255, 255, 255, 0.1); }
+.sidebar { width: 260px; background: linear-gradient(165deg, #1e272e 0%, #14191d 100%); color: var(--white); padding: 28px 18px; display: flex; flex-direction: column; height: 100vh; }
+.sidebar-brand { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 18px; display: flex; align-items: center; gap: 11px; padding: 4px 8px 22px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
+.sidebar-menu { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+.sidebar-item a { display: flex; align-items: center; gap: 13px; color: rgba(255, 255, 255, 0.56); text-decoration: none; padding: 11px 14px; border-radius: 10px; font-weight: 500; font-size: 14.5px; border-left: 3px solid transparent; transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease; }
+.sidebar-item a i { width: 18px; text-align: center; font-size: 13.5px; color: rgba(255, 255, 255, 0.32); transition: color 0.15s ease; }
+.sidebar-item:hover a { background: rgba(255, 255, 255, 0.045); color: rgba(255, 255, 255, 0.88); }
+.sidebar-item:hover a i { color: rgba(255, 255, 255, 0.6); }
+.sidebar-item.active a { background: rgba(108, 92, 231, 0.18); color: var(--white); font-weight: 700; border-left-color: #6C5CE7; }
+.sidebar-item.active a i { color: #6C5CE7; }
+.sidebar-footer { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
+.sidebar-item-logout { display: flex; align-items: center; gap: 13px; color: rgba(255, 255, 255, 0.5); text-decoration: none; padding: 11px 14px; border-radius: 10px; font-weight: 500; font-size: 14.5px; transition: background 0.15s ease, color 0.15s ease; }
+.sidebar-item-logout:hover { background: rgba(255, 255, 255, 0.045); color: rgba(255, 255, 255, 0.85); }
 
 /* ---- App shell ---- */
 .app-container { flex: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
@@ -69,3 +72,29 @@ body {
 
 /* ---- banners ---- */
 .banner-preview { width: 100%; height: 120px; background: #eee; border-radius: var(--radius-md); margin-bottom: 10px; display: flex; align-items: center; justify-content: center; color: #aaa; font-size: 13px; }
+
+/* ---- community: 커뮤니티 / 신고접수 2대 섹션 (세그먼트 컨트롤) ---- */
+.section-switch { display: inline-flex; gap: 4px; margin-bottom: 22px; background: var(--white); padding: 6px; border-radius: 14px; border: 1px solid var(--border); box-shadow: var(--shadow); }
+.section-btn { padding: 10px 22px; border-radius: 10px; font-size: 13.5px; font-weight: 700; color: var(--text-main); cursor: pointer; border: none; background: none; display: flex; align-items: center; gap: 9px; transition: background 0.15s ease, color 0.15s ease; }
+.section-btn:hover:not(.on) { background: var(--bg-sub); }
+.section-btn.on { background: #6C5CE7; color: #fff; box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3); }
+.section-btn .cnt { font-size: 10.5px; font-weight: 800; background: #eb4d4b; color: #fff; padding: 1px 7px; border-radius: var(--radius-full); }
+.section-btn.on .cnt { background: rgba(255, 255, 255, 0.9); color: #6C5CE7; }
+.section-view { display: none; }
+.section-view.on { display: block; }
+
+/* ---- community: 카테고리 탭 (일반 사용자 게시판과 같은 느낌) ---- */
+.cat-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.cat-tab { padding: 7px 16px; border-radius: var(--radius-full); font-size: 12.5px; font-weight: 600; border: 1.5px solid var(--border); color: var(--text-sub); background: var(--white); cursor: pointer; }
+.cat-tab.on { background: var(--primary); color: var(--white); border-color: var(--primary); }
+
+/* ---- 신고접수: 게시글 신고 / 유저 신고 하위 탭 (세그먼트 컨트롤, section-switch와 같은 계열) ---- */
+.subtab-row { display: inline-flex; gap: 4px; margin-bottom: 18px; background: var(--white); padding: 5px; border-radius: 12px; border: 1px solid var(--border); }
+.subtab { padding: 8px 18px; border-radius: 8px; font-size: 12.5px; font-weight: 700; border: none; background: none; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: background 0.15s ease, color 0.15s ease; }
+.subtab:hover:not(.on) { background: var(--bg-sub); }
+.subtab.on { background: #6C5CE7; color: #fff; }
+.subtab .cnt { font-size: 10.5px; font-weight: 800; background: var(--bg-sub); color: var(--text-sub); padding: 1px 6px; border-radius: var(--radius-full); }
+.subtab.on .cnt { background: rgba(255, 255, 255, 0.9); color: #6C5CE7; }
+.report-view { display: none; }
+.report-view.on { display: block; }
+.reason-chip { font-size: 11px; color: #eb4d4b; font-weight: 700; }

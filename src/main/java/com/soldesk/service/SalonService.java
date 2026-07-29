@@ -35,8 +35,8 @@ public class SalonService {
     }//ID로 시술정보 가져오기
 
     @Transactional(readOnly = true)
-    public SalonVO getSalonByOwner(int ownerId){
-        return salonMapper.findByOwnerId(ownerId);
+    public List<SalonVO> getSalonByOwner(int ownerId){
+        return salonMapper.findAllByOwnerId(ownerId);
     }//점주 소유 매장 조회
 
     @Transactional(readOnly = true)

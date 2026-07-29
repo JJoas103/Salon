@@ -32,7 +32,8 @@ public class AdminController {
     }
 
     @GetMapping("/salons")
-    public String salons() {
+    public String salons(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/salons";
     }
 
@@ -82,12 +83,14 @@ public class AdminController {
     }
 
     @GetMapping("/community")
-    public String community() {
+    public String community(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/community";
     }
 
     @GetMapping("/banners")
-    public String banners() {
+    public String banners(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/banners";
     }
 }
