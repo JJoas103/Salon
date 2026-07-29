@@ -11,6 +11,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
+import com.soldesk.security.AjaxAwareAuthenticationFailureHandler;
 import com.soldesk.security.UserDetailService;
 
 @Configuration
@@ -39,25 +40,20 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/user/check-email"),
                     new AntPathRequestMatcher("/resources/**"),
                     new AntPathRequestMatcher("/upload/**"),
-                    new AntPathRequestMatcher("/reserve/info"),
-                    new AntPathRequestMatcher("/common/mypage"),
-                    new AntPathRequestMatcher("/common/mypage/**"),
-                    new AntPathRequestMatcher("/common/community/write"),
-                    new AntPathRequestMatcher("/common/community/*/edit"),
-                    new AntPathRequestMatcher("/common/community/*/delete"),
-                    new AntPathRequestMatcher("/common/community/*/comment"),
-                    new AntPathRequestMatcher("/common/community/*/comment/*/delete"),
-                    new AntPathRequestMatcher("/common/community/*/react")
+                    new AntPathRequestMatcher("/reserve/info")
                 ).permitAll()
                 .anyRequest().authenticated())
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) ->
+                    response.sendRedirect(request.getContextPath() + "/user/login?required")))
             .formLogin(form -> form
                 .loginPage("/user/login")
                 .loginProcessingUrl("/user/login")
                 .usernameParameter("userEmail")
                 .passwordParameter("userPassword")
                 .defaultSuccessUrl("/", true)
-                .failureUrl("/user/login?error")
-                .permitAll()) 
+                .failureHandler(new AjaxAwareAuthenticationFailureHandler())
+                .permitAll())
             .logout(logout -> logout
                 .logoutUrl("/user/logout")
                 .logoutSuccessUrl("/common/home")
