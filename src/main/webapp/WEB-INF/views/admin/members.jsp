@@ -1,3 +1,7 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -15,28 +19,146 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">회원관리</div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 14px; font-weight: 600;">최고관리자</span>
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;">A</div>
+      <div class="user-badge">
+        <span>${user.userName} 관리자님</span>
+        <div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div>
       </div>
     </header>
     <main class="app-content">
+      <c:if test="${not empty error}">
+        <p class="error-text"><c:out value="${error}" /></p>
+      </c:if>
+
       <div class="stats-grid">
-        <div class="stat-card"><div class="stat-label">총 가입 회원</div><div class="stat-value">15,420명</div></div>
-        <div class="stat-card"><div class="stat-label">신규 가입(이번 달)</div><div class="stat-value">342명</div></div>
-        <div class="stat-card"><div class="stat-label">정지된 회원</div><div class="stat-value">18명</div></div>
+        <div class="stat-card"><div class="stat-label">총 가입 회원</div><div class="stat-value">${activeCount}명</div></div>
+        <div class="stat-card"><div class="stat-label">신규 가입(이번 달)</div><div class="stat-value">${newThisMonthCount}명</div></div>
+        <div class="stat-card"><div class="stat-label">탈퇴 회원</div><div class="stat-value">${deletedCount}명</div></div>
       </div>
+
       <div class="modern-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
           <h3>전체 회원 목록</h3>
-          <button class="btn-modern btn-outline"><i class="fas fa-download"></i> 엑셀 다운로드</button>
         </div>
+
+        <c:url var="activeTabUrl" value="/admin/members">
+          <c:param name="keyword" value="${keyword}"/>
+          <c:param name="userType" value="${userType}"/>
+          <c:param name="size" value="${size}"/>
+        </c:url>
+        <c:url var="deletedTabUrl" value="/admin/members">
+          <c:param name="keyword" value="${keyword}"/>
+          <c:param name="userType" value="${userType}"/>
+          <c:param name="size" value="${size}"/>
+          <c:param name="status" value="deleted"/>
+        </c:url>
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <a href="${activeTabUrl}" class="btn-modern ${status == 'deleted' ? 'btn-outline' : 'btn-primary'}"
+             style="text-decoration: none; ${status == 'deleted' ? 'color: var(--text-main);' : ''}">활성 회원</a>
+          <a href="${deletedTabUrl}" class="btn-modern ${status == 'deleted' ? 'btn-primary' : 'btn-outline'}"
+             style="text-decoration: none; ${status == 'deleted' ? '' : 'color: var(--text-main);'}">탈퇴 회원</a>
+        </div>
+
+        <form action="${ctx}/admin/members" method="get"
+              style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+          <input type="hidden" name="status" value="${status}">
+          <c:if test="${status != 'deleted'}">
+            <select name="userType" class="modern-input" style="width: auto;">
+              <option value="">전체 유형</option>
+              <option value="customer" ${'customer' == userType ? 'selected' : ''}>고객</option>
+              <option value="owner" ${'owner' == userType ? 'selected' : ''}>점주</option>
+              <option value="admin" ${'admin' == userType ? 'selected' : ''}>관리자</option>
+            </select>
+          </c:if>
+          <input type="text" name="keyword" value="${keyword}" class="modern-input"
+                 style="width: auto; flex: 1; min-width: 200px;" placeholder="이름 또는 이메일 검색">
+          <select name="size" class="modern-input" style="width: auto;">
+            <option value="10" ${size == 10 ? 'selected' : ''}>10명</option>
+            <option value="20" ${size == 20 ? 'selected' : ''}>20명</option>
+            <option value="50" ${size == 50 ? 'selected' : ''}>50명</option>
+          </select>
+          <button type="submit" class="btn-modern btn-primary"><i class="fas fa-search"></i> 검색</button>
+          <c:if test="${not empty keyword or not empty userType}">
+            <a href="${ctx}/admin/members" class="btn-modern btn-outline" style="text-decoration: none; color: var(--text-main);">초기화</a>
+          </c:if>
+        </form>
+
+        <p style="color: var(--text-sub); font-size: 13px; margin-bottom: 10px;">
+          총 <strong>${totalCount}</strong>명
+        </p>
+
         <table class="modern-table">
-          <thead><tr><th>회원 ID</th><th>이름</th><th>가입일</th><th>최근 접속</th><th>상태</th><th>관리</th></tr></thead>
+          <thead>
+            <tr><th>이메일</th><th>이름</th><th>전화번호</th><th>유형</th><th>가입일</th><th>관리</th></tr>
+          </thead>
           <tbody>
-            <tr><td>user_001</td><td>김고객</td><td>2025-01-15</td><td>2026-07-08</td><td><span class="status-tag status-active">정상</span></td><td><button class="btn-modern btn-outline">상세</button> <button class="btn-modern btn-danger">차단</button></td></tr>
+            <c:choose>
+              <c:when test="${empty members}">
+                <tr><td colspan="6" style="text-align: center; color: var(--text-sub);">조회된 회원이 없습니다.</td></tr>
+              </c:when>
+              <c:otherwise>
+                <c:forEach var="member" items="${members}">
+                  <tr>
+                    <td><c:out value="${member.email}" /></td>
+                    <td><c:out value="${member.userName}" /></td>
+                    <td><c:out value="${member.phoneNumber}" /></td>
+                    <td>
+                      <span class="tag">
+                        <c:choose>
+                          <c:when test="${member.userType == 'owner'}">점주</c:when>
+                          <c:when test="${member.userType == 'admin'}">관리자</c:when>
+                          <c:otherwise>고객</c:otherwise>
+                        </c:choose>
+                      </span>
+                    </td>
+                    <td>${fn:substring(member.createdAt, 0, 10)}</td>
+                    <td>
+                      <c:choose>
+                        <c:when test="${status == 'deleted'}">
+                          <span class="tag">탈퇴일: ${fn:substring(member.deletedAt, 0, 10)}</span>
+                        </c:when>
+                        <c:when test="${member.userType == 'customer'}">
+                          <form action="${ctx}/admin/members/${member.userId}/withdraw" method="post"
+                                onsubmit="return confirm('이 회원을 탈퇴 처리하시겠습니까?')" style="display: inline;">
+                            <button type="submit" class="btn-modern btn-danger">탈퇴처리</button>
+                          </form>
+                        </c:when>
+                        <c:otherwise>
+                          <form action="${ctx}/admin/members/${member.userId}/demote" method="post"
+                                onsubmit="return confirm('일반회원으로 전환하시겠습니까? 전환 후에 탈퇴 처리가 가능합니다.')"
+                                style="display: inline;">
+                            <button type="submit" class="btn-modern btn-outline">일반회원으로 전환</button>
+                          </form>
+                        </c:otherwise>
+                      </c:choose>
+                    </td>
+                  </tr>
+                </c:forEach>
+              </c:otherwise>
+            </c:choose>
           </tbody>
         </table>
+
+        <c:if test="${totalPages > 1}">
+          <div style="display: flex; justify-content: center; gap: 6px; margin-top: 20px;">
+            <c:forEach begin="1" end="${totalPages}" var="p">
+              <c:url var="pageUrl" value="/admin/members">
+                <c:param name="keyword" value="${keyword}"/>
+                <c:param name="userType" value="${userType}"/>
+                <c:param name="status" value="${status}"/>
+                <c:param name="size" value="${size}"/>
+                <c:param name="page" value="${p}"/>
+              </c:url>
+              <c:choose>
+                <c:when test="${p == page}">
+                  <a href="${pageUrl}" class="btn-modern btn-primary" style="text-decoration: none;">${p}</a>
+                </c:when>
+                <c:otherwise>
+                  <a href="${pageUrl}" class="btn-modern btn-outline" style="text-decoration: none; color: var(--text-main);">${p}</a>
+                </c:otherwise>
+              </c:choose>
+            </c:forEach>
+          </div>
+        </c:if>
       </div>
     </main>
   </div>
