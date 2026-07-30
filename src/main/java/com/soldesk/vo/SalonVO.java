@@ -16,8 +16,10 @@ public class SalonVO {
     private java.math.BigDecimal minimumPrice;
     private String createdAt; // created_at
     private String updatedAt; // updated_at
+    private String closedAt; // 폐업일시 (null이면 운영중)
     private java.math.BigDecimal latitude;  //위도
     private java.math.BigDecimal longitude; //경도
+    private String ownerName; // 점주 이름 (Users LEFT JOIN, 관리자 매장목록 전용)
 
 
     public int getSalonId() { return salonId; }
@@ -42,6 +44,8 @@ public class SalonVO {
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public String getClosedAt() { return closedAt; }
+    public void setClosedAt(String closedAt) { this.closedAt = closedAt; }
 
     public java.math.BigDecimal getLatitude() {
         return this.latitude;
@@ -58,5 +62,8 @@ public class SalonVO {
     public void setLongitude(java.math.BigDecimal longitude) {
         this.longitude = longitude;
     }
+
+    public String getOwnerName() { return ownerName; }
+    public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 
 }
