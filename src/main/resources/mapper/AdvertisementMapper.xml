@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.AdvertisementMapper">
+    <resultMap id="advertisementResultMap" type="com.soldesk.vo.AdvertisementVO">
+        <id column="advertisement_id" property="advertisementId" />
+        <result column="title" property="title" />
+        <result column="description" property="description" />
+        <result column="image_url" property="imageUrl" />
+        <result column="target_url" property="targetUrl" />
+        <result column="display_order" property="displayOrder" />
+        <result column="active" property="active" />
+        <result column="start_at" property="startAt" />
+        <result column="end_at" property="endAt" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <sql id="columns">
+        advertisement_id, title, description, image_url, target_url,
+        display_order, active, start_at, end_at, created_at, updated_at
+    </sql>
+
+    <select id="findVisible" resultMap="advertisementResultMap">
+        SELECT <include refid="columns" />
+        FROM Advertisements
+        WHERE active = TRUE
+          AND (start_at IS NULL OR start_at &lt;= NOW())
+          AND (end_at IS NULL OR end_at &gt;= NOW())
+        ORDER BY display_order ASC, advertisement_id ASC
+    </select>
+
+    <select id="findAllForAdmin" resultMap="advertisementResultMap">
+        SELECT <include refid="columns" />
+        FROM Advertisements
+        ORDER BY display_order ASC, advertisement_id DESC
+    </select>
+
+    <select id="findById" parameterType="int" resultMap="advertisementResultMap">
+        SELECT <include refid="columns" />
+        FROM Advertisements
+        WHERE advertisement_id = #{advertisementId}
+    </select>
+
+    <insert id="insert" parameterType="com.soldesk.vo.AdvertisementVO"
+            useGeneratedKeys="true" keyProperty="advertisementId">
+        INSERT INTO Advertisements
+            (title, description, image_url, target_url, display_order, active, start_at, end_at)
+        VALUES
+            (#{title}, #{description}, #{imageUrl}, #{targetUrl}, #{displayOrder},
+             #{active}, #{startAt}, #{endAt})
+    </insert>
+
+    <update id="update" parameterType="com.soldesk.vo.AdvertisementVO">
+        UPDATE Advertisements
+        SET title = #{title},
+            description = #{description},
+            image_url = #{imageUrl},
+            target_url = #{targetUrl},
+            display_order = #{displayOrder},
+            active = #{active},
+            start_at = #{startAt},
+            end_at = #{endAt}
+        WHERE advertisement_id = #{advertisementId}
+    </update>
+
+    <delete id="delete" parameterType="int">
+        DELETE FROM Advertisements WHERE advertisement_id = #{advertisementId}
+    </delete>
+</mapper>

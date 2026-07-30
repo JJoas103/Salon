@@ -19,7 +19,7 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">회원관리</div>
-      <div class="user-badge">
+      <div class="user-badge" id="openProfileModalBtn" style="cursor: pointer;">
         <span>${user.userName} 관리자님</span>
         <div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div>
       </div>
@@ -162,5 +162,9 @@
       </div>
     </main>
   </div>
+
+  <jsp:include page="../includes/profile_modal.jsp">
+      <jsp:param name="roleLabel" value="관리자" />
+  </jsp:include>
 </body>
 </html>

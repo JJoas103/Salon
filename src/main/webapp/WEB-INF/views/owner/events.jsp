@@ -8,15 +8,15 @@
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/owner.css">
 </head>
-<body>
-  <body class="store-page">
+<body class="store-page">
   <jsp:include page="../includes/sidebar_owner.jsp">
       <jsp:param name="menu" value="events" />
   </jsp:include>
+  <jsp:include page="../includes/salon_gate_overlay.jsp" />
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">이벤트/공지사항</div>
-      <div class="user-badge"><span>강남본점 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
+      <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span>${user.userName} 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
     </header>
     <main class="app-content">
       <div class="modern-card">
@@ -41,5 +41,9 @@
       </div>
     </main>
   </div>
+
+  <jsp:include page="../includes/profile_modal.jsp">
+      <jsp:param name="roleLabel" value="점주" />
+  </jsp:include>
 </body>
 </html>

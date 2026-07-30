@@ -49,32 +49,52 @@
           </button>
         </div>
 
-        <!-- 선택한 헤어샵 상세 -->
-        <div class="salon-detail-card">
-          <img id="detail-image" class="salon-detail-image" src="" alt="헤어샵 사진">
-          <div class="salon-detail-body">
-            <div class="salon-detail-title-row">
-              <div>
-                <h2 id="detail-name">-</h2>
-                <p class="salon-detail-address" id="detail-address">-</p>
-              </div>
-              <div class="rating-badge"><i class="fas fa-star"></i> <span id="detail-rating">-</span></div>
-            </div>
+        <!-- 우측 패널 : 검색 결과 목록 ⇄ 선택한 헤어샵 상세.
+             둘 중 하나만 보인다 (JS 의 showList() / showDetail() 이 hidden 을 토글). -->
+        <div class="salon-side-panel">
 
-            <div class="salon-detail-info">
-              <div class="salon-info-row">
-                <div class="salon-info-icon"><i class="far fa-clock"></i></div>
-                <span class="salon-info-label">운영시간</span>
-                <span class="salon-info-value" id="detail-hours">-</span>
-              </div>
-              <div class="salon-info-row">
-                <div class="salon-info-icon"><i class="fas fa-tag"></i></div>
-                <span class="salon-info-label">가격대</span>
-                <span class="salon-info-value" id="detail-price">-</span>
+          <!-- 검색 결과 목록 -->
+          <div class="salon-list-panel" id="salon-list-panel">
+            <div class="salon-list-header" id="salon-list-count">검색 결과</div>
+            <ul class="salon-list" id="salon-list"></ul>
+            <p class="salon-list-empty" id="salon-list-empty" hidden>
+              검색 결과가 없습니다.<br>다른 검색어로 찾아보세요.
+            </p>
+          </div>
+
+          <!-- 선택한 헤어샵 상세 : 목록에서 하나를 고르면 보인다 -->
+          <div id="salon-detail-panel" hidden>
+            <button type="button" class="salon-back-btn" id="btn-back-to-list">
+              <i class="fas fa-arrow-left"></i> 목록으로
+            </button>
+
+            <div class="salon-detail-card">
+              <img id="detail-image" class="salon-detail-image" src="" alt="헤어샵 사진">
+              <div class="salon-detail-body">
+                <div class="salon-detail-title-row">
+                  <div>
+                    <h2 id="detail-name">-</h2>
+                    <p class="salon-detail-address" id="detail-address">-</p>
+                  </div>
+                  <div class="rating-badge"><i class="fas fa-star"></i> <span id="detail-rating">-</span></div>
+                </div>
+
+                <div class="salon-detail-info">
+                  <div class="salon-info-row">
+                    <div class="salon-info-icon"><i class="far fa-clock"></i></div>
+                    <span class="salon-info-label">운영시간</span>
+                    <span class="salon-info-value" id="detail-hours">-</span>
+                  </div>
+                  <div class="salon-info-row">
+                    <div class="salon-info-icon"><i class="fas fa-tag"></i></div>
+                    <span class="salon-info-label">가격대</span>
+                    <span class="salon-info-value" id="detail-price">-</span>
+                  </div>
+                </div>
+
+                <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
               </div>
             </div>
-
-            <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
           </div>
         </div>
       </div>
@@ -118,6 +138,87 @@
       return Number(price).toLocaleString('ko-KR') + '원부터';
     }
 
+    /* ---- 우측 패널 전환 (목록 ⇄ 상세) ---- */
+    function showList() {
+      document.getElementById('salon-list-panel').hidden = false;
+      document.getElementById('salon-detail-panel').hidden = true;
+    }
+
+    function showDetail() {
+      document.getElementById('salon-list-panel').hidden = true;
+      document.getElementById('salon-detail-panel').hidden = false;
+    }
+
+    document.getElementById('btn-back-to-list').addEventListener('click', showList);
+
+    /* ---- 검색 결과 목록 ----
+       마커와 같은 순번을 붙여서, 목록의 ②가 지도의 ②라는 걸 바로 알 수 있게 한다. */
+    function renderSalonList(list) {
+      const listElement = document.getElementById('salon-list');
+      listElement.replaceChildren();   // 이전 결과 제거
+
+      document.getElementById('salon-list-count').textContent = '검색 결과 ' + list.length + '건';
+      document.getElementById('salon-list-empty').hidden = (list.length > 0);
+
+      list.forEach(function (salon, i) {
+        const item = document.createElement('li');
+        item.className = 'salon-list-item';
+        /* 마크업은 고정 문자열, 값은 textContent 로 넣는다 (미용실 이름에 <, & 가 있어도 안전) */
+        item.innerHTML =
+            '<span class="salon-list-rank"></span>'
+          + '<div class="salon-list-body">'
+          +   '<div class="salon-list-title-row">'
+          +     '<span class="salon-list-name"></span>'
+          +     '<span class="rating-badge"><i class="fas fa-star"></i> <span class="salon-list-rating"></span></span>'
+          +   '</div>'
+          +   '<p class="salon-list-address"></p>'
+          +   '<p class="salon-list-price"></p>'
+          + '</div>';
+
+        item.querySelector('.salon-list-rank').textContent = i + 1;
+        item.querySelector('.salon-list-name').textContent = salon.salonName;
+        item.querySelector('.salon-list-rating').textContent = salon.averageRating != null ? salon.averageRating : '-';
+        item.querySelector('.salon-list-address').textContent = salon.address;
+        item.querySelector('.salon-list-price').textContent = formatPrice(salon.minimumPrice);
+
+        /* 목록 ↔ 지도 연동 : 항목에 마우스를 올리면 해당 마커가 튀어나온다 */
+        item.addEventListener('mouseenter', function () { hoverPin(i, true); });
+        item.addEventListener('mouseleave', function () { hoverPin(i, false); });
+        item.addEventListener('click', function () {
+          hoverPin(i, false);
+          selectSalon(i);
+          const pin = PINS[i];
+          if (pin) map.panTo(pin.overlay.getPosition());
+        });
+
+        listElement.appendChild(item);
+      });
+    }
+
+    /* 지도 → 목록. 마커에 올린 미용실을 목록에서 강조하고, 목록 밖에 있으면 그 위치로 스크롤한다.
+       block:'nearest' 라야 목록 안에서만 움직이고 페이지 전체가 스크롤되지 않는다. */
+    function hoverListItem(index, on) {
+      const item = document.querySelectorAll('.salon-list-item')[index];
+      if (!item) return;
+      item.classList.toggle('is-hover', on);
+      if (on) item.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    /* 목록 → 지도. 목록에서 hover 중인 항목의 마커를 잠깐 키운다 */
+    function hoverPin(index, on) {
+      const pin = PINS[index];
+      if (!pin) return;   // 좌표가 없어 마커를 안 만든 미용실
+      pin.element.classList.toggle('is-hover', on);
+      pin.overlay.setZIndex(on ? 15 : (index === selectedIndex ? 10 : 1));
+    }
+
+    /* 지금 선택된 항목을 목록에서도 강조한다 (목록으로 돌아왔을 때 어디였는지 보이게) */
+    function updateListActive() {
+      document.querySelectorAll('.salon-list-item').forEach(function (item, i) {
+        item.classList.toggle('is-active', i === selectedIndex);
+      });
+    }
+
     function selectSalon(index) {
       const salon = salons[index];
       if (!salon) return;
@@ -134,14 +235,16 @@
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
       document.getElementById('btn-reserve').disabled = false;
       updatePinStyles();
+      updateListActive();
+      showDetail();
     }
 
-    /* 검색 결과가 0건이면 이전에 선택돼 있던 미용실이 그대로 남으므로 카드를 비운다 */
+    /* 새로 검색하면 이전에 보던 미용실이 상세 카드에 남아 있으므로 비운다 */
     function clearDetail() {
       const image = document.getElementById('detail-image');
       image.src = FALLBACK_IMAGE;
       image.alt = '';
-      document.getElementById('detail-name').textContent = '검색 결과가 없습니다';
+      document.getElementById('detail-name').textContent = '-';
       document.getElementById('detail-address').textContent = '-';
       document.getElementById('detail-rating').textContent = '-';
       document.getElementById('detail-hours').textContent = '-';
@@ -196,6 +299,12 @@
           map.panTo(position);
         });
 
+        /* 지도 → 목록 연동. 목록 → 지도(hoverPin)의 반대 방향이라,
+           둘을 합치면 어느 쪽에 마우스를 올려도 나머지 한쪽이 어디인지 알 수 있다.
+           마커에 번호를 붙이지 않아도 되는 이유가 이것이다. */
+        element.addEventListener('mouseenter', function () { hoverListItem(i, true); });
+        element.addEventListener('mouseleave', function () { hoverListItem(i, false); });
+
         const overlay = new kakao.maps.CustomOverlay({
           map: map,
           position: position,
@@ -222,12 +331,11 @@
         map.setBounds(bounds);
       }
 
-      /* ⑤ 상세 카드. selectSalon 이 updatePinStyles 까지 호출해 준다 */
-      if (salons.length > 0) {
-        selectSalon(0);
-      } else {
-        clearDetail();
-      }
+      /* ⑤ 우측 패널. 새 검색 결과는 항상 "목록"부터 보여준다.
+         하나를 고르는 건 사용자 몫이라 여기서 selectSalon 을 부르지 않는다. */
+      renderSalonList(salons);
+      clearDetail();
+      showList();
     }
 
     /* 검색 — 거르는 일은 서버(/common/salons/search)가 하고 여기는 결과를 그리기만 한다.

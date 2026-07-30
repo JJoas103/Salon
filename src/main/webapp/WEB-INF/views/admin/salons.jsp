@@ -15,9 +15,9 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">미용실관리</div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 14px; font-weight: 600;">최고관리자</span>
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;">A</div>
+      <div id="openProfileModalBtn" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+        <span style="font-size: 14px; font-weight: 600;">${user.userName} 관리자님</span>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;">관</div>
       </div>
     </header>
     <main class="app-content">
@@ -40,5 +40,9 @@
       </div>
     </main>
   </div>
+
+  <jsp:include page="../includes/profile_modal.jsp">
+      <jsp:param name="roleLabel" value="관리자" />
+  </jsp:include>
 </body>
 </html>
