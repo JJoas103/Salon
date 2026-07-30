@@ -43,6 +43,9 @@ public interface UserMapper {
     /* 점주/관리자 → 일반회원 강등 */
     void demoteToCustomer(int userId);
 
+    /* 일반회원 → 점주 승격 (점주 요청 승인) */
+    void promoteToOwner(int userId);
+
     /* 회원 삭제/탈퇴 */
     void softDeleteById(int userId);
 

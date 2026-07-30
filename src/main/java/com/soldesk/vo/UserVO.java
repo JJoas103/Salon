@@ -15,7 +15,9 @@ public class UserVO {
     private String updatedAt; // 수정일시 (updated_at)
     private String deletedAt; // 삭제일시 (deleted_at)
     private String confirmPassword; // 비밀번호 확인용 (DB 미저장, 폼 검증 전용)
-    
+    private Integer pendingRequestId; // 대기중인 점주 승격 요청 id (OwnerRequests LEFT JOIN, 없으면 null)
+    private String pendingSalonName; // 대기중인 점주 승격 요청의 매장명
+
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
     public String getEmail() { return email; }
@@ -36,4 +38,8 @@ public class UserVO {
     public void setDeletedAt(String deletedAt) { this.deletedAt = deletedAt; }
     public String getConfirmPassword() { return confirmPassword; }
     public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+    public Integer getPendingRequestId() { return pendingRequestId; }
+    public void setPendingRequestId(Integer pendingRequestId) { this.pendingRequestId = pendingRequestId; }
+    public String getPendingSalonName() { return pendingSalonName; }
+    public void setPendingSalonName(String pendingSalonName) { this.pendingSalonName = pendingSalonName; }
 }
