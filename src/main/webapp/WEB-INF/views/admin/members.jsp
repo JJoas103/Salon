@@ -29,10 +29,11 @@
         <p class="error-text"><c:out value="${error}" /></p>
       </c:if>
 
-      <div class="stats-grid">
+      <div class="stats-grid" style="grid-template-columns: repeat(4, 1fr);">
         <div class="stat-card"><div class="stat-label">총 가입 회원</div><div class="stat-value">${activeCount}명</div></div>
         <div class="stat-card"><div class="stat-label">신규 가입(이번 달)</div><div class="stat-value">${newThisMonthCount}명</div></div>
         <div class="stat-card"><div class="stat-label">탈퇴 회원</div><div class="stat-value">${deletedCount}명</div></div>
+        <div class="stat-card"><div class="stat-label">권한 요청</div><div class="stat-value">${pendingOwnerRequestCount}명</div></div>
       </div>
 
       <div class="modern-card">
@@ -67,6 +68,7 @@
               <option value="customer" ${'customer' == userType ? 'selected' : ''}>고객</option>
               <option value="owner" ${'owner' == userType ? 'selected' : ''}>점주</option>
               <option value="admin" ${'admin' == userType ? 'selected' : ''}>관리자</option>
+              <option value="ownerRequest" ${'ownerRequest' == userType ? 'selected' : ''}>권한요청</option>
             </select>
           </c:if>
           <input type="text" name="keyword" value="${keyword}" class="modern-input"

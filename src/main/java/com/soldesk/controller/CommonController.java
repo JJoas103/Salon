@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ReservationService;
+import com.soldesk.service.AdvertisementService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 import com.soldesk.validation.PasswordChangeValidator;
@@ -53,6 +54,9 @@ public class CommonController {
     @Autowired
     private OwnerRequestService ownerRequestService;
 
+    @Autowired
+    private AdvertisementService advertisementService;
+
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -69,6 +73,7 @@ public class CommonController {
     @GetMapping("/home")
     public String home(Model model) {
         model.addAttribute("salons", salonService.getSalons());
+        model.addAttribute("advertisements", advertisementService.getVisibleAdvertisements());
         return "common/home";   
     }
 
@@ -149,7 +154,7 @@ public class CommonController {
      *  (검색은 상태를 바꾸지 않는 조회라서 POST 가 아니라 GET) */
     @GetMapping("/salons/search")
     @ResponseBody
-    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword){
+    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword) throws Exception{
         return salonService.searchSalons(keyword);
     }
 
@@ -190,3 +195,4 @@ public class CommonController {
         return "redirect:/common/owner-request?submitted=true";
     }
 }
+

@@ -71,6 +71,7 @@ public class AdminController {
         model.addAttribute("activeCount", userService.countActiveMembers());
         model.addAttribute("newThisMonthCount", userService.countNewMembersThisMonth());
         model.addAttribute("deletedCount", userService.countDeletedMembers());
+        model.addAttribute("pendingOwnerRequestCount", ownerRequestService.countPending());
         return "admin/members";
     }
 
@@ -97,9 +98,8 @@ public class AdminController {
     }
 
     @GetMapping("/banners")
-    public String banners(Authentication authentication, Model model) {
-        model.addAttribute("user", userService.getUser(authentication.getName()));
-        return "admin/banners";
+    public String banners() {
+        return "redirect:/admin/advertisements";
     }
 
     @PostMapping("/owner-requests/{id}/approve")

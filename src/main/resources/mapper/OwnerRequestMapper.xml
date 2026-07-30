@@ -30,6 +30,11 @@
         where request_id = #{requestId}
     </select>
 
+    <!-- 대기중인 요청 수 -->
+    <select id="countPending" resultType="int">
+        select count(*) from OwnerRequests where status = 'pending'
+    </select>
+
     <!-- 승인 -->
     <update id="approve">
         update OwnerRequests

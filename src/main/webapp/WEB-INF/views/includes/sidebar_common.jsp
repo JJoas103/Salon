@@ -35,7 +35,8 @@
       <h3 style="font-size: 18px;"><i class="fas fa-sign-in-alt" style="margin-right:8px; color:var(--accent);"></i>로그인</h3>
       <button type="button" class="modal-close" id="closeAuthLoginBtn"><i class="fas fa-times"></i></button>
     </div>
-    <form action="<c:url value='/user/login'/>" method="post">
+    <form id="authLoginForm" action="<c:url value='/user/login'/>" method="post">
+      <div id="authLoginError" class="auth-alert" style="display:none;"><i class="fas fa-circle-exclamation"></i> <span></span></div>
       <div>
         <label class="role-label">이메일 계정</label>
         <div class="input-wrapper"><i class="far fa-envelope"></i><input type="email" name="userEmail" class="auth-input" placeholder="master@hairreserve.com"></div>
@@ -117,6 +118,36 @@
     link.addEventListener('click', function (e) {
       e.preventDefault();
       showNotice();
+    });
+  });
+
+  // ---- 로그인 모달: fetch 제출, 실패 시 모달 안에서 에러 표시 (성공 시엔 '/'로 이동해 IndexController의 role 분기를 그대로 재사용) ----
+  var loginForm = document.getElementById('authLoginForm');
+  var loginError = document.getElementById('authLoginError');
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    loginError.style.display = 'none';
+
+    fetch(loginForm.action, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: new URLSearchParams(new FormData(loginForm))
+    }).then(function (res) {
+      if (res.ok) {
+        location.href = '<c:url value="/"/>';
+        return;
+      }
+      return res.json().then(function (data) {
+        loginError.querySelector('span').textContent = data.message || '로그인에 실패했습니다.';
+        loginError.style.display = 'block';
+      });
+    }).catch(function () {
+      loginError.querySelector('span').textContent = '로그인 중 오류가 발생했습니다.';
+      loginError.style.display = 'block';
     });
   });
 

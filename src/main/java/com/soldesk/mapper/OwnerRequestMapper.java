@@ -12,6 +12,9 @@ public interface OwnerRequestMapper {
     /** request_id로 조회 */
     OwnerRequestVO findById(int requestId);
 
+    /** 대기중(pending)인 요청 수 — 관리자 회원관리 통계 카드용 */
+    int countPending();
+
     /** 승인: 상태 변경 + 처리자/처리일시 기록 */
     void approve(@Param("requestId") int requestId, @Param("adminUserId") int adminUserId);
 

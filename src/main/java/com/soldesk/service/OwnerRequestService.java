@@ -18,6 +18,11 @@ public class OwnerRequestService {
     private UserMapper userMapper;
 
     @Transactional
+    public int countPending(){
+        return ownerRequestMapper.countPending();
+    }//대기중인 요청 수 (관리자 회원관리 통계 카드용)
+
+    @Transactional
     public void submit(int userId, String salonName, String salonPhone, String message){
         OwnerRequestVO request = new OwnerRequestVO();
         request.setUserId(userId);
