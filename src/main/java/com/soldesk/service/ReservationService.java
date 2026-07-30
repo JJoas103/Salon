@@ -26,6 +26,10 @@ public class ReservationService {
         List<ReservationVO> list = resvMapper.getClearRevList(userId);
         return list;
     }
-    
+
+    @Transactional
+    public int countCompleted(int userId){
+        return resvMapper.countCompleted(userId);
+    }
 
 }

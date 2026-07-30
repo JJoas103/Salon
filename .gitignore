@@ -17,5 +17,14 @@ Thumbs.db
 # Logs
 *.log
 
+# 업로드된 파일(런타임 생성물) — 소스가 아니므로 커밋하지 않는다
+/upload/
+
+# sh
+deploy.sh
+
+# docs todo
+docs/login-todo.md
+
 # 참고: DB 계정을 팀에서 공유하는 개발 단계이므로
 # app.properties 는 의도적으로 커밋한다. 운영 배포 시에는 분리할 것.

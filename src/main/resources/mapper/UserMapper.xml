@@ -8,7 +8,7 @@
         <id     column="user_id"      property="userId" />
         <result column="email"        property="email" />
         <result column="password"     property="password" />
-        <result column="user_name"         property="userName" />
+        <result column="user_name"    property="userName" />
         <result column="phone_number" property="phoneNumber" />
         <result column="user_type"    property="userType" />
         <result column="created_at"   property="createdAt" />
@@ -33,6 +33,15 @@
     <select id="countByEmail" parameterType="string" resultType="int">
         select count(*) from Users where email = #{email}
     </select>
+
+    <!-- 이메일 기준 업데이트 -->
+    <update id="updateUser" parameterType="com.soldesk.vo.UserVO">
+        update Users
+        set password = #{password},
+            user_name = #{userName},
+            phone_number = #{phoneNumber}
+        where email = #{email}
+    </update>
 
     <!-- 전체 회원 수 (연동 확인용) -->
     <select id="countAll" resultType="int">

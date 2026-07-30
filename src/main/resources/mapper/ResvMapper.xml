@@ -8,41 +8,18 @@
     <resultMap id="ResvResultMap"
                type="com.soldesk.vo.ReservationVO">
 
-        <id column="reservation_id"
-            property="reservationId" />
-
-        <result column="user_id"
-                property="userId" />
-
-        <result column="salon_id"
-                property="salonId" />
-
-        <result column="stylist_id"
-                property="stylistId" />
-
-        <result column="service_id"
-                property="serviceId" />
-
-        <result column="reservation_time"
-                property="reservationTime" />
-
-        <result column="status"
-                property="status" />
-
-        <result column="salon_name"
-                property="salonName" />
-
-        <result column="transaction_id"
-                property="transactionId" />
-
-        <result column="payment_method"
-                property="paymentMethod" />
-
-        <result column="amount"
-                property="amount" />
-
-        <result column="service_name"
-                property="serviceName" />
+        <id column="reservation_id" property="reservationId"/>
+        <result column="user_id" property="userId"/>
+        <result column="salon_id" property="salonId"/>
+        <result column="stylist_id" property="stylistId"/>
+        <result column="service_id" property="serviceId"/>
+        <result column="reservation_time" property="reservationTime"/>
+        <result column="status" property="status"/>
+        <result column="salon_name" property="salonName"/>
+        <result column="transaction_id" property="transactionId"/>
+        <result column="payment_method" property="paymentMethod"/>
+        <result column="amount" property="amount"/>
+        <result column="service_name" property="serviceName"/>
 
     </resultMap>
 
@@ -105,6 +82,15 @@
           AND r.status = 'completed'
         ORDER BY r.reservation_time DESC
 
+    </select>
+
+    <select id="countCompleted"
+            resultType="int"
+            parameterType="int">
+        SELECT COUNT(*)
+        FROM Reservations
+        WHERE user_id = #{userId}
+          AND status = 'completed'
     </select>
 
 </mapper>
