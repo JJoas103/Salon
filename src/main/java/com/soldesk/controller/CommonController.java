@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
@@ -48,6 +49,9 @@ public class CommonController {
 
     @Autowired
     private PasswordChangeValidator passwordChangeValidator;
+
+    @Autowired
+    private OwnerRequestService ownerRequestService;
 
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -102,6 +106,13 @@ public class CommonController {
             return Map.of("success", false, "errors", errors);
         }
         return Map.of("success", true);
+    }
+
+    // 점주 승격 요청 페이지 — 신청 제출/처리 백엔드는 아직 없음(다음 단계 작업)
+    @GetMapping("/owner-request")
+    public String ownerRequestForm(Authentication authentication, Model model){
+        model.addAttribute("user", userService.getUser(authentication.getName()));
+        return "common/owner-request";
     }
 
     //예약 내역 가져오기
@@ -165,5 +176,17 @@ public class CommonController {
         //시술정보 가져오기
         model.addAttribute("services", salonService.getServices(salonId));
         return "common/search";
+    }
+
+    //점주요청
+    @PostMapping("/owner-request")
+    public String ownerRequestSubmit(Authentication authentication,
+                                @RequestParam String salonName,
+                                @RequestParam String salonPhone,
+                                @RequestParam String message,
+                                Model model){
+        UserVO user = userService.getUser(authentication.getName());
+        ownerRequestService.submit(user.getUserId(), salonName, salonPhone, message);
+        return "redirect:/common/owner-request?submitted=true";
     }
 }

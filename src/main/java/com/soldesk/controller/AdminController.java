@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.UserService;
 
 @Controller
@@ -19,6 +20,13 @@ public class AdminController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private OwnerRequestService ownerRequestService;
+
+    private int currentAdminId(Authentication authentication){
+        return userService.getUser(authentication.getName()).getUserId();
+    }
 
     @GetMapping("/home")
     public String home() {
@@ -92,5 +100,18 @@ public class AdminController {
     public String banners(Authentication authentication, Model model) {
         model.addAttribute("user", userService.getUser(authentication.getName()));
         return "admin/banners";
+    }
+
+    @PostMapping("/owner-requests/{id}/approve")
+    public String approveOwnerRequest(@PathVariable int id, Authentication authentication){
+        ownerRequestService.approve(id, currentAdminId(authentication));
+        // approve() 내부에서: 1) Users.user_type='owner' 2) OwnerRequests.status='approved'
+        return "redirect:/admin/members";
+    }
+
+    @PostMapping("/owner-requests/{id}/reject")
+    public String rejectOwnerRequest(@PathVariable int id, Authentication authentication){
+        ownerRequestService.reject(id, currentAdminId(authentication));
+        return "redirect:/admin/members";
     }
 }

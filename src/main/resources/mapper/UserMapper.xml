@@ -14,6 +14,8 @@
         <result column="created_at"   property="createdAt" />
         <result column="updated_at"   property="updatedAt" />
         <result column="deleted_at"   property="deletedAt" />
+        <result column="pending_request_id" property="pendingRequestId" />
+        <result column="pending_salon_name" property="pendingSalonName" />
     </resultMap>
 
     <!-- 회원가입 -->
@@ -56,11 +58,15 @@
         select count(*) from Users
     </select>
 
-    <!-- 회원 목록: 이름/이메일 부분검색 + 유형(user role) 필터 + 활성/탈퇴 상태, 전부 선택사항 + 페이지네이션 -->
+    <!-- 회원 목록: 이름/이메일 부분검색 + 유형(user role) 필터 + 활성/탈퇴 상태, 전부 선택사항 + 페이지네이션, 점주요청 -->
     <select id="findMembers" resultMap="userResultMap">
-        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at
-        from Users
-        where 1=1
+        SELECT u.user_id, u.email, u.user_name, u.phone_number, u.user_type,
+            u.created_at, u.updated_at, u.deleted_at,
+            r.request_id AS pending_request_id, r.salon_name AS pending_salon_name
+        FROM Users u
+        LEFT JOIN OwnerRequests r
+            ON r.user_id = u.user_id AND r.status = 'pending'
+        WHERE 1=1
         <choose>
             <when test="status == 'deleted'">
                 and deleted_at is not null
@@ -118,6 +124,13 @@
     <update id="demoteToCustomer" parameterType="int">
         update Users
         set user_type = 'customer'
+        where user_id = #{userId}
+    </update>
+
+    <!-- 일반회원 → 점주 승격 (점주 요청 승인) -->
+    <update id="promoteToOwner" parameterType="int">
+        update Users
+        set user_type = 'owner'
         where user_id = #{userId}
     </update>
 

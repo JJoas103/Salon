@@ -117,6 +117,21 @@
                           <span class="tag">탈퇴일: ${fn:substring(member.deletedAt, 0, 10)}</span>
                         </c:when>
                         <c:when test="${member.userType == 'customer'}">
+                          <c:if test="${not empty member.pendingRequestId}">
+                            <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px; flex-wrap: wrap;">
+                              <span class="tag" style="background: var(--accent-soft); color: var(--accent);">
+                                점주 요청 대기 (${member.pendingSalonName})
+                              </span>
+                              <form action="${ctx}/admin/owner-requests/${member.pendingRequestId}/approve" method="post"
+                                    onsubmit="return confirm('이 회원의 점주 승격 요청을 승인하시겠습니까?')" style="display: inline;">
+                                <button type="submit" class="btn-modern btn-primary">승인</button>
+                              </form>
+                              <form action="${ctx}/admin/owner-requests/${member.pendingRequestId}/reject" method="post"
+                                    onsubmit="return confirm('이 회원의 점주 승격 요청을 반려하시겠습니까?')" style="display: inline;">
+                                <button type="submit" class="btn-modern btn-outline">반려</button>
+                              </form>
+                            </div>
+                          </c:if>
                           <form action="${ctx}/admin/members/${member.userId}/withdraw" method="post"
                                 onsubmit="return confirm('이 회원을 탈퇴 처리하시겠습니까?')" style="display: inline;">
                             <button type="submit" class="btn-modern btn-danger">탈퇴처리</button>

@@ -62,6 +62,7 @@ body {
 /* ---- search (.search-page 스코프: 카드 패딩 필요) ---- */
 .search-layout { display: grid; grid-template-columns: 1fr 450px; gap: 30px; }
 .search-page .modern-card { padding: 30px; }
+.owner-request-page .modern-card { padding: 32px; }
 .menu-item-card { border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
 .menu-item-card.selected { border-color: var(--accent); background: var(--accent-soft); }
 .summary-sticky-panel { background: var(--white); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 30px; position: sticky; top: 0; }
