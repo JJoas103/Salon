@@ -2,6 +2,30 @@
 --  salu (미용실 예약 플랫폼) 스키마
 --  MySQL 8.0 / utf8mb4
 --  실행:  mysql -u root -p < sql/schema.sql
+--
+--  이 파일은 "지금 시점의 완성된 스키마" 하나만 담는다.
+--  새 DB 를 만들 때는 이 파일만 실행하면 되고, 아래 마이그레이션들을
+--  따로 실행할 필요는 없다 (이미 전부 반영되어 있다).
+-- ============================================================
+--  반영된 마이그레이션 이력 (적용 순서대로)
+--
+--   1. 2026-07-27  restore_original_salons_utf8.sql
+--                  → 더미데이터 한글 복구. 스키마 변경 없음(데이터 전용)
+--   2. 2026-07-28  migration_community.sql
+--                  → Posts 에 image_url / salon_id / like_count / dislike_count
+--                  → post_likes 테이블 신설
+--                  → Salons 에 latitude / longitude
+--                  → Users 에 deleted_at (회원 탈퇴 soft delete)
+--   3. 2026-07-28  salon_coordinates.sql
+--                  → 더미 미용실 좌표 채우기. 스키마 변경 없음(데이터 전용)
+--   4. 2026-07-29  migration_advertisements.sql
+--                  → Advertisements 테이블 신설 (관리자 광고 슬라이드 배너)
+--
+--  기존 마이그레이션 파일은 진행 이력으로 sql/ 에 그대로 남겨둔다.
+--  앞으로 스키마를 바꿀 때도 같은 방식으로:
+--    (1) 팀원은 migration_*.sql 을 새로 만들어 올린다 (기존 DB 를 갱신하는 용도)
+--    (2) 이 파일로의 통합과 위 이력 갱신은 팀장이 한다
+--  두 곳이 어긋나면 새로 DB 를 만든 사람만 기능이 깨져서 원인을 찾기 어렵다.
 -- ============================================================
 
 CREATE DATABASE IF NOT EXISTS salu
@@ -19,7 +43,8 @@ CREATE TABLE Users (
     phone_number VARCHAR(20),
     user_type ENUM('customer', 'owner', 'admin') NOT NULL, -- 사용자 유형 (고객, 점주, 관리자)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted_at DATETIME NULL DEFAULT NULL                 -- 탈퇴 일시 (NULL 이면 활성 회원. 행을 지우지 않는 soft delete)
 );
 
 -- ---------- Salons (미용실) ----------
@@ -222,3 +247,22 @@ CREATE TABLE Promotions (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (salon_id) REFERENCES Salons(salon_id)
 );
+
+-- ---------- Advertisements (관리자 광고 슬라이드 배너) ----------
+-- 특정 미용실에 묶이는 Promotions 와 달리, 관리자가 직접 운영하는 메인 배너다.
+CREATE TABLE Advertisements (
+    advertisement_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    description VARCHAR(500),
+    image_url VARCHAR(500) NOT NULL,
+    target_url VARCHAR(1000),                            -- 배너 클릭 시 이동할 주소
+    display_order INT NOT NULL DEFAULT 0,                -- 노출 순서 (작을수록 먼저)
+    active BOOLEAN NOT NULL DEFAULT TRUE,                -- 노출 여부
+    start_at DATETIME NULL,                              -- 노출 시작 (NULL 이면 제한 없음)
+    end_at DATETIME NULL,                                -- 노출 종료 (NULL 이면 제한 없음)
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_advertisements_exposure (active, start_at, end_at, display_order),
+    CONSTRAINT chk_advertisements_period
+        CHECK (end_at IS NULL OR start_at IS NULL OR end_at >= start_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

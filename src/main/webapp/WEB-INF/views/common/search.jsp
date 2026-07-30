@@ -66,6 +66,10 @@
           </div>
         </c:otherwise>
       </c:choose>
+      <div class="chat">
+        <button class="btn-modern btn-outline" onclick="location.href='/common/chat?SalonId=${salon.salonId}'">1:1 문의</button>
+        <input type="hidden" 
+      </div>
     </main>
   </div>
 

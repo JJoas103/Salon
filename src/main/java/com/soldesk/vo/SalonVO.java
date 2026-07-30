@@ -19,6 +19,13 @@ public class SalonVO {
     private java.math.BigDecimal latitude;  //위도
     private java.math.BigDecimal longitude; //경도
 
+    //조인 용
+    private String userName;    //유저이름
+
+    //조인용
+    public String getUserName(){ return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+
 
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }

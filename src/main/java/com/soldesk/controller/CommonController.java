@@ -171,4 +171,13 @@ public class CommonController {
         model.addAttribute("services", salonService.getServices(salonId));
         return "common/search";
     }
+
+    //1:1채팅
+    @GetMapping("/chat")
+    public String chat(@RequestParam(required = true) int salonId, Model model){
+
+        SalonVO salon = salonService.getSalon(salonId);
+        model.addAttribute("salon", salon);
+        return "common/chat";
+    }
 }
