@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -21,12 +22,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 import com.soldesk.validation.PasswordChangeValidator;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
 @Controller
@@ -44,6 +48,13 @@ public class CommonController {
 
     @Autowired
     private PasswordChangeValidator passwordChangeValidator;
+
+    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Value("${kakaoMapApiKey}")
+    private String kakaoMapApiKey;
+
 
     @InitBinder("changePassword")
     public void initBinder(WebDataBinder binder){
@@ -112,6 +123,25 @@ public class CommonController {
         return "common/reservations";
     }
     
+    //미용실 지도 검색 (카카오맵)
+    @GetMapping("/salonmap")
+    public String salonMap(Model model) throws JsonProcessingException{
+
+        model.addAttribute("salonsJson", objectMapper.writeValueAsString(salonService.getSalons()));
+        model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
+        return "common/salonmap";
+    }
+
+    /** 지도 페이지 검색창이 호출한다. 뷰가 아니라 JSON 을 돌려주므로 Model 이 아니라
+     *  @ResponseBody + 반환값이 곧 응답 본문이 된다. JSON 키는 SalonVO 필드명 그대로 나가고,
+     *  salonmap.jsp 의 renderSalons() 가 그 이름을 그대로 읽는다.
+     *  (검색은 상태를 바꾸지 않는 조회라서 POST 가 아니라 GET) */
+    @GetMapping("/salons/search")
+    @ResponseBody
+    public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword){
+        return salonService.searchSalons(keyword);
+    }
+
     //미용실 검색하기
     @GetMapping("/search")
     public String search(@RequestParam(required = false) Integer salonId, Model model) {

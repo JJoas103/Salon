@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
+  <link rel="stylesheet" href="/resources/css/auth.css">
 </head>
 <body>
   <!-- 사이드바 -->
@@ -18,9 +19,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <header class="app-header">
-      <div class="user-badge"><span>김다정 고객님</span><div class="user-avatar-sm">DJ</div></div>
-    </header>
     <main class="app-content">
       <div class="res-tabs">
         <div class="res-tab ${categoryIdx == '1' ? 'active' : ''}">

@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
+  <link rel="stylesheet" href="/resources/css/auth.css">
 </head>
 <body>
   <!-- 사이드바 -->
@@ -20,7 +21,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
     <main class="app-content">
       <div class="write-card">
         <h2>

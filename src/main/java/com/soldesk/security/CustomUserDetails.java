@@ -1,5 +1,7 @@
 package com.soldesk.security;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -21,6 +23,7 @@ public class CustomUserDetails implements UserDetails {
     private final String password;
     private final String userName; // 화면에 표시할 이름
     private final String role;     // ADMIN / OWNER / CUSTOMER
+    private final boolean currentlySuspended; // 커뮤니티 기능 제한 여부 (로그인 자체는 막지 않음)
 
     public CustomUserDetails(UserVO user, String role) {
         this.userId = user.getUserId();
@@ -28,6 +31,10 @@ public class CustomUserDetails implements UserDetails {
         this.password = user.getPassword();
         this.userName = user.getUserName();
         this.role = role;
+        this.currentlySuspended = "banned".equals(user.getStatus())
+                || ("suspended".equals(user.getStatus())
+                    && user.getSuspendedUntil() != null
+                    && user.getSuspendedUntil().isAfter(LocalDateTime.now()));
     }
 
     // 화면/컨트롤러에서 쓰는 추가 정보
@@ -36,7 +43,12 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+        if (currentlySuspended) {
+            authorities.add(new SimpleGrantedAuthority("SUSPENDED"));
+        }
+        return authorities;
     }
 
     @Override

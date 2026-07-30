@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
+  <link rel="stylesheet" href="/resources/css/auth.css">
 </head>
 <body>
   <!-- 사이드바 -->
@@ -19,7 +20,6 @@
   </jsp:include>
 
   <div class="app-container">
-    <jsp:include page="/WEB-INF/views/includes/header.jsp" />
     <main class="app-content community-content">
 
       <%-- 헤더: 타이틀 + 글쓰기 버튼 --%>

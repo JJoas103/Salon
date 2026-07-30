@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
+  <link rel="stylesheet" href="/resources/css/auth.css">
 </head>
 <body>
     <!-- 사이드바 -->
@@ -19,7 +20,6 @@
     </jsp:include>
 
     <div class="app-container">
-        <jsp:include page="/WEB-INF/views/includes/header.jsp" />
         <main class="app-content">
             <div class="hero-section">
                 <h1 style="font-size: 32px; font-weight: 800; margin-bottom: 12px;">나만을 위한 맞춤형 헤어 솔루션</h1>

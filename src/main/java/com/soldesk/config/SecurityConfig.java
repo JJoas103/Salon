@@ -9,9 +9,13 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 import com.soldesk.security.UserDetailService;
+
+import javax.servlet.http.HttpServletResponse;
 
 @Configuration
 @EnableWebSecurity
@@ -29,18 +33,34 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/admin/**")
                 ).hasRole("ADMIN")
                 .requestMatchers(
+                    new AntPathRequestMatcher("/common/community/suspended")
+                ).permitAll()
+                .requestMatchers(
                     new AntPathRequestMatcher("/reserve/info"),
                     new AntPathRequestMatcher("/common/mypage"),
-                    new AntPathRequestMatcher("/common/mypage/**"),
+                    new AntPathRequestMatcher("/common/mypage/**")
+                )
+                .authenticated()
+                .requestMatchers(
                     new AntPathRequestMatcher("/common/community/write"),
                     new AntPathRequestMatcher("/common/community/*/edit"),
                     new AntPathRequestMatcher("/common/community/*/delete"),
                     new AntPathRequestMatcher("/common/community/*/comment"),
                     new AntPathRequestMatcher("/common/community/*/comment/*/delete"),
-                    new AntPathRequestMatcher("/common/community/*/react")
+                    new AntPathRequestMatcher("/common/community/*/comment/*/report"),
+                    new AntPathRequestMatcher("/common/community/*/react"),
+                    new AntPathRequestMatcher("/common/community/*/report")
                 )
-                .authenticated()
+                // 정지(SUSPENDED)된 계정은 커뮤니티 변경 액션만 막힌다 (로그인 자체는 계속 가능)
+                .access(new WebExpressionAuthorizationManager("isAuthenticated() and !hasAuthority('SUSPENDED')"))
+                .requestMatchers(
+                    new AntPathRequestMatcher("/common/community/**")
+                )
+                // 정지(SUSPENDED)된 계정은 커뮤니티 탭 자체(목록/상세 포함)를 볼 수 없다.
+                // 비로그인 사용자는 SUSPENDED 권한이 없으므로 기존처럼 자유롭게 둘러볼 수 있다.
+                .access(new WebExpressionAuthorizationManager("!hasAuthority('SUSPENDED')"))
                 .anyRequest().permitAll())
+            .exceptionHandling(ex -> ex.accessDeniedHandler(accessDeniedHandler()))
             .formLogin(form -> form
                 .loginPage("/user/login")
                 .loginProcessingUrl("/user/login")
@@ -48,14 +68,26 @@ public class SecurityConfig {
                 .passwordParameter("userPassword")
                 .defaultSuccessUrl("/", true)
                 .failureUrl("/user/login?error")
-                .permitAll()) 
+                .permitAll())
             .logout(logout -> logout
                 .logoutUrl("/user/logout")
-                .logoutSuccessUrl("/")
+                .logoutSuccessUrl("/common/home")
                 .permitAll())    //로그아웃 설정
             .csrf(csrf -> csrf.disable())   //임시 토큰 비활성화
-            .authenticationProvider(authenticationProvider); 
-        return http.build();               
+            .authenticationProvider(authenticationProvider);
+        return http.build();
+    }
+
+    // 정지된 회원이 커뮤니티 탭에 접근하려 하면 안내 페이지로, 그 외 접근 거부는 기존 기본 처리(403)로
+    @Bean
+    public AccessDeniedHandler accessDeniedHandler() {
+        return (request, response, ex) -> {
+            if (request.getRequestURI().startsWith(request.getContextPath() + "/common/community")) {
+                response.sendRedirect(request.getContextPath() + "/common/community/suspended");
+            } else {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+            }
+        };
     }
 
         @Bean

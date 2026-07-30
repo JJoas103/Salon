@@ -14,6 +14,8 @@ public class UserVO {
     private String createdAt; // 생성일시 (created_at)
     private String updatedAt; // 수정일시 (updated_at)
     private String confirmPassword; // 비밀번호 확인용 (DB 미저장, 폼 검증 전용)
+    private String status; // 커뮤니티 이용 제한 상태: active/suspended/banned (status)
+    private java.time.LocalDateTime suspendedUntil; // 정지 만료 시각, 영구정지면 null (suspended_until)
 
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
@@ -33,4 +35,8 @@ public class UserVO {
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
     public String getConfirmPassword() { return confirmPassword; }
     public void setConfirmPassword(String confirmPassword) { this.confirmPassword = confirmPassword; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public java.time.LocalDateTime getSuspendedUntil() { return suspendedUntil; }
+    public void setSuspendedUntil(java.time.LocalDateTime suspendedUntil) { this.suspendedUntil = suspendedUntil; }
 }
