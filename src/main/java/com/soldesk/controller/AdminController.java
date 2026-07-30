@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.soldesk.service.OwnerRequestService;
+import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 
 @Controller
@@ -19,6 +21,16 @@ public class AdminController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private OwnerRequestService ownerRequestService;
+
+    @Autowired
+    private SalonService salonService;
+
+    private int currentAdminId(Authentication authentication){
+        return userService.getUser(authentication.getName()).getUserId();
+    }
 
     @GetMapping("/home")
     public String home() {
@@ -32,9 +44,50 @@ public class AdminController {
     }
 
     @GetMapping("/salons")
-    public String salons(Authentication authentication, Model model) {
+    public String salons(@RequestParam(required = false) String keyword,
+                          @RequestParam(required = false) String status,
+                          @RequestParam(defaultValue = "1") int page,
+                          @RequestParam(defaultValue = "10") int size,
+                          Authentication authentication,
+                          Model model) {
+        if (page < 1) page = 1;
+        if (size <= 0) size = 10;
+
+        int totalCount = salonService.countSalonsForAdmin(keyword, status);
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+
         model.addAttribute("user", userService.getUser(authentication.getName()));
+        model.addAttribute("salons", salonService.getSalonsForAdmin(keyword, status, page, size));
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("status", status);
+        model.addAttribute("page", page);
+        model.addAttribute("size", size);
+        model.addAttribute("totalCount", totalCount);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("activeSalonCount", salonService.countActiveSalons());
+        model.addAttribute("newThisMonthCount", salonService.countNewSalonsThisMonth());
+        model.addAttribute("activeReservationCount", salonService.countActiveReservations());
         return "admin/salons";
+    }
+
+    @PostMapping("/salons/{salonId}/close")
+    public String closeSalon(@PathVariable int salonId, RedirectAttributes redirectAttributes) {
+        try {
+            salonService.closeSalon(salonId);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/salons";
+    }
+
+    @PostMapping("/salons/{salonId}/reopen")
+    public String reopenSalon(@PathVariable int salonId, RedirectAttributes redirectAttributes) {
+        try {
+            salonService.reopenSalon(salonId);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/salons?status=closed";
     }
 
     @GetMapping("/members")
@@ -63,6 +116,7 @@ public class AdminController {
         model.addAttribute("activeCount", userService.countActiveMembers());
         model.addAttribute("newThisMonthCount", userService.countNewMembersThisMonth());
         model.addAttribute("deletedCount", userService.countDeletedMembers());
+        model.addAttribute("pendingOwnerRequestCount", ownerRequestService.countPending());
         return "admin/members";
     }
 
@@ -91,5 +145,18 @@ public class AdminController {
     @GetMapping("/banners")
     public String banners() {
         return "redirect:/admin/advertisements";
+    }
+
+    @PostMapping("/owner-requests/{id}/approve")
+    public String approveOwnerRequest(@PathVariable int id, Authentication authentication){
+        ownerRequestService.approve(id, currentAdminId(authentication));
+        // approve() 내부에서: 1) Users.user_type='owner' 2) OwnerRequests.status='approved'
+        return "redirect:/admin/members";
+    }
+
+    @PostMapping("/owner-requests/{id}/reject")
+    public String rejectOwnerRequest(@PathVariable int id, Authentication authentication){
+        ownerRequestService.reject(id, currentAdminId(authentication));
+        return "redirect:/admin/members";
     }
 }
