@@ -33,12 +33,21 @@
           <p style="font-size: 14px; color: var(--text-sub);">등록 이메일: ${user.email} | 가입일: ${user.createdAt}</p>
         </div>
       </div>
-      <div class="stat-grid">
+      <div class="stat-grid stat-grid-four">
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">누적 이용 건수</span><strong style="font-size: 26px;">${reservationCount} 회</strong></div>
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">보유 활성 쿠폰</span><span class="tag">준비중</span></div>
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">적립 적립금</span><span class="tag">준비중</span></div>
+        <a class="stat-card stat-card-link" href="<c:url value='/common/wishlists'/>">
+          <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">찜 목록</span>
+          <strong style="font-size:26px;">${wishlistCount}개</strong>
+          <small>저장한 헤어샵 보기 <i class="fas fa-chevron-right"></i></small>
+        </a>
       </div>
       <div class="menu-group">
+        <a href="<c:url value='/common/my-reviews'/>" class="menu-item-modern">
+          <span><i class="fas fa-star" style="margin-right:12px;"></i> 작성한 리뷰</span>
+          <span><strong>${reviewCount}</strong>개 <i class="fas fa-chevron-right" style="margin-left:8px;"></i></span>
+        </a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-credit-card" style="margin-right:12px;"></i> 결제 수단 및 카드 관리</span><span class="tag">준비중</span></a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-bell" style="margin-right:12px;"></i> 알림 설정</span><span class="tag">준비중</span></a>
         <a href="#" id="openPasswordModalBtn" class="menu-item-modern"><span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span><i class="fas fa-chevron-right"></i></a>

@@ -13,6 +13,8 @@ public class ReviewVO {
     private String comment;
     private String createdAt; // created_at
     private String updatedAt; // updated_at
+    private String userName;
+    private String salonName;
 
     public int getReviewId() { return reviewId; }
     public void setReviewId(int reviewId) { this.reviewId = reviewId; }
@@ -30,4 +32,8 @@ public class ReviewVO {
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
+    public String getSalonName() { return salonName; }
+    public void setSalonName(String salonName) { this.salonName = salonName; }
 }

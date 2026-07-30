@@ -20,6 +20,8 @@ public class SalonVO {
     private java.math.BigDecimal longitude; //경도
 
 
+    private String wishlistCreatedAt;
+
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
     public int getOwnerId() { return ownerId; }
@@ -58,5 +60,8 @@ public class SalonVO {
     public void setLongitude(java.math.BigDecimal longitude) {
         this.longitude = longitude;
     }
+
+    public String getWishlistCreatedAt() { return wishlistCreatedAt; }
+    public void setWishlistCreatedAt(String wishlistCreatedAt) { this.wishlistCreatedAt = wishlistCreatedAt; }
 
 }
