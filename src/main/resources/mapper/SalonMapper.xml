@@ -19,6 +19,8 @@
         <result column="latitude" property="latitude" />
         <result column="longitude" property="longitude" />
         <result column="owner_name" property="ownerName" />
+        <result column="user_name" property="userName" />
+        
     </resultMap>
 
     <resultMap id="serviceResultMap" type="com.soldesk.vo.ServiceVO">
@@ -48,9 +50,10 @@
     <select id="findById" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
-               MIN(se.price) AS minimum_price, s.created_at, s.updated_at, s.closed_at
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
+        join Users u on u.user_id = s.owner_id
         WHERE s.salon_id = #{salonId}
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,

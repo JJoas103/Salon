@@ -13,8 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.soldesk.service.ChatService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
+import com.soldesk.vo.ChatRoomVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
@@ -27,6 +29,9 @@ public class OwnerController {
 
     @Autowired
     private SalonService salonService;
+
+    @Autowired
+    private ChatService chatService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -68,9 +73,30 @@ public class OwnerController {
         return "owner/events";
     }
 
+    /** 1:1 면담. 방 목록은 사이드바에서 고른 매장(selectedSalonId) 기준이다 —
+     *  점주가 매장을 여러 개 가지면 ownerId 로 뽑을 때 매장별 문의가 섞이기 때문.
+     *  매장 미선택 상태는 salon_gate_overlay.jsp 가 화면에서 막아주므로 여기선 빈 목록만 넘긴다. */
     @GetMapping("/chat")
-    public String chat(Authentication authentication, Model model){
+    public String chat(Authentication authentication,
+                       @RequestParam(required = false) Integer chatId,
+                       HttpSession session, Model model){
         fillCommonModel(authentication, model);
+
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        List<ChatRoomVO> rooms = (selectedSalonId == null)
+                ? List.of()
+                : chatService.getSalonRooms(selectedSalonId);
+        model.addAttribute("rooms", rooms);
+
+        if(chatId == null && !rooms.isEmpty()){
+            chatId = rooms.get(0).getChatId();
+        }
+        if(chatId != null){
+            UserVO user = userService.getUser(authentication.getName());
+            model.addAttribute("chatId", chatId);
+            model.addAttribute("messages", chatService.getMessages(chatId, user.getUserId()));
+            CommonController.clearUnreadBadge(rooms, chatId);
+        }
         return "owner/chat";
     }
 

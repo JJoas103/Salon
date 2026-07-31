@@ -29,6 +29,9 @@
             <param-value>true</param-value>
         </init-param>
         <load-on-startup>1</load-on-startup>
+        <!-- 웹소켓(STOMP/SockJS) 필수. 요청이 거쳐가는 서블릿·필터 중 하나라도
+             빠지면 핸드셰이크가 IllegalStateException 으로 실패한다. -->
+        <async-supported>true</async-supported>
         <multipart-config>
             <max-file-size>5242880</max-file-size>
             <!-- multipart 경계/폼 필드 오버헤드는 허용하되 개별 파일은 5MB로 제한 -->
@@ -52,6 +55,7 @@
     <filter>
         <filter-name>encodingFilter</filter-name>
         <filter-class>org.springframework.web.filter.CharacterEncodingFilter</filter-class>
+        <async-supported>true</async-supported>
         <init-param>
             <param-name>encoding</param-name>
             <param-value>UTF-8</param-value>
@@ -70,6 +74,7 @@
     <filter>
         <filter-name>springSecurityFilterChain</filter-name>
         <filter-class>org.springframework.web.filter.DelegatingFilterProxy</filter-class>
+        <async-supported>true</async-supported>
     </filter>
     <filter-mapping>
         <filter-name>springSecurityFilterChain</filter-name>

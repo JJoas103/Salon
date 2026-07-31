@@ -88,7 +88,9 @@ body {
 .chat-list { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow-y: auto; }
 .chat-item { padding: 15px 20px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .chat-item.active { background: var(--bg-sub); border-left: 4px solid var(--accent); }
-.chat-window { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; }
+/* overflow:hidden 이 없으면 그리드 항목의 자동 최소 높이가 "내용 전체"가 되어
+   .chat-body 의 overflow-y:auto 가 무력해진다 (박스가 늘어나고 스크롤이 안 생김) */
+.chat-window { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); display: flex; flex-direction: column; overflow: hidden; }
 .chat-body { flex: 1; padding: 20px; overflow-y: auto; background: #FAFBFB; display: flex; flex-direction: column; gap: 15px; }
 .chat-footer { padding: 15px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; }
 

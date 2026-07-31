@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <%-- 현재 페이지가 넘겨준 메뉴 키. 예) <jsp:param name="menu" value="reservations"/>
      포함하는 컨트롤러는 ${salons} 모델(점주 소유 매장 목록)을 채워줘야 매장 선택 모달이 뜬다. --%>
 <c:set var="menu" value="${param.menu}" />
@@ -20,9 +21,25 @@
       <a href="<c:url value='/owner/events'/>"><i class="fas fa-bullhorn"></i> 이벤트/공지사항</a>
     </li>
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-needs-salon="true">
-      <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담</a>
+      <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담<span id="navUnread" class="nav-unread" data-count="0"></span></a>
     </li>
   </ul>
+
+  <%-- 채팅 소켓은 사이드바에서 연다. 채팅 페이지에서만 열면 다른 화면(예약현황 등)에 있을 때
+       새 메시지를 받을 방법이 없어 알림 배지를 올릴 수 없다.
+       chat.js 는 채팅 페이지 전용 요소(#chatBody 등)가 없으면 알림 역할만 한다. --%>
+  <script>
+    window.CHAT_CONFIG = {
+      wsUrl: '<c:url value="/ws"/>',
+      unreadCountUrl: '<c:url value="/common/chat/unread-count"/>',
+      currentUserId: <sec:authentication property="principal.userId"/>,
+      chatId: ${empty chatId ? 'null' : chatId}
+    };
+  </script>
+  <%-- defer: 사이드바는 body 앞쪽이라 그대로 두면 아래 대화창 DOM 이 아직 없다 --%>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js" defer></script>
+  <script src="/resources/js/chat.js" defer></script>
 
   <div class="sidebar-salon-notice" id="salonNotice">매장을 선택해주세요</div>
 
