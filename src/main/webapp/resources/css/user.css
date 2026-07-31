@@ -278,6 +278,7 @@ body {
 /* ---- community: 빈 상태 ---- */
 .empty-state { text-align: center; padding: 80px 0; color: var(--text-light); }
 .empty-state i { font-size: 44px; display: block; margin-bottom: 14px; }
+.suspend-badge { display: inline-block; margin-top: 16px; padding: 6px 16px; border-radius: var(--radius-full); background: var(--danger-soft); color: var(--danger); font-size: 13px; font-weight: 700; }
 
 /* ---- community: 상세 ---- */
 .detail-wrap { max-width: 900px; margin: 0 auto; padding: 12px 20px 48px; }
@@ -310,6 +311,10 @@ body {
 .comment-content { font-size: 14px; color: var(--text-main); line-height: 1.6; }
 .comment-delete-btn { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 12px; }
 .comment-delete-btn:hover { color: var(--danger); }
+.comment-meta-actions { display: flex; align-items: center; gap: 8px; }
+.comment-report-btn { background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 12px; }
+.comment-report-btn:hover { color: var(--accent); }
+.comment-report-btn[disabled] { color: var(--text-light); opacity: 0.6; cursor: default; }
 .comment-form { display: flex; gap: 10px; margin-top: 16px; }
 .comment-input { flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; resize: none; font-family: inherit; }
 .comment-input:focus { outline: none; border-color: var(--accent); }
@@ -354,6 +359,13 @@ body {
 .modal-box { background: var(--white); border-radius: var(--radius-lg); padding: 35px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .modal-close { background: none; border: none; font-size: 16px; color: var(--text-sub); cursor: pointer; }
+
+/* ---- community: 신고 사유 모달 ---- */
+.report-reason-list { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 16px; }
+.report-reason-option { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; font-size: 14px; }
+.report-reason-option:hover { border-color: var(--accent); }
+.report-detail-input { display: block; width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 14px; font-family: inherit; resize: none; margin-bottom: 12px; }
+.report-detail-input:focus { outline: none; border-color: var(--accent); }
 
 /* ---- reservations ---- */
 .res-tabs { display: flex; gap: 30px; margin-bottom: 25px; border-bottom: 1px solid var(--border); }

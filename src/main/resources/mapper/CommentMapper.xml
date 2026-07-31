@@ -11,6 +11,9 @@
         <result column="created_at"  property="createdAt" />
         <result column="updated_at"  property="updatedAt" />
         <result column="author_name" property="authorName" />
+        <result column="report_count"          property="reportCount" />
+        <result column="report_reason_summary" property="reportReasonSummary" />
+        <result column="post_title"            property="postTitle" />
     </resultMap>
 
     <select id="findByPostId" parameterType="int" resultMap="commentResultMap">
@@ -43,5 +46,19 @@
     <delete id="deleteByPostId" parameterType="int">
         DELETE FROM Comments WHERE post_id = #{postId}
     </delete>
+
+    <select id="findReported" resultMap="commentResultMap">
+        SELECT c.comment_id, c.post_id, c.user_id, c.content, c.created_at, c.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name,
+               p.title AS post_title,
+               COUNT(cr.report_id) AS report_count
+        FROM Comments c
+        JOIN comment_reports cr ON cr.comment_id = c.comment_id
+        LEFT JOIN Users u ON c.user_id = u.user_id
+        LEFT JOIN Posts p ON c.post_id = p.post_id
+        GROUP BY c.comment_id, c.post_id, c.user_id, c.content, c.created_at, c.updated_at,
+                 author_name, p.title
+        ORDER BY report_count DESC, c.created_at ASC
+    </select>
 
 </mapper>

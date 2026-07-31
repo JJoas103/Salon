@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.PostReportMapper">
+
+    <resultMap id="reportResultMap" type="com.soldesk.vo.PostReportVO">
+        <id     column="report_id" property="reportId" />
+        <result column="post_id"   property="postId" />
+        <result column="user_id"   property="userId" />
+        <result column="reason"        property="reason" />
+        <result column="reason_detail" property="reasonDetail" />
+        <result column="created_at" property="createdAt" />
+    </resultMap>
+
+    <select id="findByPostAndUser" resultMap="reportResultMap">
+        SELECT report_id, post_id, user_id, reason, reason_detail, created_at
+        FROM post_reports
+        WHERE post_id = #{postId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO post_reports (post_id, user_id, reason, reason_detail)
+        VALUES (#{postId}, #{userId}, #{reason}, #{reasonDetail})
+    </insert>
+
+    <delete id="deleteByPostId">
+        DELETE FROM post_reports WHERE post_id = #{postId}
+    </delete>
+
+    <select id="findReasonCounts" resultType="java.util.HashMap">
+        SELECT reason AS reason, COUNT(*) AS cnt
+        FROM post_reports
+        WHERE post_id = #{postId}
+        GROUP BY reason
+        ORDER BY cnt DESC
+    </select>
+
+    <select id="findOtherReasonDetails" resultType="java.lang.String">
+        SELECT reason_detail
+        FROM post_reports
+        WHERE post_id = #{postId} AND reason = 'other'
+          AND reason_detail IS NOT NULL AND reason_detail &lt;&gt; ''
+        ORDER BY created_at
+    </select>
+
+</mapper>

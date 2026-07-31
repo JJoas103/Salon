@@ -42,6 +42,8 @@ CREATE TABLE Users (
     user_name VARCHAR(100),
     phone_number VARCHAR(20),
     user_type ENUM('customer', 'owner', 'admin') NOT NULL, -- 사용자 유형 (고객, 점주, 관리자)
+    status ENUM('active', 'suspended', 'banned') DEFAULT 'active', -- 커뮤니티 이용 제한 상태
+    suspended_until DATETIME NULL,                          -- 정지 만료 시각 (영구정지면 NULL)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL DEFAULT NULL                 -- 탈퇴 일시 (NULL 이면 활성 회원. 행을 지우지 않는 soft delete)
@@ -202,6 +204,8 @@ CREATE TABLE Posts (
     view_count INT DEFAULT 0,                            -- 조회수
     like_count INT DEFAULT 0,                            -- 좋아요 수
     dislike_count INT DEFAULT 0,                         -- 별로예요 수
+    report_count INT DEFAULT 0,                          -- 누적 신고 수
+    status ENUM('visible', 'blinded') DEFAULT 'visible', -- 노출 상태 (자동 블라인드 여부)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
@@ -229,6 +233,47 @@ CREATE TABLE post_likes (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_post_user (post_id, user_id),          -- 게시글당 1인 1반응
     FOREIGN KEY (post_id) REFERENCES Posts(post_id),
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+-- ---------- post_reports (게시글 신고) ----------
+CREATE TABLE post_reports (
+    report_id INT AUTO_INCREMENT PRIMARY KEY,            -- 신고 고유 식별자
+    post_id INT NOT NULL,                                -- 신고 대상 게시글 ID
+    user_id INT NOT NULL,                                -- 신고한 사용자 ID
+    reason ENUM('spam', 'illegal', 'abuse', 'privacy', 'other') NOT NULL DEFAULT 'other', -- 신고 사유 카테고리
+    reason_detail VARCHAR(255),                          -- reason='other'일 때의 직접 입력 사유
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_post_user (post_id, user_id),          -- 게시글당 1인 1신고 (중복 신고 방지)
+    FOREIGN KEY (post_id) REFERENCES Posts(post_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+-- ---------- comment_reports (댓글 신고) ----------
+CREATE TABLE comment_reports (
+    report_id INT AUTO_INCREMENT PRIMARY KEY,            -- 신고 고유 식별자
+    comment_id INT NOT NULL,                             -- 신고 대상 댓글 ID
+    user_id INT NOT NULL,                                -- 신고한 사용자 ID
+    reason ENUM('spam', 'illegal', 'abuse', 'privacy', 'other') NOT NULL DEFAULT 'other', -- 신고 사유 카테고리
+    reason_detail VARCHAR(255),                          -- reason='other'일 때의 직접 입력 사유
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_comment_user (comment_id, user_id),    -- 댓글당 1인 1신고 (중복 신고 방지)
+    FOREIGN KEY (comment_id) REFERENCES Comments(comment_id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+);
+
+-- ---------- user_sanctions (회원 제재 이력) ----------
+CREATE TABLE user_sanctions (
+    sanction_id INT AUTO_INCREMENT PRIMARY KEY,           -- 제재 고유 식별자
+    user_id INT NOT NULL,                                 -- 제재 대상 회원
+    post_id INT,                                          -- 원인이 된 게시글 ID (참고용, FK 없음 - 삭제 후에도 기록 보존)
+    post_title VARCHAR(255),                              -- 게시글 삭제 전 제목 스냅샷
+    comment_id INT,                                       -- 원인이 된 댓글 ID (참고용, FK 없음 - 삭제 후에도 기록 보존)
+    comment_content TEXT,                                 -- 댓글 삭제 전 내용 스냅샷
+    admin_reason VARCHAR(255),                            -- 관리자가 입력한 제재 사유
+    sanction_type ENUM('suspend_3d', 'suspend_7d', 'permanent') NOT NULL,
+    suspended_until DATETIME,                             -- 이 제재로 인한 만료 시각 (permanent면 NULL)
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id)
 );
 

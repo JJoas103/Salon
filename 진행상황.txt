@@ -12,3 +12,289 @@ ReserveController에서 유저 정보 받아오기 위해
 메인페이지 카테고리 개선 
 
 
+[커뮤니티 신고 -> 자동 블라인드 -> 관리자 검토 기능] 진행상황
+
+## 요구사항 (사용자 요청 원문 요약)
+1. 커뮤니티 게시글 상세페이지에 신고 기능 추가 (수정/삭제 버튼 옆 신고 버튼)
+2. 한 계정은 같은 글에 신고 1회만 가능 (중복 신고 방지)
+3. 신고가 일정 수 이상 누적되면 자동으로 글 블라인드(숨김) 처리
+4. 블라인드된 글은 관리자 전용 대시보드(신고 관리 메뉴)로 이동, 관리자가 [삭제 승인] 또는 [신고 기각(복구)] 결정
+5. (추가 요청) 신고 사유를 카테고리화: 스팸/광고, 음란물/불법 정보, 욕설/비하/도배, 개인정보 노출, 기타(직접입력) - 로그인 모달처럼 작은 팝업으로 선택
+6. (추가 요청) 관리자 페이지에 실제 선택된 사유 카테고리 표시
+7. (추가 요청) 관리자 페이지 "대상(ID/글)" 클릭 시 실제 신고된 글 내용을 볼 수 있어야 함
+8. (추가 요청) "기타" 사유 입력창 UI 사이즈 수정, 관리자 페이지에서 "기타" 직접입력 텍스트 확인 가능해야 함
+
+## DB 변경 (sql/schema.sql, sql/migration_community.sql 둘 다 반영 + 로컬 salu DB에 mysqlsh로 실제 적용 완료)
+- Posts 테이블에 컬럼 추가
+  - report_count INT DEFAULT 0            (누적 신고 수)
+  - status ENUM('visible','blinded') DEFAULT 'visible'   (노출 상태)
+- 신규 테이블 post_reports
+  - report_id, post_id, user_id, reason ENUM('spam','illegal','abuse','privacy','other') DEFAULT 'other',
+    reason_detail VARCHAR(255), created_at
+  - UNIQUE KEY (post_id, user_id) -> "1인 1글 1신고" 를 DB 레벨에서 강제
+  - FOREIGN KEY post_id -> Posts(post_id) ON DELETE CASCADE, user_id -> Users(user_id)
+- 블라인드 임계치(REPORT_BLIND_THRESHOLD)는 테스트 편의를 위해 현재 1로 낮춰둔 상태
+  (PostServiceImpl.java 상수) -> 테스트 끝나면 실제 운영값(예: 5)으로 되돌릴 것
+
+## 백엔드 변경
+- 신규 파일
+  - vo/PostReportVO.java
+  - mapper/PostReportMapper.java + resources/mapper/PostReportMapper.xml
+    (findByPostAndUser, insert, deleteByPostId, findReasonCounts(집계), findOtherReasonDetails(기타 텍스트 목록))
+- PostVO.java: reportCount, status, reportReasonSummary(조회 전용 요약 문자열) 필드 추가
+- PostMapper.java / PostMapper.xml
+  - findByIdAny(블라인드 무시 조회, 관리자 전용), findBlinded(블라인드 목록, 신고수 내림차순 정렬)
+  - incrementReportCount / blindPost / unblindPost / resetReportCount
+  - 기존 findAll/findByCategory/findById/search 4개 쿼리에 status='visible' 필터 추가 (일반 사용자에게 블라인드 글 완전 비노출)
+- PostService.java / PostServiceImpl.java
+  - reportPost(postId, userId, reason, reasonDetail): 중복신고 체크 -> insert -> report_count 증가 -> 임계치 도달시 자동 블라인드
+  - hasReported, getBlindedPosts(사유 요약 채워서 반환), approveDelete(하드 삭제, 댓글/신고/이미지파일까지 cascade),
+    dismissReport(블라인드 해제 + 신고기록 초기화 = 완전 복구), getPostForAdmin, getOtherReasonDetails
+  - removePost()와 approveDelete()가 deletePostCascade() 헬퍼 공유하도록 리팩터링
+- CommunityController.java: POST /common/community/{postId}/report 엔드포인트 추가 (reason, reasonDetail 파라미터)
+- SecurityConfig.java: /common/community/*/report 를 인증 필요 목록에 추가
+- AdminController.java (기존엔 완전 정적 페이지였음, 이번에 최초로 서비스 연동)
+  - GET /admin/community: 실제 블라인드 글 목록 바인딩
+  - GET /admin/community/{postId}: 관리자 전용 상세보기 (블라인드 글도 전체 내용 확인 가능)
+  - POST /admin/community/{postId}/approve-delete, /dismiss
+
+## 프론트엔드 변경
+- common/community/detail.jsp
+  - 수정/삭제 버튼 옆에 신고 버튼 추가 (본인 글이면 안 보임, 이미 신고했으면 "신고 완료" 비활성 버튼)
+  - 신고 버튼 클릭 시 로그인 모달과 같은 스타일의 팝업 오픈
+    - 라디오 5개: 스팸/광고, 음란물/불법 정보, 욕설/비하/도배, 개인정보 노출, 기타(직접입력)
+    - "기타" 선택시에만 사유 입력 textarea 노출 (report-detail-input 클래스, 버튼과 동일 폭)
+  - ?reported=true/duplicate/invalid 에 따른 안내 메시지 표시
+- admin/community.jsp
+  - 기존엔 하드코딩된 mock 데이터 1줄만 있던 화면 -> 실제 블라인드된 글 목록 c:forEach 로 표시
+  - "대상(ID/글)" 칸 클릭 시 관리자 상세보기로 이동하는 링크로 변경
+  - "사유" 칸에 실제 신고 사유 집계 표시 (예: "스팸/광고 2건, 기타 1건")
+- admin/community_detail.jsp (신규 파일)
+  - 블라인드된 글의 제목/본문/이미지/작성자/누적신고수/사유요약 전체 확인 가능
+  - "기타 사유 상세" 박스: 사용자가 직접 입력한 텍스트를 목록으로 표시 (기타 신고 없으면 안 보임)
+  - 삭제승인 / 반려(기각) 버튼
+- resources/css/user.css: .report-reason-list/.report-reason-option(사유 선택 버튼), .report-detail-input(기타 입력창) 스타일 추가
+
+## 진행 중 발견해서 고친 버그
+- admin/community.jsp 에 JSTL <%@ taglib prefix="c" %> 선언이 아예 빠져 있었음
+  -> <c:forEach>가 실제로 동작하지 않고 화면에 텍스트 그대로 찍히거나 postId/title이 전부 빈 값으로 나오던 원인이었음
+     (Tomcat이 생성한 서블릿 소스(.java)를 직접 열어서 확인함)
+  -> taglib 선언 + <c:set var="ctx".../> 추가해서 해결. admin/community_detail.jsp는 처음부터 taglib 포함해서 작성.
+
+## 검증 상태
+- mvn clean package -DskipTests 매 변경마다 빌드 성공 확인
+- deploy.bat 로 로컬 Tomcat(9.0, localhost:8080)에 재배포 완료, 배포된 파일 내용 직접 확인함
+- DB에 실제 테스트 데이터로 신고 1건 -> 블라인드 전환까지는 mysqlsh로 확인함
+- 브라우저로 직접 클릭해보며 전체 시나리오(여러 계정으로 신고 -> 관리자 승인/기각)를 사람이 눈으로 보는 E2E 테스트는
+  아직 안 한 상태 (사용자가 직접 브라우저에서 테스트 중)
+
+## 남은 일 / 미완성 (게시글 신고 기능 기준, 아래 이어지는 라운드에서 갱신됨)
+- REPORT_BLIND_THRESHOLD 현재 1 (테스트용) -> 테스트 끝나면 원래 값으로 복구 필요
+- (해결됨, 아래 2번 라운드 참고) 댓글(Comments) 신고 기능은 범위 밖이었으나 이후 라운드에서 구현됨
+- 자동화된 테스트 코드 없음 (프로젝트 전체에 테스트 프레임워크가 아직 안 붙어 있음, CLAUDE.md 참고)
+
+
+==========================================================================
+[2. 댓글 작성자 신고 기능] 진행상황
+==========================================================================
+
+## 요구사항
+- 댓글쓴 유저 옆에 신고 버튼 추가, 게시글 신고와 동일한 사유 선택(스팸/광고, 음란물/불법 정보,
+  욕설/비하/도배, 개인정보 노출, 기타-직접입력)
+- 게시글 신고와 달리 자동 블라인드 없음 -> 관리자가 검토 후에만 삭제/제재
+
+## DB 변경
+- 신규 테이블 comment_reports (post_reports와 동일 구조, FK가 Comments(comment_id) ON DELETE
+  CASCADE, UNIQUE KEY (comment_id, user_id)로 1인 1신고 강제)
+- Comments 테이블엔 status/report_count 컬럼을 추가하지 않음 -> "관리자 검토 대기"는
+  "comment_reports 행이 1개 이상 존재하는가"로 암묵적으로 정의 (반려 시 그 행만 지우면 자동으로
+  목록에서 빠짐, 별도 상태 복구 로직 불필요)
+
+## 백엔드 변경
+- 신규: vo/CommentReportVO.java, mapper/CommentReportMapper.java(+xml)
+  (findByCommentAndUser, insert, deleteByCommentId, findReasonCounts, findOtherReasonDetails,
+   findReportedCommentIdsByUser)
+- CommentVO.java: reportCount, reportReasonSummary, postTitle(조회 전용) 필드 추가
+- CommentMapper.java/xml: findReported() 추가 (JOIN comment_reports로 "신고 있는 댓글만" 조회)
+- PostServiceImpl.java (댓글 CRUD가 원래도 여기 있어서 그대로 이어서 구현):
+  reportComment, hasReportedComment, getReportedCommentIds, getReportedComments,
+  getOtherCommentReasonDetails, approveDeleteCommentWithSanction, dismissCommentReport
+  - REPORT_REASON_LABELS 맵을 게시글/댓글 공용으로 재사용
+- CommunityController.java: POST /{postId}/comment/{commentId}/report 엔드포인트
+- AdminController.java: reportedComments 모델 속성, POST /community/comment/{commentId}/
+  approve-delete, /dismiss
+- SecurityConfig.java: /common/community/*/comment/*/report 를 인증 필요 목록에 추가
+
+## 프론트엔드 변경
+- common/community/detail.jsp: 댓글마다 신고 버튼(본인 댓글이면 안 보임, 이미 신고했으면 "신고
+  완료" 비활성) + 댓글별 신고 모달(게시글 신고 모달을 클래스/data-attribute 기반으로 일반화해서
+  재사용, 댓글 개수만큼 렌더링되어도 각각 독립 동작)
+  - "이미 신고했는지"는 페이지 로드시 한 번에 조회(getReportedCommentIds)해서 EL의
+    list.contains(...)로 판정 (댓글마다 개별 쿼리 안 함)
+- resources/css/user.css: .comment-meta-actions, .comment-report-btn 스타일 추가
+- admin/community.jsp: "신고된 댓글" 표 추가 (게시글 표와 동일한 조치 버튼 패턴)
+
+
+==========================================================================
+[3. 관리자 조치 강화: 삭제+작성자 정지, 신고/제재 이력 조회] 진행상황
+==========================================================================
+
+## 요구사항
+- 관리자 조치를 "삭제"/"반려" 2개에서 [삭제+작성자 정지(3일/7일/영구)] / [반려] 로 강화
+- 정지는 로그인 자체를 막지 않고 커뮤니티 기능(글쓰기/수정/삭제/댓글/좋아요/신고)만 제한
+  (사용자가 명시적으로 "로그인 차단보다는 커뮤니티기능만 제한"이라고 정정 요청함)
+- 작성자가 과거 몇 번 신고/제재당했는지 관리자 화면에서 바로 확인 가능해야 함
+
+## DB 변경
+- Users: status ENUM('active','suspended','banned') DEFAULT 'active', suspended_until DATETIME NULL
+  - 만료 여부는 배치잡 없이 매번 로그인 시점에 동적으로 판단 (suspended_until과 현재시각 비교)
+- 신규 테이블 user_sanctions (제재 1건 = 1행, post_id/post_title은 FK 없는 참고용 스냅샷 -
+  게시글이 삭제돼도 "무엇 때문에 제재받았는지" 기록이 남게)
+
+## 백엔드 변경
+- UserVO.java: status, suspendedUntil(LocalDateTime) 필드 추가
+- 신규: vo/UserSanctionVO.java, mapper/UserSanctionMapper.java(+xml)
+- UserMapper.java/xml: updateSuspension(userId, status, suspendedUntil) 추가
+- UserService.java: suspendUser(userId, sanctionType, postId, postTitle) - 3일/7일/영구정지에 따라
+  Users.status/suspended_until 갱신 + user_sanctions 이력 기록. getSanctionHistory(userId) 추가
+- PostMapper.java/xml: sumReportCountByAuthor(userId) 추가 (작성자의 현재 살아있는 글 기준 누적 신고수)
+- PostServiceImpl.java: approveDelete(postId) 제거하고 approveDeleteWithSanction(postId, sanctionType)
+  로 완전히 대체 (사유 없는 단순 삭제를 없앰)
+- security/CustomUserDetails.java: 생성자에서 "현재 정지중"인지 계산해 SUSPENDED GrantedAuthority를
+  추가로 부여 (isAccountNonLocked/isEnabled는 그대로 true 유지 -> 로그인 자체는 안 막음)
+- SecurityConfig.java: 커뮤니티 변경 요청들(write/edit/delete/comment/react/report)에
+  WebExpressionAuthorizationManager("isAuthenticated() and !hasAuthority('SUSPENDED')") 적용
+  (Spring Security 5.8+ 내장 클래스, 별도 의존성 추가 없음)
+- AdminController.java: 관리자 상세보기에 sanctionHistory, totalReportsOnOtherPosts 모델 속성 추가,
+  approve-delete 엔드포인트가 sanctionType 파라미터를 받도록 변경
+
+## 프론트엔드 변경
+- admin/community.jsp, admin/community_detail.jsp: "삭제" 버튼 1개를 "삭제+3일정지"/"삭제+7일정지"/
+  "삭제+영구정지" 3개로 교체 (반려는 그대로)
+- admin/community_detail.jsp: "작성자 신고/제재 이력" 카드 추가 (다른 글 포함 누적 신고 건수 +
+  과거 제재 이력 목록)
+
+## 의도적으로 안 한 것
+- 정지 중 사용자가 글쓰기 등 시도 시 Spring Security 기본 403 처리 (당시엔 안내 페이지 없음,
+  CLAUDE.md의 "아직 에러 페이지 처리 없음, 나중에 한 곳에 모아서 만들 것" 방침에 따름
+  -> 5번 라운드에서 실제로 안내 페이지를 만들며 이 부분 보완됨)
+
+
+==========================================================================
+[4. 관리자 페이지 UI 개선: 탭 분리 + 조치 드롭다운] 진행상황
+==========================================================================
+
+## 요구사항
+- "신고된 게시글"/"신고된 댓글" 두 표가 위아래로 쌓여있던 걸 탭으로 오갈 수 있게 분리
+- 조치 칸에 버튼 4개(삭제+3일/7일/영구정지, 반려)가 나열돼 지저분함 -> "조치" 버튼 하나 + 드롭다운
+  메뉴로 교체, 클릭한 항목의 조치만 실행
+
+## 변경 내용 (백엔드 변경 없음, admin.css + admin/community.jsp만)
+- admin.css: .admin-tabs/.admin-tab-btn/.admin-tab-panel (탭 전환), .action-dropdown/.action-menu/
+  .action-menu-item/.hidden-action-form (드롭다운) 신규 클래스 추가 (기존 :root 변수만 재사용)
+- admin/community.jsp:
+  - 탭 버튼 바 추가, 각 표를 .admin-tab-panel로 감쌈 (JS는 순수 vanilla, classList 토글만, 페이지
+    이동 없음)
+  - 기존 4개 버튼을 화면에 안 보이는 <form>으로 바꾸고, "조치 ▾" 버튼 1개 + 드롭다운 메뉴(4개 항목)
+    로 교체. 항목 클릭 -> confirm() -> 해당 숨은 폼 submit() (서버로 가는 요청/파라미터는 완전히
+    동일, 클릭 UX만 변경)
+  - 관리자 JSP에 <script> 태그가 들어간 것은 이번이 처음 (이전까진 admin 쪽 JS 전무)
+
+
+==========================================================================
+[5. "제재당한 유저" 탭 추가] 진행상황
+==========================================================================
+
+## 요구사항
+- 현재 제재중인 회원 목록 + 왜(원인 글/댓글)/무슨 제재를 받았는지 표시 + 제재를 풀 수 있는 기능
+
+## DB 변경
+- 없음 (기존 Users.status/suspended_until + user_sanctions 만으로 충분)
+
+## 백엔드 변경
+- UserMapper.java/xml: findSanctionedUsers() 추가
+  (status='banned' OR (status='suspended' AND suspended_until > NOW()) -> CustomUserDetails의
+   "현재 정지중" 판단 로직을 SQL로 그대로 미러링)
+- UserService.java: getSanctionedUsers(), liftSanction(userId) 추가
+  (liftSanction은 기존 updateSuspension(userId,"active",null) 한 줄 재사용, 새 SQL 없음)
+- AdminController.java: community()에 sanctionedUsers/latestSanctions/suspendedUntilText 모델
+  속성 추가 (사유는 새 JOIN 쿼리 없이 기존 getSanctionHistory(userId) 재사용해서 최신 1건만 뽑음),
+  POST /community/user/{userId}/lift-sanction 엔드포인트 추가
+
+## 프론트엔드 변경
+- admin.css: .status-suspended/.status-banned 배지 클래스 추가
+- admin/community.jsp: "제재당한 유저" 3번째 탭 추가 (회원/제재상태/사유/제재일시/조치(제재 해제
+  버튼, 선택지가 하나뿐이라 드롭다운 없이 단순 버튼))
+
+
+==========================================================================
+[6. 게시글 제재 오류 수정 + 정지 회원 커뮤니티 탭 전체 차단] 진행상황
+==========================================================================
+
+## 발견한 버그와 수정
+- 게시글에 제재(삭제+정지)를 주면 서버 오류, 댓글은 정상 -> 원인은 PostServiceImpl.
+  deletePostCascade()가 댓글/게시글신고는 지우면서 좋아요/별로예요(post_likes)는 안 지우고
+  Posts 행을 삭제해서 FK 위반(post_likes.post_id -> Posts(post_id), ON DELETE CASCADE 없음)
+  -> PostLikeMapper에 deleteByPostId 추가하고 deletePostCascade()에서 호출하도록 수정
+  (removePost/approveDeleteWithSanction 둘 다 이 헬퍼를 공유하므로 둘 다 같이 고쳐짐)
+
+## 요구사항 (커뮤니티 탭 전체 차단)
+- 지금까진 정지된 회원도 커뮤니티 글 목록/상세는 그냥 볼 수 있었음(변경 액션만 막힘) ->
+  정지된 회원은 커뮤니티 탭 자체를 아예 못 들어가게, 접근 시 "제재당한 유저입니다" 메시지
+
+## 백엔드 변경
+- SecurityConfig.java: /common/community/** 전체에 대해
+  WebExpressionAuthorizationManager("!hasAuthority('SUSPENDED')") 규칙 추가 (기존 mutation 세부
+  경로 규칙보다 뒤에 위치, 그 경로들에 대해선 기존 동작 그대로 유지됨). isAuthenticated() 조건은
+  넣지 않아서 비로그인 사용자는 지금처럼 자유롭게 둘러볼 수 있음(SUSPENDED 권한 자체가 없으므로)
+- 프로젝트 최초로 exceptionHandling()/AccessDeniedHandler 도입 (CLAUDE.md에 "아직 에러 페이지
+  없음, 나중에 한 곳에 모아서" 라고 명시된 그 시점) - /common/community/** 접근 거부만 안내
+  페이지로, 그 외(예: /admin/** 비관리자 접근)는 기존 기본 403 그대로 유지
+- CommunityController.java: GET /common/community/suspended 엔드포인트 추가 - 로그인한 사용자의
+  최신 제재 이력(getSanctionHistory)을 조회해 sanctionType/suspendedUntilText를 모델에 채움
+  (AccessDeniedHandler는 이 경로로 sendRedirect, SecurityConfig에서 이 경로는 permitAll)
+
+## 프론트엔드 변경
+- 신규 common/community/suspended.jsp: 정지 사유/종류(3일·7일·영구)/만료일시를 안내하는 페이지
+  (.empty-state 클래스 재사용, 새 CSS 없음)
+
+
+==========================================================================
+[7. 관리자 제재 사유 입력] 진행상황
+==========================================================================
+
+## 요구사항
+- 관리자가 게시글/댓글에 제재를 줄 때 사유를 직접 입력하게 하고, "제재당한 유저" 탭 사유 칸에
+  관리자가 왜 제재했는지 그 내용이 보이게
+
+## DB 변경
+- user_sanctions에 admin_reason VARCHAR(255) NULL 컬럼 추가 (기존 post_title/comment_content는
+  "무엇을 지웠는지" 자동 기록, admin_reason은 "관리자가 왜 그렇게 판단했는지" - 성격이 달라 분리)
+
+## 백엔드 변경
+- UserSanctionVO.java: adminReason 필드 추가
+- UserSanctionMapper.xml: resultMap/insert/findByUserId에 admin_reason 반영
+- UserService.java: suspendUser 두 오버로드 모두 adminReason 파라미터 추가
+- PostService.java/PostServiceImpl.java: approveDeleteWithSanction, approveDeleteCommentWithSanction
+  시그니처에 adminReason 추가
+- AdminController.java: 두 approve-delete 엔드포인트가 adminReason 파라미터를 받도록 변경
+  (required=false로 관대하게 받고, 강제성은 클라이언트 쪽에서 확보)
+
+## 프론트엔드 변경
+- admin/community.jsp: 삭제+정지 드롭다운 항목(danger 클래스) 클릭 시 confirm() 다음에 prompt()로
+  사유를 입력받아 숨은 input(adminReason)에 채운 뒤 제출. 취소하거나 빈 값이면 제출 자체를 안 함
+  (반려 항목은 사유 입력 대상 아님, 기존 confirm만으로 동작)
+  - "제재당한 유저" 탭 사유 칸에 "게시글:/댓글: ..." 아래로 "사유: (관리자 입력 내용)" 줄 추가
+- admin/community_detail.jsp: 동일한 흐름을 공용 JS 함수 confirmAndReason(form, msg)로 구현
+  (개별 버튼 3개, 드롭다운이 아니라 onsubmit에서 직접 호출)
+- 새 모달 없이 기존 confirm() 패턴을 prompt()로 한 단계 확장하는 방식 선택 (라디오+자유입력이
+  필요한 신고 사유 선택과 달리, 텍스트 한 줄만 필요해서 모달까지는 과함)
+
+
+## 전체 남은 일 / 미완성 (2026-07-30 기준, 이 시점까지의 누적)
+- REPORT_BLIND_THRESHOLD 여전히 1 (테스트용) -> 실제 운영값(예: 5)으로 복구 필요
+- 브라우저로 실제 정지 계정 로그인 -> 커뮤니티 탭 차단 메시지 확인까지의 E2E는 아직 사람이 눈으로
+  못 함 (테스트 계정 비밀번호를 몰라서, DB 직접 조회/컴파일된 클래스 확인 수준까지만 검증 완료 -
+  기능적으로는 SQL 조건/AccessDeniedHandler 연결/JSP 배포 모두 확인함)
+- 관리자 최고 계정 생성 요청은 세션 초반에 중단된 채 마무리 안 됨 (필요하면 재요청)
+- 자동화된 테스트 코드 없음 (프로젝트 전체에 테스트 프레임워크 미도입, CLAUDE.md 참고)
