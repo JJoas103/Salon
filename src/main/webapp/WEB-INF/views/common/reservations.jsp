@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
   <link rel="stylesheet" href="/resources/css/auth.css">
+  <link rel="stylesheet" href="<c:url value='/resources/css/calendar.css'/>">
 </head>
 <body>
   <!-- 사이드바 -->
@@ -26,11 +27,9 @@
         </div>
 
         <div class="res-tab">
-          확정 대기
-        </div>
-
-        <div class="res-tab ${categoryIdx == 2 ? 'active' : ''}">
-          <a href="/common/reserve?category=2">이용 완료</a>
+          <a href="${pageContext.request.contextPath}/common/calendar">
+            예약 캘린더
+          </a>
         </div>
       </div>
 

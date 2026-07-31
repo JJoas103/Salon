@@ -103,25 +103,36 @@ public class CommonController {
         return Map.of("success", true);
     }
 
-    //예약 내역 가져오기
+    // 예약 내역 가져오기
     @GetMapping("/reserve")
-    public String pageReserve(@RequestParam(defaultValue = "1") int category, Model model){
+    public String pageReserve(
+        @RequestParam(defaultValue = "1") int category,
+        Model model) {
+            String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
-        String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
-        UserVO user = userService.getUser(userEmail);
-        model.addAttribute("categoryIdx", category);
-        if(category == 1){
-            List<ReservationVO> list = reservationService.getRevList(user.getUserId()); //예약 완료된 정보
-            model.addAttribute("reservs", list);//예약 정보
-        }
-        else if(category == 2){
-            List<ReservationVO> list = reservationService.getClearRevList(user.getUserId()); //예약 완료된 정보
-            model.addAttribute("reservs", list);//예약 정보
+            UserVO user = userService.getUser(userEmail);
 
+            model.addAttribute("categoryIdx", 1);
+            List<ReservationVO> list =
+            reservationService.getRevList(user.getUserId());
+            model.addAttribute("reservs", list);
+            return "common/reservations";
         }
-        return "common/reservations";
+
+   
+    //예약 캘린더
+    @GetMapping("/calendar")
+    public String calendar() {
+        return "common/calendar";
     }
-    
+    // 예약 캘린더에 표시할 실제 예약 데이터//
+    @GetMapping("/calendar/events")
+    @ResponseBody
+    public List<ReservationVO> calendarEvents(Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        return reservationService.getRevList(user.getUserId());
+    }
+
     //미용실 지도 검색 (카카오맵)
     @GetMapping("/salonmap")
     public String salonMap(Model model) throws JsonProcessingException{

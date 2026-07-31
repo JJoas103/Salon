@@ -12,10 +12,6 @@ public interface ResvMapper {
             @Param("userId") int userId
     );
 
-    List<ReservationVO> getClearRevList(
-            @Param("userId") int userId
-    );
-
     int countCompleted(@Param("userId") int userId);
 
 }

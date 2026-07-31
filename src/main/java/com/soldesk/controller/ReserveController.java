@@ -6,6 +6,5 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @Controller
 @RequestMapping("/reserve")
 public class ReserveController {
-
-    // 예약 기능은 CommonController에서 처리
+    
 }
