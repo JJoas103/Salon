@@ -48,4 +48,54 @@ public class SalonService {
 
         return salonSearchService.search(keyword, 1, 50);
     }//키워드(미용실 이름 / 주소)로 검색하기
+
+    @Transactional(readOnly = true)
+    public List<SalonVO> getSalonsForAdmin(String keyword, String status, int page, int size){
+        int offset = (page - 1) * size;
+        return salonMapper.findSalonsForAdmin(keyword, status, offset, size);
+    }//관리자 매장 목록 (검색/운영상태 필터 + 페이지네이션)
+
+    @Transactional(readOnly = true)
+    public int countSalonsForAdmin(String keyword, String status){
+        return salonMapper.countSalonsForAdmin(keyword, status);
+    }//현재 검색조건의 총 건수 (총 페이지 수 계산용)
+
+    @Transactional(readOnly = true)
+    public int countActiveSalons(){
+        return salonMapper.countActiveSalons();
+    }
+
+    @Transactional(readOnly = true)
+    public int countNewSalonsThisMonth(){
+        return salonMapper.countNewSalonsThisMonth();
+    }
+
+    @Transactional(readOnly = true)
+    public int countActiveReservations(){
+        return salonMapper.countActiveReservations();
+    }
+
+    @Transactional
+    public void closeSalon(int salonId){
+        SalonVO salon = salonMapper.findById(salonId);
+        if(salon == null){
+            throw new IllegalArgumentException("존재하지 않는 매장입니다.");
+        }
+        if(salon.getClosedAt() != null){
+            throw new IllegalArgumentException("이미 폐업 처리된 매장입니다.");
+        }
+        salonMapper.closeSalon(salonId);
+    }//매장 폐업 처리: 존재하지 않거나 이미 폐업된 매장 재처리 방지
+
+    @Transactional
+    public void reopenSalon(int salonId){
+        SalonVO salon = salonMapper.findById(salonId);
+        if(salon == null){
+            throw new IllegalArgumentException("존재하지 않는 매장입니다.");
+        }
+        if(salon.getClosedAt() == null){
+            throw new IllegalArgumentException("이미 운영중인 매장입니다.");
+        }
+        salonMapper.reopenSalon(salonId);
+    }//매장 폐업 취소(재개): 존재하지 않거나 이미 운영중인 매장 재처리 방지
 }
