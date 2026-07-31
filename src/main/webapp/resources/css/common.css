@@ -63,6 +63,16 @@
 .msg-bubble { padding: 12px 18px; border-radius: var(--radius-md); font-size: 14px; line-height: 1.5; }
 .incoming .msg-bubble { background: var(--white); border: 1px solid var(--border); }
 .outgoing .msg-bubble { background: var(--primary); color: var(--white); }
+/* 내 메시지 중 상대가 아직 안 읽은 것 옆에 붙는 표시.
+   .outgoing 은 row-reverse 라 말풍선보다 뒤에 놓으면 화면상 왼쪽에 붙는다 */
+.msg-read-mark {
+  align-self: flex-end;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+  padding-bottom: 4px;
+}
 
 /* 방 목록 한 줄 */
 .chat-room-link { text-decoration: none; color: inherit; display: block; }
@@ -85,6 +95,23 @@
   margin: auto; padding: 30px;
   font-size: 14px; color: var(--text-sub); text-align: center;
 }
+
+/* 사이드바 1:1 메뉴의 안읽음 알림 배지 */
+.nav-unread {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 8px;
+  padding: 0 5px;
+  background: var(--danger);
+  color: var(--white);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+  border-radius: 9px;
+  vertical-align: middle;
+}
+.nav-unread[data-count="0"] { display: none; }
 
 /* 연결 상태 표시 */
 .chat-status { margin-left: 10px; font-size: 13px; color: var(--text-sub); font-weight: 400; }

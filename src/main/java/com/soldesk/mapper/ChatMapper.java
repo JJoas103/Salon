@@ -41,4 +41,8 @@ public interface ChatMapper {
 
     /** 내가 방을 열었을 때, 상대가 보낸 안읽음 메시지를 읽음 처리 */
     int markAsRead(@Param("chatId") int chatId, @Param("readerId") int readerId);
+
+    /** 사이드바 알림 배지용 - 내가 참여한 모든 방의 안읽음 합계.
+     *  고객·점주를 가리지 않는다. 점주라면 매장을 안 골라도 놓치지 않게 전 매장을 센다. */
+    int countUnread(int userId);
 }

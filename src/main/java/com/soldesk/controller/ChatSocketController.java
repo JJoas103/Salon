@@ -42,4 +42,14 @@ public class ChatSocketController {
         log.debug("STOMP send - from={}, chatId={}", principal.getName(), payload.getChatId());
         chatService.sendMessage(payload.getChatId(), principal.getName(), payload.getMessageContent());
     }
+
+    /**
+     * 읽음 확인. 화면을 열어둔 채로 새 메시지를 받았을 때 클라이언트가 보낸다.
+     * (방을 처음 열 때의 읽음 처리는 ChatService.getMessages 가 이미 한다)
+     */
+    @MessageMapping("/chat/read")
+    public void read(MessageVO payload, Principal principal) {
+        log.debug("STOMP read - from={}, chatId={}", principal.getName(), payload.getChatId());
+        chatService.markAsRead(payload.getChatId(), principal.getName());
+    }
 }

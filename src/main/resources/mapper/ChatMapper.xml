@@ -134,6 +134,16 @@
         order by m.message_id asc
     </select>
 
+    <!-- 참여한 모든 방을 통틀어, 남이 보냈고 아직 안 읽은 메시지 수 -->
+    <select id="countUnread" parameterType="int" resultType="int">
+        select count(*)
+        from Messages m
+        join Chats c on c.chat_id = m.chat_id
+        where (c.user1_id = #{userId} or c.user2_id = #{userId})
+          and m.sender_id != #{userId}
+          and m.is_read = 0
+    </select>
+
     <!-- 내가 보낸 건 대상이 아니다. 이미 읽음인 행은 건드리지 않는다 -->
     <update id="markAsRead">
         update Messages

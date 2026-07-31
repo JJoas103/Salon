@@ -233,6 +233,17 @@ public class CommonController {
         return chatService.getMessages(chatId, user.getUserId());
     }
 
+    /** 사이드바 알림 배지의 초기값. 사이드바는 거의 모든 페이지에 들어가므로
+     *  컨트롤러마다 모델에 넣는 대신 이 한 곳을 화면에서 호출하게 한다.
+     *  (점주 화면도 같은 엔드포인트를 쓴다) */
+    @GetMapping("/chat/unread-count")
+    @ResponseBody
+    public Map<String, Integer> unreadCount(Authentication authentication){
+
+        UserVO user = userService.getUser(authentication.getName());
+        return Map.of("count", chatService.getUnreadCount(user.getUserId()));
+    }
+
     /** 지금 열어본 방은 읽음 처리됐으므로 목록의 안읽음 배지도 0으로 맞춘다 */
     static void clearUnreadBadge(List<ChatRoomVO> rooms, int chatId){
         for(ChatRoomVO room : rooms){

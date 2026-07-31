@@ -19,7 +19,7 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">1대1 면담</div>
-      <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span>${user.userName} 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
+      <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span><c:out value="${user.userName}"/> 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
     </header>
     <main class="app-content">
       <div class="chat-layout">
@@ -36,7 +36,8 @@
                    href="<c:url value='/owner/chat'><c:param name="chatId" value="${room.chatId}"/></c:url>">
                   <div class="chat-item ${room.chatId == chatId ? 'active' : ''}">
                     <div class="chat-room-title">
-                      <strong>${room.partnerName} 고객님</strong>
+                      <%-- 고객 이름은 사용자가 정한 값이므로 반드시 c:out 으로 이스케이프한다 --%>
+                      <strong><c:out value="${room.partnerName}"/> 고객님</strong>
                       <span class="chat-unread" data-count="${room.unreadCount}">${room.unreadCount}</span>
                     </div>
                     <p class="chat-room-preview">
@@ -61,7 +62,7 @@
               <c:forEach var="room" items="${rooms}">
                 <c:if test="${room.chatId == chatId}">
                   <div style="padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: 700;">
-                    ${room.partnerName} 고객님과의 대화
+                    <c:out value="${room.partnerName}"/> 고객님과의 대화
                     <span id="wsStatus" class="chat-status">연결 중…</span>
                   </div>
                 </c:if>
@@ -76,6 +77,10 @@
                     <c:forEach var="msg" items="${messages}">
                       <div class="msg-wrapper ${msg.senderId == user.userId ? 'outgoing' : 'incoming'}">
                         <div class="msg-bubble"><c:out value="${msg.messageContent}"/></div>
+                        <%-- 내가 보냈는데 상대가 아직 안 읽은 것만 "1" 표시 --%>
+                        <c:if test="${msg.senderId == user.userId and not msg.isRead}">
+                          <span class="msg-read-mark">1</span>
+                        </c:if>
                       </div>
                     </c:forEach>
                   </c:otherwise>
@@ -98,16 +103,7 @@
       <jsp:param name="roleLabel" value="점주" />
   </jsp:include>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-  <script>
-    // JSP 만 알 수 있는 값(컨텍스트 경로·로그인 정보)을 정적 js 로 넘겨준다
-    window.CHAT_CONFIG = {
-      wsUrl: '<c:url value="/ws"/>',
-      currentUserId: ${user.userId},
-      chatId: ${empty chatId ? 'null' : chatId}
-    };
-  </script>
-  <script src="/resources/js/chat.js"></script>
+  <%-- 소켓 연결·스크립트 로드는 sidebar_owner.jsp 가 담당한다
+       (모든 페이지에서 알림을 받아야 해서 사이드바로 올렸다) --%>
 </body>
 </html>

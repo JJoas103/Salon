@@ -1,6 +1,7 @@
 package com.soldesk.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -83,6 +84,12 @@ public class ChatService {
         return chatMapper.findRoomsByCustomer(customerId);
     }
 
+    /** 사이드바 알림 배지용 - 참여한 모든 방의 안읽음 합계 */
+    @Transactional(readOnly = true)
+    public int getUnreadCount(int userId) {
+        return chatMapper.countUnread(userId);
+    }
+
     /** 점주 화면의 방 목록 (사이드바에서 고른 매장 기준) */
     @Transactional(readOnly = true)
     public List<ChatRoomVO> getSalonRooms(int salonId) {
@@ -96,7 +103,7 @@ public class ChatService {
     @Transactional
     public List<MessageVO> getMessages(int chatId, int userId) {
         requireParticipant(chatId, userId);
-        chatMapper.markAsRead(chatId, userId);
+        markReadAndNotify(chatId, userId);
         return chatMapper.findMessages(chatId);
     }
 
@@ -148,6 +155,59 @@ public class ChatService {
         messagingTemplate.convertAndSendToUser(senderEmail, "/queue/messages", event);
 
         return message;
+    }
+
+    /**
+     * 화면을 열어둔 채로 받은 메시지를 읽음 처리한다.
+     *
+     * getMessages 의 읽음 처리는 "방을 여는 순간" 한 번뿐이라,
+     * 창을 켜둔 채 실시간으로 받은 메시지는 눈으로 봤어도 is_read = 0 으로 남는다.
+     * 그 간극을 클라이언트가 이 메서드로 메워준다.
+     */
+    @Transactional
+    public int markAsRead(int chatId, String readerEmail) {
+
+        UserVO reader = userMapper.findByEmail(readerEmail);
+        if (reader == null) {
+            throw new IllegalArgumentException("알 수 없는 사용자입니다.");
+        }
+        requireParticipant(chatId, reader.getUserId());
+
+        return markReadAndNotify(chatId, reader.getUserId());
+    }
+
+    /**
+     * 읽음 처리 + 원래 보낸 사람에게 "읽었다" 통지.
+     *
+     * 통지가 필요한 이유: 발신자 화면의 "1" 표시를 지우려면 상대가 읽었다는 사실을
+     * 발신자가 알아야 하는데, DB만 바꾸면 발신자는 새로고침 전까지 모른다.
+     * 바뀐 행이 0이면(이미 다 읽은 방을 다시 연 경우) 굳이 보내지 않는다.
+     */
+    private int markReadAndNotify(int chatId, int readerId) {
+
+        int updated = chatMapper.markAsRead(chatId, readerId);
+        if (updated == 0) {
+            return 0;
+        }
+
+        ChatVO room = chatMapper.findById(chatId);
+        int senderId = (room.getUser1Id() == readerId) ? room.getUser2Id() : room.getUser1Id();
+        UserVO sender = userMapper.findById(senderId);
+
+        // 보낸 사람에게: 내 메시지 옆의 "1" 을 지우라고
+        if (sender != null) {
+            messagingTemplate.convertAndSendToUser(sender.getEmail(), "/queue/messages",
+                    new SocketEventMessage("messagesRead", Map.of("chatId", chatId)));
+        }
+
+        // 읽은 사람에게: 사이드바 알림 배지의 새 합계.
+        // 클라이언트가 스스로 빼면 여러 방·여러 탭에서 어긋나므로 서버가 계산한 값을 그대로 준다.
+        UserVO reader = userMapper.findById(readerId);
+        if (reader != null) {
+            messagingTemplate.convertAndSendToUser(reader.getEmail(), "/queue/messages",
+                    new SocketEventMessage("unreadCount", Map.of("count", chatMapper.countUnread(readerId))));
+        }
+        return updated;
     }
 
     /** 남의 방에 끼어드는 것을 막는다. URL 로는 표현할 수 없는 검증이라 서비스에서 처리한다. */

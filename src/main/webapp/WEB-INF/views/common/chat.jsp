@@ -36,7 +36,8 @@
                   <div class="chat-room-item ${room.chatId == chatId ? 'active' : ''}">
                     <div style="flex:1;">
                       <div class="chat-room-title">
-                        <strong>${room.salonName}</strong>
+                        <%-- 매장명·이름은 사용자가 정한 값이므로 반드시 c:out 으로 이스케이프한다 --%>
+                        <strong><c:out value="${room.salonName}"/></strong>
                         <span class="chat-unread" data-count="${room.unreadCount}">${room.unreadCount}</span>
                       </div>
                       <p class="chat-room-preview">
@@ -62,7 +63,7 @@
               <c:forEach var="room" items="${rooms}">
                 <c:if test="${room.chatId == chatId}">
                   <div class="chat-header">
-                    <strong>${room.salonName} (${room.partnerName} 원장)</strong>
+                    <strong><c:out value="${room.salonName}"/> (<c:out value="${room.partnerName}"/> 원장)</strong>
                     <span id="wsStatus" class="chat-status">연결 중…</span>
                   </div>
                 </c:if>
@@ -77,6 +78,10 @@
                     <c:forEach var="msg" items="${messages}">
                       <div class="msg-wrapper ${msg.senderId == user.userId ? 'outgoing' : 'incoming'}">
                         <div class="msg-bubble"><c:out value="${msg.messageContent}"/></div>
+                        <%-- 내가 보냈는데 상대가 아직 안 읽은 것만 "1" 표시 --%>
+                        <c:if test="${msg.senderId == user.userId and not msg.isRead}">
+                          <span class="msg-read-mark">1</span>
+                        </c:if>
                       </div>
                     </c:forEach>
                   </c:otherwise>
@@ -95,16 +100,7 @@
     </main>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
-  <script>
-    // JSP 만 알 수 있는 값(컨텍스트 경로·로그인 정보)을 정적 js 로 넘겨준다
-    window.CHAT_CONFIG = {
-      wsUrl: '<c:url value="/ws"/>',
-      currentUserId: ${user.userId},
-      chatId: ${empty chatId ? 'null' : chatId}
-    };
-  </script>
-  <script src="/resources/js/chat.js"></script>
+  <%-- 소켓 연결·스크립트 로드는 sidebar_common.jsp 가 담당한다
+       (모든 페이지에서 알림을 받아야 해서 사이드바로 올렸다) --%>
 </body>
 </html>

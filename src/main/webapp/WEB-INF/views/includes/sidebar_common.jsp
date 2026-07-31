@@ -8,7 +8,7 @@
   <ul class="sidebar-menu">
     <li class="sidebar-item ${menu == 'home' ? 'active' : ''}"><a href="<c:url value='/common/home'/>"><i class="fas fa-home"></i> 홈 메인</a></li>
     <li class="sidebar-item ${menu == 'search' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/salonmap'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
-    <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/chat  '/>"><i class="fas fa-comments"></i> 1:1 상담 채팅</a></li>
+    <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/chat'/>"><i class="fas fa-comments"></i> 1:1 상담 채팅<sec:authorize access="isAuthenticated()"><span id="navUnread" class="nav-unread" data-count="0"></span></sec:authorize></a></li>
     <li class="sidebar-item ${menu == 'community' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/community'/>"><i class="fas fa-users"></i> 스타일 커뮤니티</a></li>
     <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/reserve?category=1'/>"><i class="fas fa-calendar-alt"></i> 예약 내역</a></li>
     <li class="sidebar-item ${menu == 'mypage' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/mypage'/>"><i class="fas fa-user"></i> 마이페이지</a></li>
@@ -25,6 +25,24 @@
     </sec:authorize>
   </div>
 </aside>
+
+<%-- 채팅 소켓은 사이드바에서 연다. 채팅 페이지에서만 열면 다른 화면에 있을 때
+     새 메시지를 받을 방법이 없어 알림 배지를 올릴 수 없다.
+     chat.js 는 채팅 페이지 전용 요소(#chatBody 등)가 없으면 알림 역할만 한다. --%>
+<sec:authorize access="isAuthenticated()">
+  <script>
+    window.CHAT_CONFIG = {
+      wsUrl: '<c:url value="/ws"/>',
+      unreadCountUrl: '<c:url value="/common/chat/unread-count"/>',
+      currentUserId: <sec:authentication property="principal.userId"/>,
+      chatId: ${empty chatId ? 'null' : chatId}
+    };
+  </script>
+  <%-- defer: 사이드바는 body 앞쪽이라 그대로 두면 아래 대화창 DOM 이 아직 없다 --%>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js" defer></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js" defer></script>
+  <script src="/resources/js/chat.js" defer></script>
+</sec:authorize>
 
 <sec:authorize access="!isAuthenticated()">
 <!-- 로그인 모달 -->
