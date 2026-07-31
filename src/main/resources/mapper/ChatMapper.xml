@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.ChatMapper">
+
+    <!-- DB 컬럼(snake_case) ↔ VO 프로퍼티(camelCase) 매핑 -->
+    <resultMap id="chatResultMap" type="com.soldesk.vo.ChatVO">
+        <id     column="chat_id"    property="chatId" />
+        <result column="user1_id"   property="user1Id" />
+        <result column="user2_id"   property="user2Id" />
+        <result column="salon_id"   property="salonId" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <resultMap id="messageResultMap" type="com.soldesk.vo.MessageVO">
+        <id     column="message_id"      property="messageId" />
+        <result column="chat_id"         property="chatId" />
+        <result column="sender_id"       property="senderId" />
+        <result column="message_content" property="messageContent" />
+        <result column="is_read"         property="isRead" />
+        <result column="sent_at"         property="sentAt" />
+        <result column="sender_name"     property="senderName" />
+    </resultMap>
+
+    <resultMap id="chatRoomResultMap" type="com.soldesk.vo.ChatRoomVO">
+        <id     column="chat_id"         property="chatId" />
+        <result column="salon_id"        property="salonId" />
+        <result column="salon_name"      property="salonName" />
+        <result column="salon_image_url" property="salonImageUrl" />
+        <result column="partner_id"      property="partnerId" />
+        <result column="partner_name"    property="partnerName" />
+        <result column="last_message"    property="lastMessage" />
+        <result column="last_message_at" property="lastMessageAt" />
+        <result column="unread_count"    property="unreadCount" />
+    </resultMap>
+
+
+    <!-- ================= 방 ================= -->
+
+    <!-- user1_id = 고객 으로 순서를 고정했기 때문에 조건이 한 줄로 끝난다 -->
+    <select id="findRoom" resultMap="chatResultMap">
+        select chat_id, user1_id, user2_id, salon_id, created_at, updated_at
+        from Chats
+        where user1_id = #{customerId}
+          and salon_id = #{salonId}
+    </select>
+
+    <insert id="insertRoom" parameterType="com.soldesk.vo.ChatVO"
+            useGeneratedKeys="true" keyProperty="chatId">
+        insert into Chats (user1_id, user2_id, salon_id)
+        values (#{user1Id}, #{user2Id}, #{salonId})
+    </insert>
+
+    <select id="findById" parameterType="int" resultMap="chatResultMap">
+        select chat_id, user1_id, user2_id, salon_id, created_at, updated_at
+        from Chats
+        where chat_id = #{chatId}
+    </select>
+
+    <!-- exists 는 1/0 을 돌려주므로 boolean 으로 바로 받는다 -->
+    <select id="isParticipant" resultType="boolean">
+        select exists(
+            select 1 from Chats
+            where chat_id = #{chatId}
+              and (user1_id = #{userId} or user2_id = #{userId})
+        )
+    </select>
+
+    <!-- 고객 화면: 상대(partner)는 점주(user2_id).
+         안읽음은 "상대가 보낸 것 중 아직 안 읽은 것" 이므로 sender_id = user2_id 로 센다. -->
+    <select id="findRoomsByCustomer" parameterType="int" resultMap="chatRoomResultMap">
+        select c.chat_id,
+               c.salon_id,
+               s.salon_name,
+               s.image_url as salon_image_url,
+               c.user2_id  as partner_id,
+               u.user_name as partner_name,
+               (select m.message_content from Messages m
+                 where m.chat_id = c.chat_id order by m.message_id desc limit 1) as last_message,
+               (select m.sent_at from Messages m
+                 where m.chat_id = c.chat_id order by m.message_id desc limit 1) as last_message_at,
+               (select count(*) from Messages m
+                 where m.chat_id = c.chat_id and m.sender_id = c.user2_id and m.is_read = 0) as unread_count
+        from Chats c
+        join Salons s on s.salon_id = c.salon_id
+        join Users  u on u.user_id  = c.user2_id
+        where c.user1_id = #{customerId}
+        order by c.updated_at desc
+    </select>
+
+    <!-- 점주 화면: 사이드바에서 고른 매장(selectedSalonId) 기준.
+         상대(partner)는 고객(user1_id) 이므로 안읽음도 sender_id = user1_id 로 센다. -->
+    <select id="findRoomsBySalon" parameterType="int" resultMap="chatRoomResultMap">
+        select c.chat_id,
+               c.salon_id,
+               s.salon_name,
+               s.image_url as salon_image_url,
+               c.user1_id  as partner_id,
+               u.user_name as partner_name,
+               (select m.message_content from Messages m
+                 where m.chat_id = c.chat_id order by m.message_id desc limit 1) as last_message,
+               (select m.sent_at from Messages m
+                 where m.chat_id = c.chat_id order by m.message_id desc limit 1) as last_message_at,
+               (select count(*) from Messages m
+                 where m.chat_id = c.chat_id and m.sender_id = c.user1_id and m.is_read = 0) as unread_count
+        from Chats c
+        join Salons s on s.salon_id = c.salon_id
+        join Users  u on u.user_id  = c.user1_id
+        where c.salon_id = #{salonId}
+        order by c.updated_at desc
+    </select>
+
+    <!-- ON UPDATE CURRENT_TIMESTAMP 는 값이 실제로 바뀐 행에만 걸리므로 명시적으로 갱신한다 -->
+    <update id="touchRoom" parameterType="int">
+        update Chats set updated_at = now() where chat_id = #{chatId}
+    </update>
+
+
+    <!-- ================= 메시지 ================= -->
+
+    <insert id="insertMessage" parameterType="com.soldesk.vo.MessageVO"
+            useGeneratedKeys="true" keyProperty="messageId">
+        insert into Messages (chat_id, sender_id, message_content)
+        values (#{chatId}, #{senderId}, #{messageContent})
+    </insert>
+
+    <select id="findMessages" parameterType="int" resultMap="messageResultMap">
+        select m.message_id, m.chat_id, m.sender_id, m.message_content,
+               m.is_read, m.sent_at, u.user_name as sender_name
+        from Messages m
+        join Users u on u.user_id = m.sender_id
+        where m.chat_id = #{chatId}
+        order by m.message_id asc
+    </select>
+
+    <!-- 내가 보낸 건 대상이 아니다. 이미 읽음인 행은 건드리지 않는다 -->
+    <update id="markAsRead">
+        update Messages
+        set is_read = 1
+        where chat_id = #{chatId}
+          and sender_id != #{readerId}
+          and is_read = 0
+    </update>
+
+</mapper>

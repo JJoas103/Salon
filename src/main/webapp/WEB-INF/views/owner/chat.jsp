@@ -1,3 +1,5 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -13,6 +15,7 @@
       <jsp:param name="menu" value="chat" />
   </jsp:include>
   <jsp:include page="../includes/salon_gate_overlay.jsp" />
+
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">1대1 면담</div>
@@ -20,18 +23,73 @@
     </header>
     <main class="app-content">
       <div class="chat-layout">
+
+        <!-- 방 목록 : 사이드바에서 고른 매장의 문의만 -->
         <div class="chat-list">
-          <div class="chat-item active"><strong>김철수 고객님</strong><p style="font-size: 12px; color: var(--text-sub);">내일 예약 시간 변경 가능할까요?</p></div>
-          <div class="chat-item"><strong>이영희 고객님</strong><p style="font-size: 12px; color: var(--text-sub);">감사합니다!</p></div>
+          <c:choose>
+            <c:when test="${empty rooms}">
+              <div class="chat-empty">들어온 문의가 없습니다.</div>
+            </c:when>
+            <c:otherwise>
+              <c:forEach var="room" items="${rooms}">
+                <a class="chat-room-link" data-chat-id="${room.chatId}"
+                   href="<c:url value='/owner/chat'><c:param name="chatId" value="${room.chatId}"/></c:url>">
+                  <div class="chat-item ${room.chatId == chatId ? 'active' : ''}">
+                    <div class="chat-room-title">
+                      <strong>${room.partnerName} 고객님</strong>
+                      <span class="chat-unread" data-count="${room.unreadCount}">${room.unreadCount}</span>
+                    </div>
+                    <p class="chat-room-preview">
+                      <c:out value="${empty room.lastMessage ? '대화를 시작해보세요' : room.lastMessage}"/>
+                    </p>
+                  </div>
+                </a>
+              </c:forEach>
+            </c:otherwise>
+          </c:choose>
         </div>
+
+        <!-- 대화창 -->
         <div class="chat-window">
-          <div style="padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: 700;">김철수 고객님과의 대화</div>
-          <div class="chat-body">
-            <div style="align-self: flex-start; background: #fff; padding: 10px 15px; border-radius: 10px; border: 1px solid var(--border); max-width: 70%; font-size: 14px;">안녕하세요, 내일 오후 2시 예약을 4시로 변경할 수 있을까요?</div>
-            <div style="align-self: flex-end; background: var(--primary); color: #fff; padding: 10px 15px; border-radius: 10px; max-width: 70%; font-size: 14px;">잠시만요, 스케줄 확인해보겠습니다.</div>
-          </div>
-          <div class="chat-footer"><input type="text" class="modern-input" placeholder="메시지를 입력하세요..."><button class="btn-modern btn-primary">전송</button></div>
+          <c:choose>
+            <c:when test="${empty chatId}">
+              <div class="chat-body">
+                <div class="chat-empty">왼쪽에서 대화를 선택하세요.</div>
+              </div>
+            </c:when>
+            <c:otherwise>
+              <c:forEach var="room" items="${rooms}">
+                <c:if test="${room.chatId == chatId}">
+                  <div style="padding: 15px 20px; border-bottom: 1px solid var(--border); font-weight: 700;">
+                    ${room.partnerName} 고객님과의 대화
+                    <span id="wsStatus" class="chat-status">연결 중…</span>
+                  </div>
+                </c:if>
+              </c:forEach>
+
+              <div class="chat-body" id="chatBody">
+                <c:choose>
+                  <c:when test="${empty messages}">
+                    <div class="chat-empty">첫 메시지를 보내보세요.</div>
+                  </c:when>
+                  <c:otherwise>
+                    <c:forEach var="msg" items="${messages}">
+                      <div class="msg-wrapper ${msg.senderId == user.userId ? 'outgoing' : 'incoming'}">
+                        <div class="msg-bubble"><c:out value="${msg.messageContent}"/></div>
+                      </div>
+                    </c:forEach>
+                  </c:otherwise>
+                </c:choose>
+              </div>
+
+              <div class="chat-footer">
+                <input type="text" id="msgInput" class="modern-input" placeholder="메시지를 입력하세요..." style="flex:1;">
+                <button type="button" id="sendBtn" class="btn-modern btn-primary">전송</button>
+              </div>
+            </c:otherwise>
+          </c:choose>
         </div>
+
       </div>
     </main>
   </div>
@@ -39,5 +97,17 @@
   <jsp:include page="../includes/profile_modal.jsp">
       <jsp:param name="roleLabel" value="점주" />
   </jsp:include>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <script>
+    // JSP 만 알 수 있는 값(컨텍스트 경로·로그인 정보)을 정적 js 로 넘겨준다
+    window.CHAT_CONFIG = {
+      wsUrl: '<c:url value="/ws"/>',
+      currentUserId: ${user.userId},
+      chatId: ${empty chatId ? 'null' : chatId}
+    };
+  </script>
+  <script src="/resources/js/chat.js"></script>
 </body>
 </html>

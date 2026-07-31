@@ -46,7 +46,11 @@
                   <div class="res-meta-item"><span>결제 수단 및 금액</span><strong>${reserve.paymentMethod} / (${reserve.amount}원 완료)</strong></div>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                  <button class="btn-modern btn-outline" onclick="location.href='chat.html'">1:1 문의</button>
+                  <%-- 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트된다 (ChatService.openRoom) --%>
+                  <form action="<c:url value='/common/chat/room'/>" method="post">
+                    <input type="hidden" name="salonId" value="${reserve.salonId}">
+                    <button type="submit" class="btn-modern btn-outline" style="width:100%;">1:1 문의</button>
+                  </form>
                   <button class="btn-modern btn-primary" style="background:#FF4757; border-color:#FF4757;">예약 취소</button>
                 </div>
               </div>

@@ -67,8 +67,12 @@
         </c:otherwise>
       </c:choose>
       <div class="chat">
-        <button class="btn-modern btn-outline" onclick="location.href='/common/chat?SalonId=${salon.salonId}'">1:1 문의</button>
-        <input type="hidden" 
+        <%-- 방 생성은 상태를 바꾸는 일이라 GET 이 아니라 POST 로 보낸다.
+             ChatService.openRoom 이 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트한다. --%>
+        <form action="<c:url value='/common/chat/room'/>" method="post">
+          <input type="hidden" name="salonId" value="${salon.salonId}">
+          <button type="submit" class="btn-modern btn-outline">1:1 문의</button>
+        </form>
       </div>
     </main>
   </div>

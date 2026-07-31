@@ -53,3 +53,39 @@
   border-color: var(--danger) !important;
   box-shadow: 0 0 0 3px var(--danger-soft);
 }
+
+/* ---- 1:1 채팅 말풍선 ----
+   고객(user.css)·점주(owner.css) 화면이 같은 마크업을 쓰므로 공용으로 둔다.
+   레이아웃(.chat-layout 등)은 역할별로 폭이 달라 각 role CSS 에 남겨둔다. */
+.msg-wrapper { display: flex; gap: 12px; max-width: 75%; }
+.msg-wrapper.incoming { align-self: flex-start; }
+.msg-wrapper.outgoing { align-self: flex-end; flex-direction: row-reverse; }
+.msg-bubble { padding: 12px 18px; border-radius: var(--radius-md); font-size: 14px; line-height: 1.5; }
+.incoming .msg-bubble { background: var(--white); border: 1px solid var(--border); }
+.outgoing .msg-bubble { background: var(--primary); color: var(--white); }
+
+/* 방 목록 한 줄 */
+.chat-room-link { text-decoration: none; color: inherit; display: block; }
+.chat-room-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.chat-room-preview {
+  font-size: 12px; color: var(--text-sub); margin-top: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+/* 안읽음 개수 배지 */
+.chat-unread {
+  flex-shrink: 0; min-width: 20px; padding: 0 6px;
+  background: var(--danger); color: var(--white);
+  font-size: 11px; font-weight: 700; line-height: 20px; text-align: center;
+  border-radius: 10px;
+}
+.chat-unread[data-count="0"] { display: none; }
+
+/* 방이 없거나 아직 아무 말도 없을 때 */
+.chat-empty {
+  margin: auto; padding: 30px;
+  font-size: 14px; color: var(--text-sub); text-align: center;
+}
+
+/* 연결 상태 표시 */
+.chat-status { margin-left: 10px; font-size: 13px; color: var(--text-sub); font-weight: 400; }
+.chat-status.connected { color: var(--accent); }
