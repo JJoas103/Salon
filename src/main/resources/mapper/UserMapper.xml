@@ -19,6 +19,8 @@
         <result column="pending_salon_phone" property="pendingSalonPhone" />
         <result column="pending_message" property="pendingMessage" />
         <result column="pending_requested_at" property="pendingRequestedAt" />
+        <result column="status"          property="status" />
+        <result column="suspended_until" property="suspendedUntil" />
     </resultMap>
 
     <!-- 회원가입 -->
@@ -30,7 +32,8 @@
 
     <!-- 이메일로 회원 조회 -->
     <select id="findByEmail" parameterType="string" resultMap="userResultMap">
-        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at
+        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
+               status, suspended_until
         from Users
         where email = #{email}
     </select>
@@ -163,9 +166,26 @@
 
     <!-- 회원 제거 -->
     <delete id="deleteById" parameterType="int" >
-        delete 
+        delete
         from Users
         where user_id = #{userId}
     </delete>
-        
+
+    <!-- 회원 제재(정지) 상태 갱신 -->
+    <update id="updateSuspension">
+        update Users
+        set status = #{status}, suspended_until = #{suspendedUntil}
+        where user_id = #{userId}
+    </update>
+
+    <!-- 현재 제재중인 회원 목록 (영구정지 또는 정지기간이 아직 안 끝난 정지) -->
+    <select id="findSanctionedUsers" resultMap="userResultMap">
+        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
+               status, suspended_until
+        from Users
+        where status = 'banned'
+           or (status = 'suspended' and suspended_until is not null and suspended_until > NOW())
+        order by (status = 'banned') desc, suspended_until desc
+    </select>
+
 </mapper>

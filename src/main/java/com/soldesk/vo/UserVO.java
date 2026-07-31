@@ -20,6 +20,8 @@ public class UserVO {
     private String pendingSalonPhone; // 대기중인 점주 승격 요청의 매장 연락처
     private String pendingMessage; // 대기중인 점주 승격 요청의 신청 사유
     private String pendingRequestedAt; // 대기중인 점주 승격 요청의 신청일시
+    private String status; // 커뮤니티 이용 제한 상태: active/suspended/banned (status)
+    private java.time.LocalDateTime suspendedUntil; // 정지 만료 시각, 영구정지면 null (suspended_until)
 
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
@@ -51,4 +53,8 @@ public class UserVO {
     public void setPendingMessage(String pendingMessage) { this.pendingMessage = pendingMessage; }
     public String getPendingRequestedAt() { return pendingRequestedAt; }
     public void setPendingRequestedAt(String pendingRequestedAt) { this.pendingRequestedAt = pendingRequestedAt; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public java.time.LocalDateTime getSuspendedUntil() { return suspendedUntil; }
+    public void setSuspendedUntil(java.time.LocalDateTime suspendedUntil) { this.suspendedUntil = suspendedUntil; }
 }
