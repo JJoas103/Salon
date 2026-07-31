@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.CommentReportMapper">
+
+    <resultMap id="commentReportResultMap" type="com.soldesk.vo.CommentReportVO">
+        <id     column="report_id" property="reportId" />
+        <result column="comment_id" property="commentId" />
+        <result column="user_id"   property="userId" />
+        <result column="reason"        property="reason" />
+        <result column="reason_detail" property="reasonDetail" />
+        <result column="created_at" property="createdAt" />
+    </resultMap>
+
+    <select id="findByCommentAndUser" resultMap="commentReportResultMap">
+        SELECT report_id, comment_id, user_id, reason, reason_detail, created_at
+        FROM comment_reports
+        WHERE comment_id = #{commentId} AND user_id = #{userId}
+    </select>
+
+    <insert id="insert">
+        INSERT INTO comment_reports (comment_id, user_id, reason, reason_detail)
+        VALUES (#{commentId}, #{userId}, #{reason}, #{reasonDetail})
+    </insert>
+
+    <delete id="deleteByCommentId">
+        DELETE FROM comment_reports WHERE comment_id = #{commentId}
+    </delete>
+
+    <select id="findReasonCounts" resultType="java.util.HashMap">
+        SELECT reason AS reason, COUNT(*) AS cnt
+        FROM comment_reports
+        WHERE comment_id = #{commentId}
+        GROUP BY reason
+        ORDER BY cnt DESC
+    </select>
+
+    <select id="findOtherReasonDetails" resultType="java.lang.String">
+        SELECT reason_detail
+        FROM comment_reports
+        WHERE comment_id = #{commentId} AND reason = 'other'
+          AND reason_detail IS NOT NULL AND reason_detail &lt;&gt; ''
+        ORDER BY created_at
+    </select>
+
+    <select id="findReportedCommentIdsByUser" resultType="int">
+        SELECT comment_id FROM comment_reports
+        WHERE user_id = #{userId}
+          AND comment_id IN (SELECT comment_id FROM Comments WHERE post_id = #{postId})
+    </select>
+
+</mapper>
