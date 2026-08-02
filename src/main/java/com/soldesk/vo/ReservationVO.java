@@ -26,7 +26,7 @@ public class ReservationVO {
         return this.serviceName;
     }
 
-    public void setService_name(String serviceName) {
+    public void setServiceName(String serviceName) {
         this.serviceName = serviceName;
     }
 
