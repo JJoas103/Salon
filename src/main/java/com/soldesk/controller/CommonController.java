@@ -26,9 +26,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ReservationService;
+import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
+import com.soldesk.service.WishlistService;
 import com.soldesk.validation.PasswordChangeValidator;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
@@ -57,6 +59,12 @@ public class CommonController {
     @Autowired
     private AdvertisementService advertisementService;
 
+    @Autowired
+    private WishlistService wishlistService;
+
+    @Autowired
+    private ReviewService reviewService;
+
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -71,9 +79,15 @@ public class CommonController {
 
     //메인페이지
     @GetMapping("/home")
-    public String home(Model model) {
+    public String home(Authentication authentication, Model model) {
         model.addAttribute("salons", salonService.getSalons());
         model.addAttribute("advertisements", advertisementService.getVisibleAdvertisements());
+        model.addAttribute("wishlistedSalonIds", java.util.Collections.emptyList());
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())) {
+            UserVO user = userService.getUser(authentication.getName());
+            model.addAttribute("wishlistedSalonIds", wishlistService.getSalonIds(user.getUserId()));
+        }
         return "common/home";   
     }
 
@@ -85,6 +99,8 @@ public class CommonController {
 
         model.addAttribute("user", user);
         model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
+        model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
+        model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
 
         return "common/mypage";
     }
@@ -141,10 +157,17 @@ public class CommonController {
     
     //미용실 지도 검색 (카카오맵)
     @GetMapping("/salonmap")
-    public String salonMap(Model model) throws JsonProcessingException{
+    public String salonMap(Authentication authentication, Model model) throws JsonProcessingException{
 
         model.addAttribute("salonsJson", objectMapper.writeValueAsString(salonService.getSalons()));
         model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
+        List<Integer> wishlistedSalonIds = java.util.Collections.emptyList();
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())) {
+            UserVO user = userService.getUser(authentication.getName());
+            wishlistedSalonIds = wishlistService.getSalonIds(user.getUserId());
+        }
+        model.addAttribute("wishlistedSalonIdsJson", objectMapper.writeValueAsString(wishlistedSalonIds));
         return "common/salonmap";
     }
 
@@ -160,7 +183,8 @@ public class CommonController {
 
     //미용실 검색하기
     @GetMapping("/search")
-    public String search(@RequestParam(required = false) Integer salonId, Model model) {
+    public String search(@RequestParam(required = false) Integer salonId,
+                         Authentication authentication, Model model) {
         if (salonId == null) {
             //모든 미용실정보 가져오기
             java.util.List<com.soldesk.vo.SalonVO> salons = salonService.getSalons();
@@ -178,6 +202,8 @@ public class CommonController {
         }
 
         model.addAttribute("salon", salon);
+        UserVO user = userService.getUser(authentication.getName());
+        model.addAttribute("wishlisted", wishlistService.isWishlisted(user.getUserId(), salonId));
         //시술정보 가져오기
         model.addAttribute("services", salonService.getServices(salonId));
         return "common/search";

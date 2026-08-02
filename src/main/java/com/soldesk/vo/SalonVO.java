@@ -22,6 +22,8 @@ public class SalonVO {
     private String ownerName; // 점주 이름 (Users LEFT JOIN, 관리자 매장목록 전용)
 
 
+    private String wishlistCreatedAt;
+
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
     public int getOwnerId() { return ownerId; }
@@ -63,6 +65,8 @@ public class SalonVO {
         this.longitude = longitude;
     }
 
+    public String getWishlistCreatedAt() { return wishlistCreatedAt; }
+    public void setWishlistCreatedAt(String wishlistCreatedAt) { this.wishlistCreatedAt = wishlistCreatedAt; }
     public String getOwnerName() { return ownerName; }
     public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 
