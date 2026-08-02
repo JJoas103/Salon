@@ -1,3 +1,7 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
+<c:set var="ctx" value="${pageContext.request.contextPath}" />
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -22,99 +26,177 @@
     </header>
     <main class="app-content">
 
-      <!-- 더미데이터 화면입니다. 실제 신고 접수/처리 기능은 팀 논의 후 별도 구현 예정 -->
-      <div class="section-switch" id="sectionSwitch">
-        <button class="section-btn on" data-section="community"><i class="fas fa-list"></i> 커뮤니티</button>
-        <button class="section-btn" data-section="reports"><i class="fas fa-flag"></i> 신고접수 <span class="cnt">4</span></button>
+      <div class="admin-tabs">
+        <button type="button" class="admin-tab-btn active js-admin-tab-btn" data-target="reportedPostsPanel">
+          신고된 게시글 (${fn:length(reportedPosts)})
+        </button>
+        <button type="button" class="admin-tab-btn js-admin-tab-btn" data-target="reportedCommentsPanel">
+          신고된 댓글 (${fn:length(reportedComments)})
+        </button>
+        <button type="button" class="admin-tab-btn js-admin-tab-btn" data-target="sanctionedUsersPanel">
+          제재당한 유저 (${fn:length(sanctionedUsers)})
+        </button>
       </div>
 
-      <!-- ========== 커뮤니티: 전체 게시글 ========== -->
-      <div class="section-view on" id="view-community">
-        <div class="cat-tabs">
-          <div class="cat-tab on">전체</div>
-          <div class="cat-tab">스타일 후기</div>
-          <div class="cat-tab">질문</div>
-          <div class="cat-tab">자유</div>
-          <div class="cat-tab">공지</div>
-        </div>
-        <div class="modern-card" style="padding: 0; overflow: hidden;">
+      <div class="modern-card admin-tab-panel active" id="reportedPostsPanel">
+        <div>
           <table class="modern-table">
-            <thead><tr><th>제목</th><th>작성자</th><th>조회</th><th>좋아요</th><th>작성일</th><th>관리</th></tr></thead>
+            <thead><tr><th>유형</th><th>대상(ID/글)</th><th>사유</th><th>작성자</th><th>상태</th><th>조치</th></tr></thead>
             <tbody>
-              <tr>
-                <td><strong>파마 후 며칠 지나야 드라이 가능한가요?</strong><br><span class="tag">질문</span></td>
-                <td>이수민</td><td>128</td><td>7</td><td>2026-07-28</td>
-                <td><button class="btn-modern btn-outline">보기</button> <button class="btn-modern btn-danger">삭제</button></td>
-              </tr>
-              <tr>
-                <td><strong>라움헤어 강남점 다녀온 후기 (사진多)</strong><br><span class="tag">스타일 후기</span></td>
-                <td>박지현</td><td>342</td><td>28</td><td>2026-07-27</td>
-                <td><button class="btn-modern btn-outline">보기</button> <button class="btn-modern btn-danger">삭제</button></td>
-              </tr>
-              <tr>
-                <td><strong>저렴한 후기 대행 해드립니다 (문의)</strong><br><span class="tag">자유</span></td>
-                <td>user_23</td><td>51</td><td>0</td><td>2026-07-28</td>
-                <td><button class="btn-modern btn-outline">보기</button> <button class="btn-modern btn-danger">삭제</button></td>
-              </tr>
-              <tr>
-                <td><strong>여름철 두피 관리 꿀팁 공유해요</strong><br><span class="tag">자유</span></td>
-                <td>김민재</td><td>96</td><td>14</td><td>2026-07-26</td>
-                <td><button class="btn-modern btn-outline">보기</button> <button class="btn-modern btn-danger">삭제</button></td>
-              </tr>
+              <c:forEach var="post" items="${reportedPosts}">
+                <tr>
+                  <td>게시글</td>
+                  <td><a href="${ctx}/admin/community/${post.postId}">#${post.postId} - <c:out value="${post.title}" /></a></td>
+                  <td><c:out value="${post.reportReasonSummary}" /></td>
+                  <td><c:out value="${post.authorName}" /></td>
+                  <td><span class="status-tag" style="background: #ffe3e3; color: #c92a2a;">블라인드됨</span></td>
+                  <td>
+                    <div class="action-dropdown">
+                      <button type="button" class="btn-modern btn-outline js-action-toggle">조치 <i class="fas fa-caret-down"></i></button>
+                      <div class="action-menu">
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="게시글을 삭제하고 작성자를 3일 정지하시겠습니까?"
+                                data-form="post-s3-${post.postId}">삭제 + 3일 정지</button>
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="게시글을 삭제하고 작성자를 7일 정지하시겠습니까?"
+                                data-form="post-s7-${post.postId}">삭제 + 7일 정지</button>
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="게시글을 삭제하고 작성자를 영구 정지하시겠습니까? 되돌릴 수 없습니다."
+                                data-form="post-perm-${post.postId}">삭제 + 영구 정지</button>
+                        <button type="button" class="action-menu-item"
+                                data-confirm="신고를 기각하고 게시글을 복구하시겠습니까?"
+                                data-form="post-dismiss-${post.postId}">반려 (신고 기각)</button>
+                      </div>
+                    </div>
+                    <form id="post-s3-${post.postId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/${post.postId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="suspend_3d">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="post-s7-${post.postId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/${post.postId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="suspend_7d">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="post-perm-${post.postId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/${post.postId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="permanent">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="post-dismiss-${post.postId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/${post.postId}/dismiss"></form>
+                  </td>
+                </tr>
+              </c:forEach>
+              <c:if test="${empty reportedPosts}">
+                <tr><td colspan="6" style="text-align:center; color:#868e96;">블라인드된 게시글이 없습니다.</td></tr>
+              </c:if>
             </tbody>
           </table>
         </div>
       </div>
 
-      <!-- ========== 신고접수 ========== -->
-      <div class="section-view" id="view-reports">
-        <div class="subtab-row" id="reportSubtabs">
-          <button class="subtab on" data-report="post"><i class="fas fa-file-lines"></i> 게시글 신고 <span class="cnt">3</span></button>
-          <button class="subtab" data-report="user"><i class="fas fa-user"></i> 유저 신고 <span class="cnt">1</span></button>
+      <div class="modern-card admin-tab-panel" id="reportedCommentsPanel">
+        <div>
+          <table class="modern-table">
+            <thead><tr><th>소속 글</th><th>댓글 내용</th><th>사유</th><th>작성자</th><th>신고 수</th><th>조치</th></tr></thead>
+            <tbody>
+              <c:forEach var="comment" items="${reportedComments}">
+                <tr>
+                  <td><a href="${ctx}/common/community/${comment.postId}"><c:out value="${comment.postTitle}" /></a></td>
+                  <td><c:out value="${comment.content}" /></td>
+                  <td><c:out value="${comment.reportReasonSummary}" /></td>
+                  <td><c:out value="${comment.authorName}" /></td>
+                  <td>${comment.reportCount}</td>
+                  <td>
+                    <div class="action-dropdown">
+                      <button type="button" class="btn-modern btn-outline js-action-toggle">조치 <i class="fas fa-caret-down"></i></button>
+                      <div class="action-menu">
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="댓글을 삭제하고 작성자를 3일 정지하시겠습니까?"
+                                data-form="comment-s3-${comment.commentId}">삭제 + 3일 정지</button>
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="댓글을 삭제하고 작성자를 7일 정지하시겠습니까?"
+                                data-form="comment-s7-${comment.commentId}">삭제 + 7일 정지</button>
+                        <button type="button" class="action-menu-item danger"
+                                data-confirm="댓글을 삭제하고 작성자를 영구 정지하시겠습니까? 되돌릴 수 없습니다."
+                                data-form="comment-perm-${comment.commentId}">삭제 + 영구 정지</button>
+                        <button type="button" class="action-menu-item"
+                                data-confirm="신고를 기각하시겠습니까? 댓글은 그대로 유지됩니다."
+                                data-form="comment-dismiss-${comment.commentId}">반려 (신고 기각)</button>
+                      </div>
+                    </div>
+                    <form id="comment-s3-${comment.commentId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/comment/${comment.commentId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="suspend_3d">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="comment-s7-${comment.commentId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/comment/${comment.commentId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="suspend_7d">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="comment-perm-${comment.commentId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/comment/${comment.commentId}/approve-delete">
+                      <input type="hidden" name="sanctionType" value="permanent">
+                      <input type="hidden" name="adminReason" value="">
+                    </form>
+                    <form id="comment-dismiss-${comment.commentId}" class="hidden-action-form" method="post"
+                          action="${ctx}/admin/community/comment/${comment.commentId}/dismiss"></form>
+                  </td>
+                </tr>
+              </c:forEach>
+              <c:if test="${empty reportedComments}">
+                <tr><td colspan="6" style="text-align:center; color:#868e96;">신고된 댓글이 없습니다.</td></tr>
+              </c:if>
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        <div class="report-view on" id="report-post">
-          <div class="modern-card" style="padding: 0; overflow: hidden;">
-            <table class="modern-table">
-              <thead><tr><th>신고된 게시글</th><th>사유</th><th>신고자</th><th>신고일</th><th>상태</th><th>관리</th></tr></thead>
-              <tbody>
+      <div class="modern-card admin-tab-panel" id="sanctionedUsersPanel">
+        <div>
+          <table class="modern-table">
+            <thead><tr><th>회원</th><th>제재 상태</th><th>사유</th><th>제재일시</th><th>조치</th></tr></thead>
+            <tbody>
+              <c:forEach var="user" items="${sanctionedUsers}">
+                <c:set var="latest" value="${latestSanctions[user.userId]}" />
                 <tr>
-                  <td>저렴한 후기 대행 해드립니다 (문의)</td>
-                  <td><span class="reason-chip">스팸/광고</span></td><td>user_07</td><td>2026-07-28</td>
-                  <td><span class="status-tag" style="background: #fff3bf; color: #f08c00;">대기중</span></td>
-                  <td><button class="btn-modern btn-outline">게시글 확인</button> <button class="btn-modern btn-danger">삭제</button></td>
+                  <td><c:out value="${user.userName}" /> (<c:out value="${user.email}" />)</td>
+                  <td>
+                    <c:choose>
+                      <c:when test="${user.status == 'banned'}">
+                        <span class="status-tag status-banned">영구정지</span>
+                      </c:when>
+                      <c:otherwise>
+                        <span class="status-tag status-suspended">정지중 (~${suspendedUntilText[user.userId]})</span>
+                      </c:otherwise>
+                    </c:choose>
+                  </td>
+                  <td>
+                    <c:choose>
+                      <c:when test="${not empty latest.commentContent}">댓글: <c:out value="${latest.commentContent}" /></c:when>
+                      <c:when test="${not empty latest.postTitle}">게시글: <c:out value="${latest.postTitle}" /></c:when>
+                      <c:otherwise>-</c:otherwise>
+                    </c:choose>
+                    <c:if test="${not empty latest.adminReason}">
+                      <br><span style="color:var(--text-sub); font-size:12px;">사유: <c:out value="${latest.adminReason}" /></span>
+                    </c:if>
+                  </td>
+                  <td>${fn:substring(latest.createdAt, 0, 16)}</td>
+                  <td>
+                    <form action="${ctx}/admin/community/user/${user.userId}/lift-sanction" method="post"
+                          onsubmit="return confirm('이 회원의 제재를 해제하시겠습니까?')" class="inline-form">
+                      <button type="submit" class="btn-modern btn-outline">제재 해제</button>
+                    </form>
+                  </td>
                 </tr>
-                <tr>
-                  <td>환불 관련 문의합니다</td>
-                  <td><span class="reason-chip">욕설/비방</span></td><td>user_18</td><td>2026-07-27</td>
-                  <td><span class="status-tag" style="background: #fff3bf; color: #f08c00;">대기중</span></td>
-                  <td><button class="btn-modern btn-outline">게시글 확인</button> <button class="btn-modern btn-danger">삭제</button></td>
-                </tr>
-                <tr>
-                  <td>여기 정말 별로였어요...</td>
-                  <td><span class="reason-chip">허위사실</span></td><td>user_31</td><td>2026-07-25</td>
-                  <td><span class="status-tag" style="background: #fff3bf; color: #f08c00;">대기중</span></td>
-                  <td><button class="btn-modern btn-outline">게시글 확인</button> <button class="btn-modern btn-danger">삭제</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div class="report-view" id="report-user">
-          <div class="modern-card" style="padding: 0; overflow: hidden;">
-            <table class="modern-table">
-              <thead><tr><th>신고된 유저</th><th>사유</th><th>신고자</th><th>신고일</th><th>상태</th><th>관리</th></tr></thead>
-              <tbody>
-                <tr>
-                  <td>user_23</td>
-                  <td><span class="reason-chip">도배/스팸</span></td><td>user_07 외 2명</td><td>2026-07-28</td>
-                  <td><span class="status-tag" style="background: #fff3bf; color: #f08c00;">대기중</span></td>
-                  <td><button class="btn-modern btn-outline">활동 확인</button> <button class="btn-modern btn-danger">정지</button></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+              </c:forEach>
+              <c:if test="${empty sanctionedUsers}">
+                <tr><td colspan="5" style="text-align:center; color:#868e96;">현재 제재중인 회원이 없습니다.</td></tr>
+              </c:if>
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -126,29 +208,45 @@
   </jsp:include>
 
   <script>
-    (function () {
-      document.getElementById('sectionSwitch').addEventListener('click', function (e) {
-        var btn = e.target.closest('.section-btn');
-        if (!btn) return;
-        document.querySelectorAll('.section-btn').forEach(function (b) { b.classList.toggle('on', b === btn); });
-        var target = btn.dataset.section;
-        document.getElementById('view-community').classList.toggle('on', target === 'community');
-        document.getElementById('view-reports').classList.toggle('on', target === 'reports');
+    (function() {
+      // 탭 전환
+      document.querySelectorAll('.js-admin-tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          document.querySelectorAll('.js-admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+          document.querySelectorAll('.admin-tab-panel').forEach(function (p) { p.classList.remove('active'); });
+          btn.classList.add('active');
+          document.getElementById(btn.getAttribute('data-target')).classList.add('active');
+        });
       });
 
-      document.getElementById('reportSubtabs').addEventListener('click', function (e) {
-        var btn = e.target.closest('.subtab');
-        if (!btn) return;
-        document.querySelectorAll('.subtab').forEach(function (b) { b.classList.toggle('on', b === btn); });
-        var target = btn.dataset.report;
-        document.getElementById('report-post').classList.toggle('on', target === 'post');
-        document.getElementById('report-user').classList.toggle('on', target === 'user');
+      // 조치 드롭다운 열기/닫기
+      document.querySelectorAll('.js-action-toggle').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var menu = btn.nextElementSibling;
+          var wasOpen = menu.classList.contains('open');
+          document.querySelectorAll('.action-menu.open').forEach(function (m) { m.classList.remove('open'); });
+          if (!wasOpen) menu.classList.add('open');
+        });
+      });
+      document.addEventListener('click', function () {
+        document.querySelectorAll('.action-menu.open').forEach(function (m) { m.classList.remove('open'); });
       });
 
-      document.querySelectorAll('.cat-tab').forEach(function (tab) {
-        tab.addEventListener('click', function () {
-          document.querySelectorAll('.cat-tab').forEach(function (t) { t.classList.remove('on'); });
-          tab.classList.add('on');
+      // 드롭다운 항목 클릭 -> 기존 confirm 문구 -> (삭제+정지 항목이면 사유 입력) -> 숨은 폼 제출
+      document.querySelectorAll('.action-menu-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          var msg = item.getAttribute('data-confirm');
+          if (msg && !confirm(msg)) return;
+          var form = document.getElementById(item.getAttribute('data-form'));
+          if (!form) return;
+          if (item.classList.contains('danger')) {
+            var reason = prompt('제재 사유를 입력하세요 (제재당한 유저 화면에 표시됩니다):');
+            if (reason === null || reason.trim() === '') return;
+            var reasonInput = form.querySelector('input[name="adminReason"]');
+            if (reasonInput) reasonInput.value = reason.trim();
+          }
+          form.submit();
         });
       });
     })();

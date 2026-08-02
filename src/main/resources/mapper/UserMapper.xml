@@ -14,6 +14,13 @@
         <result column="created_at"   property="createdAt" />
         <result column="updated_at"   property="updatedAt" />
         <result column="deleted_at"   property="deletedAt" />
+        <result column="pending_request_id" property="pendingRequestId" />
+        <result column="pending_salon_name" property="pendingSalonName" />
+        <result column="pending_salon_phone" property="pendingSalonPhone" />
+        <result column="pending_message" property="pendingMessage" />
+        <result column="pending_requested_at" property="pendingRequestedAt" />
+        <result column="status"          property="status" />
+        <result column="suspended_until" property="suspendedUntil" />
     </resultMap>
 
     <!-- 회원가입 -->
@@ -25,7 +32,8 @@
 
     <!-- 이메일로 회원 조회 -->
     <select id="findByEmail" parameterType="string" resultMap="userResultMap">
-        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at
+        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
+               status, suspended_until
         from Users
         where email = #{email}
     </select>
@@ -56,11 +64,17 @@
         select count(*) from Users
     </select>
 
-    <!-- 회원 목록: 이름/이메일 부분검색 + 유형(user role) 필터 + 활성/탈퇴 상태, 전부 선택사항 + 페이지네이션 -->
+    <!-- 회원 목록: 이름/이메일 부분검색 + 유형(user role) 필터 + 활성/탈퇴 상태, 전부 선택사항 + 페이지네이션, 점주요청 -->
     <select id="findMembers" resultMap="userResultMap">
-        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at
-        from Users
-        where 1=1
+        SELECT u.user_id, u.email, u.user_name, u.phone_number, u.user_type,
+            u.created_at, u.updated_at, u.deleted_at,
+            r.request_id AS pending_request_id, r.salon_name AS pending_salon_name,
+            r.salon_phone AS pending_salon_phone, r.message AS pending_message,
+            r.requested_at AS pending_requested_at
+        FROM Users u
+        LEFT JOIN OwnerRequests r
+            ON r.user_id = u.user_id AND r.status = 'pending'
+        WHERE 1=1
         <choose>
             <when test="status == 'deleted'">
                 and deleted_at is not null
@@ -70,33 +84,46 @@
             </otherwise>
         </choose>
         <if test="keyword != null and keyword != ''">
-            and (user_name like concat('%', #{keyword}, '%') or email like concat('%', #{keyword}, '%'))
+            and (u.user_name like concat('%', #{keyword}, '%') or u.email like concat('%', #{keyword}, '%'))
         </if>
-        <if test="userType != null and userType != ''">
-            and user_type = #{userType}
-        </if>
-        order by user_id desc
+        <choose>
+            <when test="userType == 'ownerRequest'">
+                and r.status = 'pending'
+            </when>
+            <when test="userType != null and userType != ''">
+                and u.user_type = #{userType}
+            </when>
+        </choose>
+        order by u.user_id desc
         limit #{offset}, #{size}
     </select>
 
     <!-- findMembers와 동일한 검색조건의 총 건수 (페이지네이션 총 페이지 수 계산용) -->
     <select id="countMembers" resultType="int">
-        select count(*) from Users
-        where 1=1
+        SELECT count(*)
+        FROM Users u
+        LEFT JOIN OwnerRequests r
+            ON r.user_id = u.user_id AND r.status = 'pending'
+        WHERE 1=1
         <choose>
             <when test="status == 'deleted'">
-                and deleted_at is not null
+                and u.deleted_at is not null
             </when>
             <otherwise>
-                and deleted_at is null
+                and u.deleted_at is null
             </otherwise>
         </choose>
         <if test="keyword != null and keyword != ''">
-            and (user_name like concat('%', #{keyword}, '%') or email like concat('%', #{keyword}, '%'))
+            and (u.user_name like concat('%', #{keyword}, '%') or u.email like concat('%', #{keyword}, '%'))
         </if>
-        <if test="userType != null and userType != ''">
-            and user_type = #{userType}
-        </if>
+        <choose>
+            <when test="userType == 'ownerRequest'">
+                and r.status = 'pending'
+            </when>
+            <when test="userType != null and userType != ''">
+                and u.user_type = #{userType}
+            </when>
+        </choose>
     </select>
 
     <!-- 관리자 회원관리 대시보드 통계 카드용 -->
@@ -121,6 +148,13 @@
         where user_id = #{userId}
     </update>
 
+    <!-- 일반회원 → 점주 승격 (점주 요청 승인) -->
+    <update id="promoteToOwner" parameterType="int">
+        update Users
+        set user_type = 'owner'
+        where user_id = #{userId}
+    </update>
+
     <!-- 회원 탈퇴: customer만 대상, 이미 탈퇴된 회원 재처리 방지 -->
     <update id="softDeleteById" parameterType="int">
         update Users
@@ -132,9 +166,26 @@
 
     <!-- 회원 제거 -->
     <delete id="deleteById" parameterType="int" >
-        delete 
+        delete
         from Users
         where user_id = #{userId}
     </delete>
-        
+
+    <!-- 회원 제재(정지) 상태 갱신 -->
+    <update id="updateSuspension">
+        update Users
+        set status = #{status}, suspended_until = #{suspendedUntil}
+        where user_id = #{userId}
+    </update>
+
+    <!-- 현재 제재중인 회원 목록 (영구정지 또는 정지기간이 아직 안 끝난 정지) -->
+    <select id="findSanctionedUsers" resultMap="userResultMap">
+        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
+               status, suspended_until
+        from Users
+        where status = 'banned'
+           or (status = 'suspended' and suspended_until is not null and suspended_until > NOW())
+        order by (status = 'banned') desc, suspended_until desc
+    </select>
+
 </mapper>

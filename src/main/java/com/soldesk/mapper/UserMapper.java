@@ -1,7 +1,10 @@
 package com.soldesk.mapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
+
 import org.apache.ibatis.annotations.Param;
+
 import com.soldesk.vo.UserVO;
 
 public interface UserMapper {
@@ -17,6 +20,10 @@ public interface UserMapper {
 
     // 이메일 기준 업데이트
     void updateUser(UserVO userVO);
+
+    // 회원 제재(정지) 상태 갱신, user_id 기준
+    void updateSuspension(@Param("userId") int userId, @Param("status") String status,
+                          @Param("suspendedUntil") LocalDateTime suspendedUntil);
 
     // 사용가능여부
     boolean isEmailAvailable(String userEmail);
@@ -43,9 +50,15 @@ public interface UserMapper {
     /* 점주/관리자 → 일반회원 강등 */
     void demoteToCustomer(int userId);
 
+    /* 일반회원 → 점주 승격 (점주 요청 승인) */
+    void promoteToOwner(int userId);
+
     /* 회원 삭제/탈퇴 */
     void softDeleteById(int userId);
 
     /* 회원 영구 삭제 */
     void deleteById(int userId);
+
+    // 현재 제재중(정지/영구정지)인 회원 목록 -- CustomUserDetails.currentlySuspended와 동일한 조건
+    List<UserVO> findSanctionedUsers();
 }

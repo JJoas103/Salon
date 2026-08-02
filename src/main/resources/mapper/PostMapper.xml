@@ -12,6 +12,8 @@
         <result column="view_count"   property="viewCount" />
         <result column="like_count"   property="likeCount" />
         <result column="dislike_count" property="dislikeCount" />
+        <result column="report_count" property="reportCount" />
+        <result column="status"       property="status" />
         <result column="image_url"    property="imageUrl" />
         <result column="salon_id"     property="salonId" />
         <result column="created_at"   property="createdAt" />
@@ -23,12 +25,14 @@
     <select id="findAll" resultMap="postResultMap">
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
                p.created_at, p.updated_at,
                COALESCE(u.user_name, '익명') AS author_name,
                s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.status = 'visible'
         <choose>
             <when test="sort == 'recommend'">
                 ORDER BY p.like_count DESC, p.created_at DESC
@@ -42,13 +46,14 @@
     <select id="findByCategory" resultMap="postResultMap">
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
                p.created_at, p.updated_at,
                COALESCE(u.user_name, '익명') AS author_name,
                s.salon_name AS salon_name
         FROM Posts p
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
-        WHERE p.category = #{category}
+        WHERE p.category = #{category} AND p.status = 'visible'
         <choose>
             <when test="sort == 'recommend'">
                 ORDER BY p.like_count DESC, p.created_at DESC
@@ -62,6 +67,20 @@
     <select id="findById" parameterType="int" resultMap="postResultMap">
         SELECT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
+               p.created_at, p.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.post_id = #{postId} AND p.status = 'visible'
+    </select>
+
+    <select id="findByIdAny" parameterType="int" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
                p.created_at, p.updated_at,
                COALESCE(u.user_name, '익명') AS author_name,
                s.salon_name AS salon_name
@@ -69,6 +88,20 @@
         LEFT JOIN Users u ON p.user_id = u.user_id
         LEFT JOIN Salons s ON p.salon_id = s.salon_id
         WHERE p.post_id = #{postId}
+    </select>
+
+    <select id="findBlinded" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
+               p.created_at, p.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.status = 'blinded'
+        ORDER BY p.report_count DESC, p.updated_at DESC
     </select>
 
     <insert id="insert" parameterType="com.soldesk.vo.PostVO"
@@ -110,9 +143,30 @@
         UPDATE Posts SET dislike_count = GREATEST(dislike_count - 1, 0) WHERE post_id = #{postId}
     </update>
 
+    <update id="incrementReportCount" parameterType="int">
+        UPDATE Posts SET report_count = report_count + 1 WHERE post_id = #{postId}
+    </update>
+
+    <update id="blindPost" parameterType="int">
+        UPDATE Posts SET status = 'blinded' WHERE post_id = #{postId}
+    </update>
+
+    <update id="unblindPost" parameterType="int">
+        UPDATE Posts SET status = 'visible' WHERE post_id = #{postId}
+    </update>
+
+    <update id="resetReportCount" parameterType="int">
+        UPDATE Posts SET report_count = 0 WHERE post_id = #{postId}
+    </update>
+
+    <select id="sumReportCountByAuthor" resultType="int">
+        SELECT COALESCE(SUM(report_count), 0) FROM Posts WHERE user_id = #{userId}
+    </select>
+
     <select id="search" resultMap="postResultMap">
         SELECT DISTINCT p.post_id, p.user_id, p.title, p.content, p.category,
                p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
                p.created_at, p.updated_at,
                COALESCE(u.user_name, '익명') AS author_name,
                s.salon_name AS salon_name
@@ -143,6 +197,7 @@
                 (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
             </otherwise>
         </choose>
+        AND p.status = 'visible'
         <choose>
             <when test="sort == 'recommend'">
                 ORDER BY p.like_count DESC, p.created_at DESC

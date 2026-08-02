@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.OwnerRequestMapper">
+
+    <resultMap id="ownerRequestResultMap" type="com.soldesk.vo.OwnerRequestVO">
+        <id     column="request_id"    property="requestId" />
+        <result column="user_id"       property="userId" />
+        <result column="salon_name"    property="salonName" />
+        <result column="salon_phone"   property="salonPhone" />
+        <result column="message"       property="message" />
+        <result column="status"        property="status" />
+        <result column="requested_at"  property="requestedAt" />
+        <result column="processed_at"  property="processedAt" />
+        <result column="processed_by"  property="processedBy" />
+    </resultMap>
+
+    <!-- 점주 승격 요청 등록 -->
+    <insert id="insertRequest" parameterType="com.soldesk.vo.OwnerRequestVO"
+            useGeneratedKeys="true" keyProperty="requestId">
+        insert into OwnerRequests (user_id, salon_name, salon_phone, message)
+        values (#{userId}, #{salonName}, #{salonPhone}, #{message})
+    </insert>
+
+    <!-- request_id로 조회 -->
+    <select id="findById" parameterType="int" resultMap="ownerRequestResultMap">
+        select request_id, user_id, salon_name, salon_phone, message, status,
+               requested_at, processed_at, processed_by
+        from OwnerRequests
+        where request_id = #{requestId}
+    </select>
+
+    <!-- 대기중인 요청 수 -->
+    <select id="countPending" resultType="int">
+        select count(*) from OwnerRequests where status = 'pending'
+    </select>
+
+    <!-- 승인 -->
+    <update id="approve">
+        update OwnerRequests
+        set status = 'approved', processed_at = NOW(), processed_by = #{adminUserId}
+        where request_id = #{requestId}
+    </update>
+
+    <!-- 반려 -->
+    <update id="reject">
+        update OwnerRequests
+        set status = 'rejected', processed_at = NOW(), processed_by = #{adminUserId}
+        where request_id = #{requestId}
+    </update>
+
+</mapper>
