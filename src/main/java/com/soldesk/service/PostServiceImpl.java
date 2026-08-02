@@ -1,5 +1,16 @@
 package com.soldesk.service;
 
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.soldesk.mapper.CommentMapper;
 import com.soldesk.mapper.CommentReportMapper;
 import com.soldesk.mapper.PostLikeMapper;
@@ -12,16 +23,6 @@ import com.soldesk.vo.PostLikeVO;
 import com.soldesk.vo.PostReportVO;
 import com.soldesk.vo.PostVO;
 import com.soldesk.vo.SalonVO;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 public class PostServiceImpl implements PostService {
@@ -50,7 +51,7 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private UserService userService;
 
-    private static final int REPORT_BLIND_THRESHOLD = 1;
+    private static final int REPORT_BLIND_THRESHOLD = 5;
 
     // 신고 사유 코드 -> 한글 라벨 (관리자 화면 요약 표시용)
     private static final Map<String, String> REPORT_REASON_LABELS = new LinkedHashMap<>();
