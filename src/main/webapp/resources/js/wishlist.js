@@ -47,11 +47,13 @@
               if (!document.querySelector('[data-wishlist-card]')) {
                 const grid = document.querySelector('.wishlist-grid');
                 if (grid) {
+                  // 주소는 JSP 가 data-home-url 로 내려준다 (컨텍스트 경로 포함)
+                  const homeUrl = grid.dataset.homeUrl || '/common/home';
                   grid.outerHTML =
                     '<div class="wishlist-empty"><i class="far fa-heart"></i>' +
                     '<h2>아직 찜한 헤어샵이 없습니다.</h2>' +
                     '<p>마음에 드는 헤어샵을 찜해두면 이곳에서 바로 확인할 수 있어요.</p>' +
-                    '<a class="btn-modern btn-primary" href="/common/home">헤어샵 둘러보기</a></div>';
+                    '<a class="btn-modern btn-primary" href="' + homeUrl + '">헤어샵 둘러보기</a></div>';
                 }
               }
             }, 220);

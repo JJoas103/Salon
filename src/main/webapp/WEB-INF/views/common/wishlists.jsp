@@ -24,7 +24,9 @@
           <a class="btn-modern btn-primary" href="<c:url value='/common/home'/>">헤어샵 둘러보기</a></div>
       </c:when>
       <c:otherwise>
-        <div class="wishlist-grid">
+        <%-- 마지막 찜을 해제하면 wishlist.js 가 이 자리를 빈 목록 안내로 바꾼다.
+             그때 쓸 링크 주소를 컨텍스트 경로가 반영된 형태로 여기서 넘겨준다. --%>
+        <div class="wishlist-grid" data-home-url="<c:url value='/common/home'/>">
           <c:forEach var="salon" items="${salons}">
             <article class="modern-card wishlist-card" data-wishlist-card="${salon.salonId}">
               <c:choose><c:when test="${not empty salon.imageUrl}"><img src="<c:out value='${salon.imageUrl}'/>" alt="<c:out value='${salon.salonName}'/>" onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&amp;fit=crop&amp;w=900&amp;q=80';"></c:when>

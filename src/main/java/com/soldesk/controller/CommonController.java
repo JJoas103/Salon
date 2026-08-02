@@ -71,6 +71,8 @@ public class CommonController {
 
     @Autowired
     private ChatService chatService;
+
+    @Autowired
     private WishlistService wishlistService;
 
     @Autowired
