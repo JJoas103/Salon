@@ -95,7 +95,8 @@
                          data-longitude="<c:out value='${salon.longitude}'/>">
                         <c:choose>
                             <c:when test="${not empty salon.imageUrl}">
-                                <img src="<c:out value='${salon.imageUrl}'/>" class="salon-card-image" alt="<c:out value='${salon.salonName}'/>">
+                                <img src="<c:out value='${salon.imageUrl}'/>" class="salon-card-image" alt="<c:out value='${salon.salonName}'/>"
+                                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&amp;fit=crop&amp;w=600&amp;q=80';">
                             </c:when>
                             <c:otherwise>
                                 <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&amp;fit=crop&amp;w=600&amp;q=80" class="salon-card-image" alt="salon">
@@ -115,10 +116,21 @@
                                         <c:otherwise>가격 문의</c:otherwise>
                                     </c:choose>
                                 </span>
+                                <div class="salon-card-actions">
+                                    <form class="wishlist-form" data-salon-id="${salon.salonId}" method="post" action="<c:url value='/common/salons/${salon.salonId}/wishlist'/>">
+                                        <input type="hidden" name="source" value="home">
+                                        <button type="submit" class="btn-modern btn-outline wishlist-btn ${wishlistedSalonIds.contains(salon.salonId) ? 'is-active' : ''}">
+                                            <i class="${wishlistedSalonIds.contains(salon.salonId) ? 'fas' : 'far'} fa-heart"></i>
+                                            ${wishlistedSalonIds.contains(salon.salonId) ? '찜완료' : '찜하기'}
+                                        </button>
+                                    </form>
+                                    <button type="button" class="btn-modern btn-outline"
+                                            onclick="location.href='<c:url value="/common/salons/${salon.salonId}/reviews"/>'">리뷰</button>
                                 <button type="button" class="btn-modern btn-primary"
                                     onclick="location.href='<c:url value="/common/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">
                                     예약하기
                                 </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -357,5 +369,6 @@
     });
 }());
 </script>
+<script src="<c:url value='/resources/js/wishlist.js'/>"></script>
 </body>
 </html>

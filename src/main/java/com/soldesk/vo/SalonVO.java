@@ -29,6 +29,8 @@ public class SalonVO {
     public void setUserName(String userName) { this.userName = userName; }
 
 
+    private String wishlistCreatedAt;
+
     public int getSalonId() { return salonId; }
     public void setSalonId(int salonId) { this.salonId = salonId; }
     public int getOwnerId() { return ownerId; }
@@ -70,6 +72,8 @@ public class SalonVO {
         this.longitude = longitude;
     }
 
+    public String getWishlistCreatedAt() { return wishlistCreatedAt; }
+    public void setWishlistCreatedAt(String wishlistCreatedAt) { this.wishlistCreatedAt = wishlistCreatedAt; }
     public String getOwnerName() { return ownerName; }
     public void setOwnerName(String ownerName) { this.ownerName = ownerName; }
 

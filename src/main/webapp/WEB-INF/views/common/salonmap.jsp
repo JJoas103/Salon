@@ -76,7 +76,14 @@
                     <h2 id="detail-name">-</h2>
                     <p class="salon-detail-address" id="detail-address">-</p>
                   </div>
-                  <div class="rating-badge"><i class="fas fa-star"></i> <span id="detail-rating">-</span></div>
+                  <div class="salon-detail-side-actions">
+                    <div class="rating-badge"><i class="fas fa-star"></i> <span id="detail-rating">-</span></div>
+                    <form class="wishlist-form" id="detail-wishlist-form" data-salon-id="" method="post" action="">
+                      <button type="submit" class="btn-modern btn-outline wishlist-btn" disabled>
+                        <i class="far fa-heart"></i> 찜하기
+                      </button>
+                    </form>
+                  </div>
                 </div>
 
                 <div class="salon-detail-info">
@@ -92,7 +99,10 @@
                   </div>
                 </div>
 
-                <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
+                <div class="salon-detail-primary-actions">
+                  <button type="button" class="btn-modern btn-outline btn-review" id="btn-review">리뷰 보기</button>
+                  <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
+                </div>
               </div>
             </div>
           </div>
@@ -106,6 +116,7 @@
     /* SalonVO 목록을 컨트롤러에서 JSON 으로 직렬화해 넘겨받는다. 키 이름은 VO 필드명 그대로다.
        ALL_SALONS 는 서버에서 받은 원본이라 바뀌지 않는다. 검색은 항상 이 배열을 대상으로 한다. */
     const ALL_SALONS = ${salonsJson};
+    const WISHLISTED_SALON_IDS = new Set(${wishlistedSalonIdsJson});
     /* salons 는 지금 지도에 그려져 있는 목록. renderSalons() 가 통째로 갈아끼운다 */
     let salons = ALL_SALONS;
 
@@ -230,10 +241,20 @@
       document.getElementById('detail-name').textContent = salon.salonName;
       document.getElementById('detail-address').textContent = salon.address;
       document.getElementById('detail-rating').textContent = salon.averageRating != null ? salon.averageRating : '-';
+      const wishlistForm = document.getElementById('detail-wishlist-form');
+      const wishlistButton = wishlistForm.querySelector('.wishlist-btn');
+      const wishlisted = WISHLISTED_SALON_IDS.has(salon.salonId);
+      wishlistForm.action = CONTEXT_PATH + 'common/salons/' + salon.salonId + '/wishlist';
+      wishlistForm.dataset.salonId = String(salon.salonId);
+      wishlistButton.disabled = false;
+      wishlistButton.classList.toggle('is-active', wishlisted);
+      wishlistButton.innerHTML = '<i class="' + (wishlisted ? 'fas' : 'far')
+        + ' fa-heart"></i> ' + (wishlisted ? '찜완료' : '찜하기');
       /* 운영시간은 Salon_Operating_Hours 를 아직 조회하지 않아 표시할 값이 없다 */
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
       document.getElementById('btn-reserve').disabled = false;
+      document.getElementById('btn-review').disabled = false;
       updatePinStyles();
       updateListActive();
       showDetail();
@@ -250,6 +271,11 @@
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = '-';
       document.getElementById('btn-reserve').disabled = true;
+      document.getElementById('btn-review').disabled = true;
+      const wishlistForm = document.getElementById('detail-wishlist-form');
+      wishlistForm.action = '';
+      wishlistForm.dataset.salonId = '';
+      wishlistForm.querySelector('.wishlist-btn').disabled = true;
     }
 
     /* 예약하기 → 기존 시술 선택 페이지로 이동 */
@@ -257,6 +283,17 @@
       const salon = salons[selectedIndex];
       if (!salon) return;
       location.href = CONTEXT_PATH + 'common/search?salonId=' + salon.salonId;
+    });
+    document.getElementById('btn-review').addEventListener('click', function () {
+      const salon = salons[selectedIndex];
+      if (!salon) return;
+      location.href = CONTEXT_PATH + 'common/salons/' + salon.salonId + '/reviews';
+    });
+
+    document.addEventListener('wishlist:changed', function (event) {
+      const salonId = Number(event.detail.salonId);
+      if (event.detail.wishlisted) WISHLISTED_SALON_IDS.add(salonId);
+      else WISHLISTED_SALON_IDS.delete(salonId);
     });
     
     /* ------------------------------------------------------------------
@@ -412,5 +449,6 @@
     });
 
   </script>
+  <script src="<c:url value='/resources/js/wishlist.js'/>"></script>
 </body>
 </html>

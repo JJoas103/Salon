@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.soldesk.mapper.ReviewMapper">
+    <resultMap id="reviewResultMap" type="com.soldesk.vo.ReviewVO">
+        <id column="review_id" property="reviewId"/>
+        <result column="user_id" property="userId"/>
+        <result column="salon_id" property="salonId"/>
+        <result column="reservation_id" property="reservationId"/>
+        <result column="rating" property="rating"/>
+        <result column="comment" property="comment"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+        <result column="user_name" property="userName"/>
+        <result column="salon_name" property="salonName"/>
+    </resultMap>
+    <select id="findBySalonId" parameterType="int" resultMap="reviewResultMap">
+        SELECT r.review_id, r.user_id, r.salon_id, r.reservation_id,
+               r.rating, r.comment, r.created_at, r.updated_at,
+               u.user_name, s.salon_name
+        FROM Reviews r
+        JOIN Users u ON u.user_id = r.user_id
+        JOIN Salons s ON s.salon_id = r.salon_id
+        WHERE r.salon_id = #{salonId}
+        ORDER BY r.created_at DESC, r.review_id DESC
+    </select>
+    <select id="countBySalonId" parameterType="int" resultType="int">
+        SELECT COUNT(*) FROM Reviews WHERE salon_id = #{salonId}
+    </select>
+    <select id="findByUserId" parameterType="int" resultMap="reviewResultMap">
+        SELECT r.review_id, r.user_id, r.salon_id, r.reservation_id,
+               r.rating, r.comment, r.created_at, r.updated_at,
+               u.user_name, s.salon_name
+        FROM Reviews r
+        JOIN Users u ON u.user_id = r.user_id
+        JOIN Salons s ON s.salon_id = r.salon_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.created_at DESC, r.review_id DESC
+    </select>
+    <select id="countByUserId" parameterType="int" resultType="int">
+        SELECT COUNT(*) FROM Reviews WHERE user_id = #{userId}
+    </select>
+    <select id="findReviewableReservations" resultType="com.soldesk.vo.ReservationVO">
+        SELECT r.reservation_id AS reservationId, r.user_id AS userId,
+               r.salon_id AS salonId, r.service_id AS serviceId,
+               r.reservation_time AS reservationTime, r.status,
+               s.salon_name AS salonName, se.service_name AS serviceName
+        FROM Reservations r
+        JOIN Salons s ON s.salon_id = r.salon_id
+        JOIN Services se ON se.service_id = r.service_id
+        LEFT JOIN Reviews rv ON rv.reservation_id = r.reservation_id
+        WHERE r.user_id = #{userId} AND r.salon_id = #{salonId}
+          AND r.status = 'completed' AND rv.review_id IS NULL
+        ORDER BY r.reservation_time DESC
+    </select>
+    <select id="countReviewableReservation" resultType="int">
+        SELECT COUNT(*) FROM Reservations r
+        LEFT JOIN Reviews rv ON rv.reservation_id = r.reservation_id
+        WHERE r.reservation_id = #{reservationId} AND r.user_id = #{userId}
+          AND r.salon_id = #{salonId} AND r.status = 'completed'
+          AND rv.review_id IS NULL
+    </select>
+    <insert id="insert" parameterType="com.soldesk.vo.ReviewVO"
+            useGeneratedKeys="true" keyProperty="reviewId">
+        INSERT INTO Reviews (user_id, salon_id, reservation_id, rating, comment)
+        VALUES (#{userId}, #{salonId}, #{reservationId}, #{rating}, #{comment})
+    </insert>
+    <update id="refreshSalonAverageRating" parameterType="int">
+        UPDATE Salons SET average_rating = COALESCE(
+          (SELECT ROUND(AVG(rating), 1) FROM Reviews WHERE salon_id = #{salonId}), 0)
+        WHERE salon_id = #{salonId}
+    </update>
+</mapper>
