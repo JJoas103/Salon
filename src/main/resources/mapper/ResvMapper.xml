@@ -55,4 +55,8 @@
         from Reservations
         where user_id = #{userId} and status = 'completed';
     </select>
+
+    <select id="countByStylistId" resultType="int" parameterType="int">
+        select count(*) from Reservations where stylist_id = #{stylistId}
+    </select>
 </mapper>

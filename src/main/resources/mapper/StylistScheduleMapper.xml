@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.StylistScheduleMapper">
+
+    <resultMap id="scheduleResultMap" type="com.soldesk.vo.StylistScheduleVO">
+        <id     column="schedule_id"  property="scheduleId" />
+        <result column="stylist_id"   property="stylistId" />
+        <result column="date"         property="date" />
+        <result column="start_time"   property="startTime" />
+        <result column="end_time"     property="endTime" />
+        <result column="is_available" property="isAvailable" />
+    </resultMap>
+
+    <!-- 지난 날짜는 자동으로 숨긴다 (오늘 이후 스케줄만 노출) -->
+    <select id="findByStylistId" resultMap="scheduleResultMap">
+        select * from Stylist_Schedules
+        where stylist_id = #{stylistId} and date &gt;= CURDATE()
+        order by date, start_time
+    </select>
+
+    <select id="findByStylistIdAndDate" resultMap="scheduleResultMap">
+        select * from Stylist_Schedules
+        where stylist_id = #{stylistId} and date = #{date}
+    </select>
+
+    <select id="findById" resultMap="scheduleResultMap">
+        select * from Stylist_Schedules where schedule_id = #{scheduleId}
+    </select>
+
+    <insert id="insertSchedule" useGeneratedKeys="true" keyProperty="scheduleId">
+        insert into Stylist_Schedules (stylist_id, date, start_time, end_time, is_available)
+        values (#{stylistId}, #{date}, #{startTime}, #{endTime}, #{isAvailable})
+    </insert>
+
+    <update id="updateSchedule">
+        update Stylist_Schedules
+        set start_time = #{startTime}, end_time = #{endTime}, is_available = #{isAvailable}
+        where schedule_id = #{scheduleId}
+    </update>
+
+    <delete id="deleteSchedule">
+        delete from Stylist_Schedules where schedule_id = #{scheduleId}
+    </delete>
+
+</mapper>

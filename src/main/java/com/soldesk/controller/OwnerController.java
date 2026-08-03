@@ -1,6 +1,10 @@
 package com.soldesk.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import java.io.IOException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -10,12 +14,22 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.SalonService;
+import com.soldesk.service.StaffService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.SalonVO;
+import com.soldesk.vo.StylistScheduleVO;
+import com.soldesk.vo.StylistVO;
 import com.soldesk.vo.UserVO;
 
 @Controller
@@ -27,6 +41,9 @@ public class OwnerController {
 
     @Autowired
     private SalonService salonService;
+
+    @Autowired
+    private StaffService staffService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -42,18 +59,12 @@ public class OwnerController {
         return "redirect:" + (referer != null ? referer : "/owner/store");
     }
 
-    // 아래 5개는 아직 정적 목업 내용을 그대로 보여주는 자리표시 라우트 — 추후 각자 실데이터로 구현 예정.
+    // 아래 3개는 아직 정적 목업 내용을 그대로 보여주는 자리표시 라우트 — 추후 각자 실데이터로 구현 예정.
     // user/salons는 헤더의 내정보 모달과 사이드바의 매장 선택 모달에 공통으로 필요해서 매번 채워준다.
     @GetMapping("/store")
     public String store(Authentication authentication, Model model){
         fillCommonModel(authentication, model);
         return "owner/store";
-    }
-
-    @GetMapping("/staff")
-    public String staff(Authentication authentication, Model model){
-        fillCommonModel(authentication, model);
-        return "owner/staff";
     }
 
     @GetMapping("/reservations")
@@ -80,5 +91,114 @@ public class OwnerController {
 
         model.addAttribute("user", user);
         model.addAttribute("salons", salons);
+    }
+
+    @GetMapping("/staff")
+    public String staff(Authentication authentication, HttpSession session, Model model){
+        fillCommonModel(authentication, model);
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId != null) {
+            UserVO user = userService.getUser(authentication.getName());
+            List<StylistVO> stylists = staffService.getStylists(salonId, user.getUserId());
+            model.addAttribute("stylists", stylists);
+
+            Map<Integer, List<Map<String, Object>>> schedulesByStylist = new HashMap<>();
+            for (StylistVO stylist : stylists) {
+                schedulesByStylist.put(stylist.getStylistId(), staffService.getScheduleGroups(stylist.getStylistId(), user.getUserId()));
+            }
+            model.addAttribute("schedulesByStylist", schedulesByStylist);
+        }
+        return "owner/staff";
+    }
+
+    @PostMapping("/staff/register")
+    public String registerStylist(Authentication authentication, HttpSession session,
+                                @RequestParam String stylistName,
+                                @RequestParam(required = false) String phoneNumber,
+                                @RequestParam(required = false) String description,
+                                @RequestParam(required = false) MultipartFile imageFile,
+                                RedirectAttributes redirectAttributes){
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/staff";
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        StylistVO stylist = new StylistVO();
+        stylist.setStylistName(stylistName);
+        stylist.setPhoneNumber(phoneNumber);
+        stylist.setDescription(description);
+        try {
+            staffService.registerStylist(salonId, user.getUserId(), stylist, imageFile);
+        } catch (IllegalArgumentException | IOException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/staff";
+    }
+
+    @PostMapping("/staff/{stylistId}/update")
+    public String updateStylist(@PathVariable int stylistId, Authentication authentication,
+                            @RequestParam String stylistName,
+                            @RequestParam(required = false) String phoneNumber,
+                            @RequestParam(required = false) String description,
+                            @RequestParam(required = false) MultipartFile imageFile,
+                            RedirectAttributes redirectAttributes){
+        UserVO user = userService.getUser(authentication.getName());
+        StylistVO stylist = new StylistVO();
+        stylist.setStylistId(stylistId);
+        stylist.setStylistName(stylistName);
+        stylist.setPhoneNumber(phoneNumber);
+        stylist.setDescription(description);
+        try {
+            staffService.updateStylist(user.getUserId(), stylist, imageFile);
+        } catch (IllegalArgumentException | IOException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/staff";
+    }
+
+    @PostMapping("/staff/{stylistId}/delete")
+    public String deleteStylist(@PathVariable int stylistId, Authentication authentication,
+                            RedirectAttributes redirectAttributes){
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            staffService.deleteStylist(stylistId, user.getUserId());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/staff";
+    }
+
+    // ---- 스케줄 ---- 캘린더에서 고른 날짜별 시간을 JSON으로 받는다: [{"date":"2026-07-23","startTime":"10:00","endTime":"19:00","isAvailable":true}, ...]
+    @PostMapping("/staff/{stylistId}/schedule")
+    public String registerSchedules(@PathVariable int stylistId, Authentication authentication,
+                                @RequestParam String scheduleData,
+                                RedirectAttributes redirectAttributes){
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            List<StylistScheduleVO> schedules = new ObjectMapper().readValue(scheduleData, new TypeReference<List<StylistScheduleVO>>(){});
+            String skippedMessage = staffService.registerSchedules(user.getUserId(), stylistId, schedules);
+            if (skippedMessage != null) {
+                redirectAttributes.addFlashAttribute("error", skippedMessage);
+            }
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        } catch (JsonProcessingException e) {
+            redirectAttributes.addFlashAttribute("error", "스케줄 데이터 형식이 올바르지 않습니다.");
+        }
+        return "redirect:/owner/staff";
+    }
+
+    // 화면에 묶여 보이는 연속 날짜 그룹을 통째로 초기화 — 그룹에 속한 schedule_id 전부를 hidden input들로 받는다
+    @PostMapping("/staff/schedule/delete")
+    public String deleteSchedules(@RequestParam List<Integer> scheduleIds, Authentication authentication,
+                                RedirectAttributes redirectAttributes){
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            staffService.deleteSchedules(scheduleIds, user.getUserId());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/staff";
     }
 }
