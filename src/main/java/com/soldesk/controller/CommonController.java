@@ -33,6 +33,7 @@ import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
 import com.soldesk.service.SalonService;
+import com.soldesk.service.StylistService;
 import com.soldesk.service.UserService;
 import com.soldesk.service.WishlistService;
 import com.soldesk.validation.PasswordChangeValidator;
@@ -41,6 +42,7 @@ import com.soldesk.vo.MessageVO;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonVO;
+import com.soldesk.vo.TimeSlotVO;
 import com.soldesk.vo.UserVO;
 // import org.springframework.web.bind.annotation.RequestBody;
 
@@ -76,6 +78,9 @@ public class CommonController {
 
     @Autowired
     private ReviewService reviewService;
+
+    @Autowired
+    private StylistService stylistService;
 
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -149,7 +154,7 @@ public class CommonController {
     }
 
     // 예약 내역 가져오기
-    @GetMapping("/reserve")
+    @GetMapping("/reservation")
     public String pageReserve(
             @RequestParam(defaultValue = "1") int category,
             Model model) {
@@ -207,7 +212,7 @@ public class CommonController {
     }
 
     // 미용실 검색하기
-    @GetMapping("/search")
+    @GetMapping("/reserve")
     public String search(@RequestParam(required = false) Integer salonId,
             Authentication authentication, Model model) {
         if (salonId == null) {
@@ -215,7 +220,7 @@ public class CommonController {
             java.util.List<com.soldesk.vo.SalonVO> salons = salonService.getSalons();
             if (salons.isEmpty()) {
                 model.addAttribute("salonNotFound", true);
-                return "common/search";
+                return "common/reserve";
             }
             salonId = salons.get(0).getSalonId();
         }
@@ -223,7 +228,7 @@ public class CommonController {
         com.soldesk.vo.SalonVO salon = salonService.getSalon(salonId);
         if (salon == null) {
             model.addAttribute("salonNotFound", true);
-            return "common/search";
+            return "common/reserve";
         }
 
         model.addAttribute("salon", salon);
@@ -231,7 +236,22 @@ public class CommonController {
         model.addAttribute("wishlisted", wishlistService.isWishlisted(user.getUserId(), salonId));
         // 시술정보 가져오기
         model.addAttribute("services", salonService.getServices(salonId));
-        return "common/search";
+        model.addAttribute("stylists", stylistService.findBySalonId(salonId));
+        return "common/reserve";
+    }
+
+    /**
+     * 예약 화면 3단계가 날짜를 고를 때마다 부르는 시간대 목록.
+     * 뷰가 아니라 JSON 을 돌려주므로 @ResponseBody 를 붙인다.
+     *
+     * 매장은 파라미터로 받지 않고 디자이너에서 거슬러 올라가 찾는다.
+     * 클라이언트가 보낸 salonId 를 믿으면 남의 매장 영업시간으로 시간대를 만들 수 있다.
+     */
+    @GetMapping("/reserve/slots")
+    @ResponseBody
+    public List<TimeSlotVO> reserveSlots(@RequestParam int stylistId,
+            @RequestParam String date) {
+        return reservationService.getAvailableSlots(stylistId, date);
     }
 
     // 점주요청

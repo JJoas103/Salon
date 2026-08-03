@@ -18,7 +18,7 @@
   </jsp:include>
   <div class="app-container">
     <main class="app-content review-page">
-      <a class="back-btn" href="<c:url value='/common/search'><c:param name='salonId' value='${salon.salonId}'/></c:url>">
+      <a class="back-btn" href="<c:url value='/common/reserve'><c:param name='salonId' value='${salon.salonId}'/></c:url>">
         <i class="fas fa-arrow-left"></i> 헤어샵으로 돌아가기
       </a>
       <section class="review-salon-header">

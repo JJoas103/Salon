@@ -40,7 +40,7 @@
                     <button class="btn-modern btn-outline wishlist-btn is-active" type="submit"><i class="fas fa-heart"></i> 찜완료</button>
                   </form>
                   <button class="btn-modern btn-outline" type="button" onclick="location.href='<c:url value="/common/salons/${salon.salonId}/reviews"/>'">리뷰</button>
-                  <button class="btn-modern btn-primary" type="button" onclick="location.href='<c:url value="/common/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">예약하기</button>
+                  <button class="btn-modern btn-primary" type="button" onclick="location.href='<c:url value="/common/reserve"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">예약하기</button>
                 </div>
               </div>
             </article>

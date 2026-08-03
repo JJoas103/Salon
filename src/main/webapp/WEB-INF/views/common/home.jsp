@@ -126,10 +126,8 @@
                                     </form>
                                     <button type="button" class="btn-modern btn-outline"
                                             onclick="location.href='<c:url value="/common/salons/${salon.salonId}/reviews"/>'">리뷰</button>
-                                <button type="button" class="btn-modern btn-primary"
-                                    onclick="location.href='<c:url value="/common/search"><c:param name="salonId" value="${salon.salonId}"/></c:url>'">
-                                    예약하기
-                                </button>
+                                    <button type="button" class="btn-modern btn-primary"
+                                            onclick="location.href='<c:url value="/common/reserve?salonId=${salon.salonId}"/>'">예약하기</button>
                                 </div>
                             </div>
                         </div>

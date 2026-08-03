@@ -77,18 +77,11 @@ body {
 @media (max-width: 1100px) { .staff-page .menu-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 700px) { .staff-page .menu-grid { grid-template-columns: 1fr; } }
 
-/* staff: 스케줄 설정 모달의 미니 캘린더 (연속 날짜 범위 선택) */
+/* staff: 스케줄 설정 모달의 범위/개별 선택 토글 (점주 전용)
+   달력 격자 자체(.mini-cal-nav/-weekdays/-grid/-day)는 고객 예약 화면과 공유하므로 common.css 에 있다 */
 .mini-cal-mode-toggle { display: flex; gap: 6px; margin-bottom: 12px; background: var(--bg-sub); border-radius: var(--radius-md); padding: 3px; }
 .mini-cal-mode-btn { flex: 1; border: none; background: none; padding: 7px 0; font-size: 12.5px; font-weight: 700; color: var(--text-sub); border-radius: var(--radius-sm); cursor: pointer; font-family: inherit; }
 .mini-cal-mode-btn.is-active { background: var(--white); color: var(--accent); box-shadow: var(--shadow); }
-.mini-cal-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.mini-cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; color: var(--text-sub); font-weight: 700; margin-bottom: 4px; }
-.mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-.mini-cal-day { aspect-ratio: 1; border: none; background: var(--bg-sub); border-radius: var(--radius-sm); font-size: 13px; cursor: pointer; color: var(--text-main); }
-.mini-cal-day:hover:not(:disabled) { background: var(--accent-soft); }
-.mini-cal-day.is-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.mini-cal-day.is-selected { background: var(--accent); color: var(--white); }
-.mini-cal-day.is-past { opacity: 0.32; cursor: default; }
 
 .schedule-date-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; background: var(--bg-sub); border-radius: var(--radius-sm); }
 .schedule-date-row .schedule-date-label { flex-shrink: 0; width: 66px; font-weight: 700; }

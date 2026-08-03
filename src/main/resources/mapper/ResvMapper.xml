@@ -65,4 +65,18 @@
     <select id="countByStylistId" resultType="int" parameterType="int">
         select count(*) from Reservations where stylist_id = #{stylistId}
     </select>
+
+    <!--
+        이미 찬 시각 목록. 취소(cancelled)된 예약은 자리를 비켜줘야 하므로 제외한다.
+        pending 은 결제 진행 중이라 자리를 잡아두되, 10분이 지나면 이탈로 보고 놓아준다.
+        (예약을 넣을 때도 같은 조건으로 한 번 더 검사해야 두 요청이 겹치지 않는다)
+    -->
+    <select id="findReservedTimes" resultType="string">
+        SELECT DATE_FORMAT(reservation_time, '%H:%i')
+        FROM Reservations
+        WHERE stylist_id = #{stylistId}
+          AND DATE(reservation_time) = #{date}
+          AND (status IN ('confirmed', 'completed')
+               OR (status = 'pending' AND created_at &gt; NOW() - INTERVAL 10 MINUTE))
+    </select>
 </mapper>

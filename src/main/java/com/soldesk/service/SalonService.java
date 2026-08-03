@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
+import com.soldesk.vo.StylistVO;
 
 @Service
 public class SalonService {
@@ -98,4 +99,5 @@ public class SalonService {
         }
         salonMapper.reopenSalon(salonId);
     }//매장 폐업 취소(재개): 존재하지 않거나 이미 운영중인 매장 재처리 방지
+    
 }

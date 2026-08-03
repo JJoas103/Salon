@@ -68,6 +68,22 @@
         ORDER BY price, service_id
     </select>
 
+    <resultMap id="operatingHourResultMap" type="com.soldesk.vo.SalonOperatingHourVO">
+        <id     column="hour_id"      property="hourId"/>
+        <result column="salon_id"     property="salonId"/>
+        <result column="day_of_week"  property="dayOfWeek"/>
+        <result column="open_time"    property="openTime"/>
+        <result column="close_time"   property="closeTime"/>
+    </resultMap>
+
+    <!-- 요일 하나의 영업시간. 행이 없으면 그 요일은 휴무로 본다. -->
+    <select id="findOperatingHour" resultMap="operatingHourResultMap">
+        SELECT hour_id, salon_id, day_of_week, open_time, close_time
+        FROM Salon_Operating_Hours
+        WHERE salon_id = #{salonId} AND day_of_week = #{dayOfWeek}
+        LIMIT 1
+    </select>
+
     <!-- 점주 기준 매장 조회 (점주 1명당 매장 1개라고 가정, 다중 매장은 추후 목록 조회로 확장) -->
     <select id="findAllByOwnerId" parameterType="int" resultMap="salonResultMap">
         SELECT salon_id, owner_id, salon_name, address, phone_number, description,
