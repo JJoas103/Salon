@@ -16,7 +16,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+
+import com.soldesk.vo.UserSanctionVO;
 
 @Controller
 @RequestMapping("/common/community")
@@ -41,6 +44,25 @@ public class CommunityController {
             return null;
         }
         return userService.getUser(auth.getName()).getUserId();
+    }
+
+    // 제재당한 유저가 커뮤니티 접근 시도 시 안내 페이지 (SecurityConfig의 accessDeniedHandler에서 리다이렉트됨)
+    @GetMapping("/suspended")
+    public String suspended(Model model) {
+        Integer currentUserId = currentUserIdOrNull();
+        if (currentUserId == null) {
+            return "redirect:/common/community";
+        }
+        List<UserSanctionVO> history = userService.getSanctionHistory(currentUserId);
+        if (!history.isEmpty()) {
+            UserSanctionVO latest = history.get(0);
+            model.addAttribute("sanctionType", latest.getSanctionType());
+            if (latest.getSuspendedUntil() != null) {
+                model.addAttribute("suspendedUntilText",
+                        latest.getSuspendedUntil().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")));
+            }
+        }
+        return "common/community/suspended";
     }
 
     // 게시글 목록 (카테고리 필터 + 검색)
@@ -77,6 +99,10 @@ public class CommunityController {
         model.addAttribute("userReaction",
                 currentUserId != null ? postService.getUserReaction(postId, currentUserId) : null);
         model.addAttribute("currentUserId", currentUserId);
+        model.addAttribute("hasReported",
+                currentUserId != null && postService.hasReported(postId, currentUserId));
+        model.addAttribute("reportedCommentIds",
+                currentUserId != null ? postService.getReportedCommentIds(postId, currentUserId) : java.util.Collections.emptyList());
         return "common/community/detail";
     }
 
@@ -168,5 +194,36 @@ public class CommunityController {
                         @RequestParam String type) {
         postService.react(postId, currentUserId(), type);
         return "redirect:/common/community/" + postId;
+    }
+
+    // 게시글 신고 (1인 1회, 사유 카테고리 선택, 누적 시 서비스단에서 자동 블라인드)
+    @PostMapping("/{postId}/report")
+    public String report(@PathVariable int postId,
+                         @RequestParam String reason,
+                         @RequestParam(required = false) String reasonDetail) {
+        try {
+            postService.reportPost(postId, currentUserId(), reason, reasonDetail);
+            return "redirect:/common/community/" + postId + "?reported=true";
+        } catch (IllegalStateException e) {
+            return "redirect:/common/community/" + postId + "?reported=duplicate";
+        } catch (IllegalArgumentException e) {
+            return "redirect:/common/community/" + postId + "?reported=invalid";
+        }
+    }
+
+    // 댓글 신고 (1인 1회, 사유 카테고리 선택) -- 게시글 신고와 달리 자동 블라인드 없음, 관리자 검토 대기 상태로만 남는다
+    @PostMapping("/{postId}/comment/{commentId}/report")
+    public String reportComment(@PathVariable int postId,
+                                @PathVariable int commentId,
+                                @RequestParam String reason,
+                                @RequestParam(required = false) String reasonDetail) {
+        try {
+            postService.reportComment(commentId, currentUserId(), reason, reasonDetail);
+            return "redirect:/common/community/" + postId + "?reported=true";
+        } catch (IllegalStateException e) {
+            return "redirect:/common/community/" + postId + "?reported=duplicate";
+        } catch (IllegalArgumentException e) {
+            return "redirect:/common/community/" + postId + "?reported=invalid";
+        }
     }
 }

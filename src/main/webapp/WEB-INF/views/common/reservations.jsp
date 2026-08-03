@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/resources/css/common.css">
   <link rel="stylesheet" href="/resources/css/user.css">
   <link rel="stylesheet" href="/resources/css/auth.css">
+  <link rel="stylesheet" href="<c:url value='/resources/css/calendar.css'/>">
 </head>
 <body>
   <!-- 사이드바 -->
@@ -21,33 +22,95 @@
   <div class="app-container">
     <main class="app-content">
       <div class="res-tabs">
-        <div class="res-tab ${categoryIdx == '1' ? 'active' : ''}">
+        <div class="res-tab ${categoryIdx == 1 ? 'active' : ''}">
           <a href="/common/reserve?category=1">전체 예약 히스토리</a>
         </div>
-        <div class="res-tab ${categoryIdx == '2' ? 'active' : ''}"><a href="/common/reserve?category=2">이용 완료</a></div>
+
+        <div class="res-tab">
+          <a href="${pageContext.request.contextPath}/common/calendar">
+            예약 캘린더
+          </a>
+        </div>
       </div>
+
       <div class="res-card">
         <c:choose>
           <c:when test="${empty reservs}">
-              <div class="res-card-body">등록된 예약정보가 없습니다.</div>
+            <div class="res-card-body">등록된 예약정보가 없습니다.</div>
           </c:when>
+
           <c:otherwise>
             <c:forEach var="reserve" items="${reservs}">
               <div class="res-card-header">
-                <span style="font-size: 14px; color: var(--text-sub); font-weight: 600;">주문번호:${reserve.transactionId}</span>
-                <span class="status-badge status-upcoming">이용 예정 (확정)</span>
+                <span style="font-size: 14px; color: var(--text-sub); font-weight: 600;">
+                  주문번호: ${reserve.transactionId}
+                </span>
+
+                <c:choose>
+                  <c:when test="${reserve.status eq 'pending'}">
+                    <span class="status-badge status-upcoming">확정 대기</span>
+                  </c:when>
+
+                  <c:when test="${reserve.status eq 'confirmed'}">
+                    <span class="status-badge status-upcoming">이용 예정 (확정)</span>
+                  </c:when>
+
+                  <c:when test="${reserve.status eq 'completed'}">
+                    <span class="status-badge">이용 완료</span>
+                  </c:when>
+
+                  <c:when test="${reserve.status eq 'cancelled'}">
+                    <span class="status-badge">예약 취소</span>
+                  </c:when>
+
+                  <c:otherwise>
+                    <span class="status-badge">${reserve.status}</span>
+                  </c:otherwise>
+                </c:choose>
               </div>
+
               <div class="res-card-body">
-                <img src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80" style="width: 110px; height: 110px; border-radius: var(--radius-md); object-fit: cover;" alt="salon">
+                <img
+                  src="https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=300&q=80"
+                  style="width: 110px; height: 110px; border-radius: var(--radius-md); object-fit: cover;"
+                  alt="salon"
+                >
+
                 <div class="res-info-grid">
-                  <div class="res-meta-item"><span>매장명</span><strong>${reserve.salonName}</strong></div>
-                  <div class="res-meta-item"><span>예약일시</span><strong>${reserve.reservationTime}</strong></div>
-                  <div class="res-meta-item"><span>시술 상품 / 소요 시간</span><strong>${reserve.serviceName} / 60분 소요 예상</strong></div>
-                  <div class="res-meta-item"><span>결제 수단 및 금액</span><strong>${reserve.paymentMethod} / (${reserve.amount}원 완료)</strong></div>
+                  <div class="res-meta-item">
+                    <span>매장명</span>
+                    <strong>${reserve.salonName}</strong>
+                  </div>
+
+                  <div class="res-meta-item">
+                    <span>예약일시</span>
+                    <strong>${reserve.reservationTime}</strong>
+                  </div>
+
+                  <div class="res-meta-item">
+                    <span>시술 상품 / 소요 시간</span>
+                    <strong>${reserve.serviceName} / 60분 소요 예상</strong>
+                  </div>
+
+                  <div class="res-meta-item">
+                    <span>결제 수단 및 금액</span>
+                    <strong>${reserve.paymentMethod} / (${reserve.amount}원 완료)</strong>
+                  </div>
                 </div>
+
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                  <button class="btn-modern btn-outline" onclick="location.href='chat.html'">1:1 문의</button>
-                  <button class="btn-modern btn-primary" style="background:#FF4757; border-color:#FF4757;">예약 취소</button>
+                  <%-- 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트된다 (ChatService.openRoom) --%>
+                  <form action="<c:url value='/common/chat/room'/>" method="post">
+                    <input type="hidden" name="salonId" value="${reserve.salonId}">
+                    <button type="submit" class="btn-modern btn-outline" style="width:100%;">1:1 문의</button>
+                  </form>
+                  <c:if test="${reserve.status eq 'pending' or reserve.status eq 'confirmed'}">
+                    <button
+                      class="btn-modern btn-primary"
+                      style="background:#FF4757; border-color:#FF4757;">
+                      예약 취소
+                    </button>
+                  </c:if>                  
                 </div>
               </div>
             </c:forEach>

@@ -29,4 +29,8 @@
         UPDATE post_likes SET reaction_type = #{type} WHERE post_id = #{postId} AND user_id = #{userId}
     </update>
 
+    <delete id="deleteByPostId">
+        DELETE FROM post_likes WHERE post_id = #{postId}
+    </delete>
+
 </mapper>

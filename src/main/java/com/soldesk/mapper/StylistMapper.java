@@ -4,10 +4,10 @@ import java.util.List;
 
 import com.soldesk.vo.StylistVO;
 
-import org.apache.ibatis.annotations.Param;
+// import org.apache.ibatis.annotations.Param;
 
 public interface StylistMapper {
-    
+
     // 매장 소속 디자이너 전체 조회
     List<StylistVO> findBySalonId(int salonId);
 

@@ -15,8 +15,11 @@
         <result column="minimum_price" property="minimumPrice" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
+        <result column="closed_at" property="closedAt" />
         <result column="latitude" property="latitude" />
         <result column="longitude" property="longitude" />
+        <result column="owner_name" property="ownerName" />
+        <result column="user_name" property="userName" />
         
     </resultMap>
 
@@ -47,13 +50,14 @@
     <select id="findById" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
-               MIN(se.price) AS minimum_price, s.created_at, s.updated_at
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
+        join Users u on u.user_id = s.owner_id
         WHERE s.salon_id = #{salonId}
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
-                 s.created_at, s.updated_at
+                 s.created_at, s.updated_at, s.closed_at
     </select>
 
     <select id="findServicesBySalonId" resultMap="serviceResultMap">
@@ -90,4 +94,82 @@
                  s.created_at, s.updated_at
         ORDER BY s.average_rating DESC, s.salon_id DESC
     </select>
+
+    <!-- 관리자 매장목록: 매장명/주소/점주명 검색 + 운영상태(운영중/폐업) 필터 + 페이지네이션 -->
+    <select id="findSalonsForAdmin" resultMap="salonResultMap">
+        SELECT s.salon_id, s.owner_id, s.salon_name, s.address, s.phone_number,
+               s.description, s.average_rating, s.image_url,
+               s.created_at, s.updated_at, s.closed_at, s.latitude, s.longitude,
+               u.user_name AS owner_name
+        FROM Salons s
+        LEFT JOIN Users u ON u.user_id = s.owner_id
+        WHERE 1=1
+        <choose>
+            <when test="status == 'closed'">
+                and s.closed_at is not null
+            </when>
+            <otherwise>
+                and s.closed_at is null
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            and (s.salon_name like concat('%', #{keyword}, '%')
+                 or s.address like concat('%', #{keyword}, '%')
+                 or u.user_name like concat('%', #{keyword}, '%'))
+        </if>
+        ORDER BY s.salon_id DESC
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <!-- findSalonsForAdmin과 동일 조건의 총 건수 (페이지네이션 총 페이지 수 계산용) -->
+    <select id="countSalonsForAdmin" resultType="int">
+        SELECT count(*)
+        FROM Salons s
+        LEFT JOIN Users u ON u.user_id = s.owner_id
+        WHERE 1=1
+        <choose>
+            <when test="status == 'closed'">
+                and s.closed_at is not null
+            </when>
+            <otherwise>
+                and s.closed_at is null
+            </otherwise>
+        </choose>
+        <if test="keyword != null and keyword != ''">
+            and (s.salon_name like concat('%', #{keyword}, '%')
+                 or s.address like concat('%', #{keyword}, '%')
+                 or u.user_name like concat('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <!-- 관리자 대시보드 통계카드용 -->
+    <select id="countActiveSalons" resultType="int">
+        select count(*) from Salons where closed_at is null
+    </select>
+
+    <select id="countNewSalonsThisMonth" resultType="int">
+        select count(*) from Salons
+        where closed_at is null
+          and created_at >= date_format(now(), '%Y-%m-01')
+    </select>
+
+    <select id="countActiveReservations" resultType="int">
+        select count(*) from Reservations where status in ('pending', 'confirmed')
+    </select>
+
+    <!-- 매장 폐업 처리: 이미 폐업된 매장 재처리 방지 (WHERE절 방어) -->
+    <update id="closeSalon" parameterType="int">
+        update Salons
+        set closed_at = NOW()
+        where salon_id = #{salonId}
+          and closed_at is null
+    </update>
+
+    <!-- 매장 폐업 취소(재개): 이미 운영중인 매장 재처리 방지 (WHERE절 방어) -->
+    <update id="reopenSalon" parameterType="int">
+        update Salons
+        set closed_at = NULL
+        where salon_id = #{salonId}
+          and closed_at is not null
+    </update>
 </mapper>

@@ -36,6 +36,19 @@
                 <h2 style="font-size: 24px;"><c:out value="${salon.salonName}"/></h2>
                 <p style="color: var(-  -text-sub); margin-top: 10px;"><c:out value="${salon.address}"/></p>
                 <p style="color: var(--text-sub); margin-top: 8px;"><c:out value="${salon.description}"/></p>
+                <div class="salon-detail-actions">
+                  <span class="rating-badge"><i class="fas fa-star"></i>
+                    <fmt:formatNumber value="${salon.averageRating}" pattern="0.0"/>
+                  </span>
+                  <form class="wishlist-form" data-salon-id="${salon.salonId}" method="post" action="<c:url value='/common/salons/${salon.salonId}/wishlist'/>">
+                    <input type="hidden" name="source" value="search">
+                    <button type="submit" class="btn-modern btn-outline wishlist-btn ${wishlisted ? 'is-active' : ''}">
+                      <i class="${wishlisted ? 'fas' : 'far'} fa-heart"></i> ${wishlisted ? '찜완료' : '찜하기'}
+                    </button>
+                  </form>
+                  <button type="button" class="btn-modern btn-outline"
+                          onclick="location.href='<c:url value="/common/salons/${salon.salonId}/reviews"/>'">리뷰 보기</button>
+                </div>
               </div>
               <h3 style="margin-bottom: 15px;">시술 메뉴 선택</h3>
               <c:forEach var="service" items="${services}" varStatus="status">
@@ -66,6 +79,14 @@
           </div>
         </c:otherwise>
       </c:choose>
+      <div class="chat">
+        <%-- 방 생성은 상태를 바꾸는 일이라 GET 이 아니라 POST 로 보낸다.
+             ChatService.openRoom 이 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트한다. --%>
+        <form action="<c:url value='/common/chat/room'/>" method="post">
+          <input type="hidden" name="salonId" value="${salon.salonId}">
+          <button type="submit" class="btn-modern btn-outline">1:1 문의</button>
+        </form>
+      </div>
     </main>
   </div>
 
@@ -86,5 +107,6 @@
       selectService(menuCards[0]);
     }
   </script>
+  <script src="<c:url value='/resources/js/wishlist.js'/>"></script>
 </body>
 </html>

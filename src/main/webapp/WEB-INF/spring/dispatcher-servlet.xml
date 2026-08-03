@@ -17,12 +17,17 @@
     <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties" />
 
 
-    <!-- 컴포넌트 스캔 -->
+    <!-- 컴포넌트 스캔.
+         com.soldesk.ws(WebSocketConfig)는 반드시 여기(웹 컨텍스트)에서만 스캔한다.
+         @EnableWebSocketMessageBroker 가 만드는 메시지 핸들러는 @MessageMapping 을 찾을 때
+         자기 컨텍스트의 빈만 훑으므로(조상 미포함), 루트에 두면 controller 의
+         @MessageMapping 이 아무 예외 없이 조용히 무시된다. -->
     <context:component-scan base-package="com.soldesk.controller,
                                             com.soldesk.service,
                                             com.soldesk.config,
                                             com.soldesk.validation,
-                                            com.soldesk.handler" />
+                                            com.soldesk.handler,
+                                            com.soldesk.ws" />
 
     <!-- ViewResolver : "home" -> /WEB-INF/views/home.jsp -->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
