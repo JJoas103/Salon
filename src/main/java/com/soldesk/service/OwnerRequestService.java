@@ -5,8 +5,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.soldesk.mapper.OwnerRequestMapper;
+import com.soldesk.mapper.SalonMapper;
 import com.soldesk.mapper.UserMapper;
 import com.soldesk.vo.OwnerRequestVO;
+import com.soldesk.vo.SalonVO;
 
 @Service
 public class OwnerRequestService {
@@ -16,6 +18,9 @@ public class OwnerRequestService {
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private SalonMapper salonMapper;
 
     @Transactional
     public int countPending(){
@@ -40,7 +45,14 @@ public class OwnerRequestService {
         }
         ownerRequestMapper.approve(requestId, adminUserId);
         userMapper.promoteToOwner(request.getUserId());
-    }//승인: 요청 상태 변경 + 회원 user_type='owner' 전환
+
+        SalonVO salon = new SalonVO();
+        salon.setOwnerId(request.getUserId());
+        salon.setSalonName(request.getSalonName());
+        salon.setPhoneNumber(request.getSalonPhone());
+        salon.setAddress("");
+        salonMapper.insertSalon(salon);
+    }//승인: 요청 상태 변경 + 회원 user_type='owner' 전환 + 신청서의 매장명/연락처로 매장 생성(주소 등은 점주가 직접 입력)
 
     @Transactional
     public void reject(int requestId, int adminUserId){
