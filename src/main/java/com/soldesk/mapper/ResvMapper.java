@@ -22,4 +22,22 @@ public interface ResvMapper {
      */
     List<String> findReservedTimes(@Param("stylistId") int stylistId,
                                     @Param("date") String date);
+
+    /**
+     * 그 자리가 아직 비어 있을 때만 예약을 넣는다.
+     *
+     * 슬롯 목록을 본 시점과 결제 버튼을 누른 시점 사이에 다른 사람이 같은 자리를
+     * 채갈 수 있다. UNIQUE 제약으로는 막을 수 없는데, 취소된 예약도 같은
+     * (stylist_id, reservation_time) 을 계속 차지해 그 시각을 영영 막아버리기 때문이다.
+     * 그래서 "없을 때만 넣는" 한 문장으로 처리한다.
+     *
+     * @return 1이면 성공, 0이면 그 사이에 누가 먼저 잡은 것
+     */
+    int insertIfSlotFree(ReservationVO reservation);
+
+    ReservationVO findById(int reservationId);
+
+    /** 결제 결과에 따라 pending → confirmed / cancelled */
+    int updateStatus(@Param("reservationId") int reservationId,
+                     @Param("status") String status);
 }

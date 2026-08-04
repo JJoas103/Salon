@@ -13,12 +13,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.soldesk.mapper.PaymentMapper;
 import com.soldesk.mapper.ResvMapper;
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.mapper.StylistMapper;
 import com.soldesk.mapper.StylistScheduleMapper;
+import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonOperatingHourVO;
+import com.soldesk.vo.ServiceVO;
 import com.soldesk.vo.StylistScheduleVO;
 import com.soldesk.vo.StylistVO;
 import com.soldesk.vo.TimeSlotVO;
@@ -45,6 +48,9 @@ public class ReservationService {
 
     @Autowired
     private StylistScheduleMapper scheduleMapper;
+
+    @Autowired
+    private PaymentMapper paymentMapper;
 
     @Transactional
     public List<ReservationVO> getRevList(int userId){
@@ -126,5 +132,105 @@ public class ReservationService {
             slots.add(new TimeSlotVO(label, !past && !reserved.contains(label)));
         }
         return slots;
+    }
+
+    /**
+     * 결제 전 예약을 pending 으로 만들고 결제 행까지 같이 세운다.
+     *
+     * 금액은 화면에서 받지 않고 서비스 가격을 DB 에서 다시 읽는다. 폼에 실린 금액을 믿으면
+     * 1원짜리 결제를 만들 수 있다.
+     *
+     * @return 만들어진 예약 (reservationId 가 채워져 있다)
+     * @throws IllegalArgumentException 입력이 그 매장 것이 아니거나 이미 찬 자리일 때
+     */
+    @Transactional
+    public ReservationVO createPendingReservation(int userId, int salonId, int stylistId,
+            int serviceId, String reservationTime) {
+
+        // 1) 넘어온 조합이 실제로 그 매장 것인지 확인한다.
+        //    폼 값만 믿으면 다른 매장의 싼 시술 가격으로 예약을 만들 수 있다.
+        StylistVO stylist = stylistMapper.findById(stylistId);
+        if (stylist == null || stylist.getSalonId() != salonId) {
+            throw new IllegalArgumentException("선택한 디자이너가 이 매장 소속이 아닙니다.");
+        }
+        ServiceVO service = salonMapper.findServicesBySalonId(salonId).stream()
+                .filter(s -> s.getServiceId() == serviceId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("선택한 시술이 이 매장 메뉴가 아닙니다."));
+
+        // 2) 그 시각이 애초에 고를 수 있는 자리였는지 (영업시간/근무시간 밖이 아닌지)
+        String date = reservationTime.substring(0, 10);
+        String time = reservationTime.substring(11, 16);
+        boolean offered = getAvailableSlots(stylistId, date).stream()
+                .anyMatch(slot -> slot.getTime().equals(time) && slot.isAvailable());
+        if (!offered) {
+            throw new IllegalArgumentException("선택할 수 없는 시간입니다. 다른 시간을 골라주세요.");
+        }
+
+        // 3) 빈 자리일 때만 들어가는 INSERT. 슬롯을 본 뒤 누가 먼저 채갔다면 여기서 0행이다.
+        ReservationVO reservation = new ReservationVO();
+        reservation.setUserId(userId);
+        reservation.setSalonId(salonId);
+        reservation.setStylistId(stylistId);
+        reservation.setServiceId(serviceId);
+        reservation.setReservationTime(reservationTime + ":00");
+        if (resvMapper.insertIfSlotFree(reservation) == 0) {
+            throw new IllegalArgumentException("방금 다른 분이 예약했습니다. 다른 시간을 골라주세요.");
+        }
+
+        // 4) 결제 행도 같이 세워둔다 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
+        PaymentVO payment = new PaymentVO();
+        payment.setReservationId(reservation.getReservationId());
+        payment.setUserId(userId);
+        payment.setAmount(service.getPrice());
+        payment.setPaymentMethod("KAKAOPAY");
+        paymentMapper.insertPayment(payment);
+
+        reservation.setServiceName(service.getServiceName());
+        reservation.setAmount(service.getPrice().intValue());
+        return reservation;
+    }
+
+    /** ready 응답으로 받은 tid 보관 */
+    @Transactional
+    public void saveTransactionId(int reservationId, String tid) {
+        paymentMapper.updateTransactionId(reservationId, tid);
+    }
+
+    /**
+     * 결제 승인 결과 반영. 승인 응답의 금액이 우리가 기록해 둔 금액과 같을 때만 확정한다.
+     *
+     * @param approvedAmount 카카오페이가 실제로 승인한 금액
+     * @throws IllegalStateException 금액이 어긋날 때
+     */
+    @Transactional
+    public void confirmPayment(int reservationId, int approvedAmount, String paymentMethod) {
+        PaymentVO payment = paymentMapper.findByReservationId(reservationId);
+        if (payment == null) {
+            throw new IllegalStateException("결제 정보를 찾을 수 없습니다.");
+        }
+        if (payment.getAmount().intValue() != approvedAmount) {
+            // 여기까지 왔다면 금액이 중간에 조작된 것이다. 확정하지 않는다.
+            throw new IllegalStateException("결제 금액이 예약 금액과 일치하지 않습니다.");
+        }
+        paymentMapper.markCompleted(reservationId, paymentMethod);
+        resvMapper.updateStatus(reservationId, "confirmed");
+    }
+
+    /** 결제 취소/실패 — 예약도 같이 접는다 */
+    @Transactional
+    public void failPayment(int reservationId) {
+        paymentMapper.markFailed(reservationId);
+        resvMapper.updateStatus(reservationId, "cancelled");
+    }
+
+    @Transactional(readOnly = true)
+    public ReservationVO getReservation(int reservationId) {
+        return resvMapper.findById(reservationId);
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentVO getPayment(int reservationId) {
+        return paymentMapper.findByReservationId(reservationId);
     }
 }

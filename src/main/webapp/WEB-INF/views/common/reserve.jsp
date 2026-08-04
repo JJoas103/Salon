@@ -218,7 +218,7 @@
 
               <%-- 결제는 상태를 바꾸는 일이라 GET 이 아니라 POST 로 보낸다.
                    서버가 예약(pending)을 만든 뒤 카카오페이 결제창으로 리다이렉트한다. --%>
-              <form action="<c:url value='/reserve'/>" method="post" id="reserveForm">
+              <form action="<c:url value='/common/reserve'/>" method="post" id="reserveForm">
                 <input type="hidden" name="salonId" value="${salon.salonId}">
                 <input type="hidden" name="serviceId" id="fieldServiceId">
                 <input type="hidden" name="stylistId" id="fieldStylistId">

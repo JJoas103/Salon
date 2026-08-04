@@ -1,0 +1,25 @@
+# ============================================================================
+# 카카오페이 온라인 결제
+#
+# 이 파일을 같은 폴더에 payment.properties 로 복사한 뒤 값을 채운다.
+# payment.properties 는 .gitignore 에 있으니 커밋되지 않는다.
+#
+# 키 발급: https://developers.kakaopay.com
+#   가입 → 애플리케이션 생성 → 기본정보 > 발급정보 > Secret key(dev)
+#   사업자등록 없이도 아래 테스트 CID 와 dev 키로 결제창까지 띄울 수 있다.
+#   실제 결제만 파트너센터 가맹점 심사가 필요하다.
+# ============================================================================
+
+kakaopay.api.base=https://open-api.kakaopay.com
+
+# 공용 테스트 가맹점 코드. 실제 가맹점 코드를 받으면 그 값으로 바꾼다.
+kakaopay.cid=TC0ONETIME
+
+# 발급받은 Secret key 를 그대로 붙여넣는다.
+kakaopay.secret.key=
+
+# Authorization 헤더 앞에 붙는 인증 방식.
+#   개발용 키(dev)  -> DEV_SECRET_KEY
+#   운영용 키       -> SECRET_KEY
+# 발급 화면에 적힌 표기를 그대로 따를 것. 틀리면 401 이 돌아온다.
+kakaopay.auth.scheme=DEV_SECRET_KEY

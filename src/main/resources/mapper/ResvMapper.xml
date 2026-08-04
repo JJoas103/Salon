@@ -79,4 +79,50 @@
           AND (status IN ('confirmed', 'completed')
                OR (status = 'pending' AND created_at &gt; NOW() - INTERVAL 10 MINUTE))
     </select>
+
+    <!--
+        빈 자리일 때만 들어가는 INSERT. 조건은 findReservedTimes 와 똑같아야 한다.
+        (한쪽만 바꾸면 화면에는 예약 가능이라고 떠 있는데 눌러도 안 되는 상태가 된다)
+
+        같은 테이블을 조건에서 참조하므로 파생 테이블로 한 번 감싼다.
+    -->
+    <insert id="insertIfSlotFree" useGeneratedKeys="true" keyProperty="reservationId">
+        INSERT INTO Reservations
+            (user_id, salon_id, stylist_id, service_id, reservation_time, status)
+        SELECT #{userId}, #{salonId}, #{stylistId}, #{serviceId}, #{reservationTime}, 'pending'
+        FROM DUAL
+        WHERE NOT EXISTS (
+            SELECT 1
+            FROM (SELECT stylist_id, reservation_time, status, created_at
+                    FROM Reservations) r
+            WHERE r.stylist_id = #{stylistId}
+              AND r.reservation_time = #{reservationTime}
+              AND (r.status IN ('confirmed', 'completed')
+                   OR (r.status = 'pending' AND r.created_at &gt; NOW() - INTERVAL 10 MINUTE))
+        )
+    </insert>
+
+    <select id="findById" resultMap="ResvResultMap" parameterType="int">
+        SELECT
+            r.reservation_id, r.user_id, r.salon_id, r.stylist_id, r.service_id,
+            r.reservation_time, r.status,
+            s.salon_name AS salon_name,
+            se.service_name AS service_name,
+            se.price AS amount,
+            p.transaction_id,
+            p.payment_method
+        FROM Reservations r
+        JOIN Salons s   ON s.salon_id = r.salon_id
+        JOIN Services se ON se.service_id = r.service_id
+        LEFT JOIN Payments p ON p.reservation_id = r.reservation_id
+        WHERE r.reservation_id = #{reservationId}
+    </select>
+
+    <!-- 결제 중(pending)인 예약만 상태를 옮긴다. 이미 확정/취소된 건은 건드리지 않는다. -->
+    <update id="updateStatus">
+        UPDATE Reservations
+        SET status = #{status}
+        WHERE reservation_id = #{reservationId}
+          AND status = 'pending'
+    </update>
 </mapper>

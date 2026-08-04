@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC
+        "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.PaymentMapper">
+
+    <resultMap id="paymentResultMap" type="com.soldesk.vo.PaymentVO">
+        <id     column="payment_id"     property="paymentId"/>
+        <result column="reservation_id" property="reservationId"/>
+        <result column="user_id"        property="userId"/>
+        <result column="amount"         property="amount"/>
+        <result column="payment_method" property="paymentMethod"/>
+        <result column="payment_status" property="paymentStatus"/>
+        <result column="transaction_id" property="transactionId"/>
+        <result column="paid_at"        property="paidAt"/>
+    </resultMap>
+
+    <!-- transaction_id 는 ready 응답을 받은 뒤에 채운다. UNIQUE 컬럼이라 이 시점엔 NULL 로 둔다
+         (MySQL 은 UNIQUE 컬럼에 NULL 이 여러 개 들어가는 것을 허용한다) -->
+    <insert id="insertPayment" useGeneratedKeys="true" keyProperty="paymentId">
+        INSERT INTO Payments (reservation_id, user_id, amount, payment_method, payment_status)
+        VALUES (#{reservationId}, #{userId}, #{amount}, #{paymentMethod}, 'pending')
+    </insert>
+
+    <select id="findByReservationId" resultMap="paymentResultMap" parameterType="int">
+        SELECT payment_id, reservation_id, user_id, amount, payment_method,
+               payment_status, transaction_id, paid_at
+        FROM Payments
+        WHERE reservation_id = #{reservationId}
+    </select>
+
+    <update id="updateTransactionId">
+        UPDATE Payments
+        SET transaction_id = #{transactionId}
+        WHERE reservation_id = #{reservationId}
+    </update>
+
+    <!-- 이미 완료된 결제를 다시 완료 처리하지 않는다.
+         사용자가 승인 화면을 새로고침해도 두 번 승인되지 않게 막는 안전장치다. -->
+    <update id="markCompleted">
+        UPDATE Payments
+        SET payment_status = 'completed',
+            payment_method = #{paymentMethod},
+            paid_at = NOW()
+        WHERE reservation_id = #{reservationId}
+          AND payment_status = 'pending'
+    </update>
+
+    <update id="markFailed" parameterType="int">
+        UPDATE Payments
+        SET payment_status = 'failed'
+        WHERE reservation_id = #{reservationId}
+          AND payment_status = 'pending'
+    </update>
+
+</mapper>
