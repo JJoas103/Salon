@@ -183,7 +183,9 @@ public class ReservationService {
         payment.setReservationId(reservation.getReservationId());
         payment.setUserId(userId);
         payment.setAmount(service.getPrice());
-        payment.setPaymentMethod("KAKAOPAY");
+        payment.setOriginalAmount(service.getPrice());
+        payment.setCouponDiscount(java.math.BigDecimal.ZERO);//할인 없음 = 0
+        payment.setPgProvider("KAKAOPAY");
         paymentMapper.insertPayment(payment);
 
         reservation.setServiceName(service.getServiceName());
@@ -213,15 +215,17 @@ public class ReservationService {
             // 여기까지 왔다면 금액이 중간에 조작된 것이다. 확정하지 않는다.
             throw new IllegalStateException("결제 금액이 예약 금액과 일치하지 않습니다.");
         }
-        paymentMapper.markCompleted(reservationId, paymentMethod);
-        resvMapper.updateStatus(reservationId, "confirmed");
+        if(paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {   
+            resvMapper.updateStatus(reservationId, "confirmed");
+        }
     }
 
     /** 결제 취소/실패 — 예약도 같이 접는다 */
     @Transactional
     public void failPayment(int reservationId) {
-        paymentMapper.markFailed(reservationId);
-        resvMapper.updateStatus(reservationId, "cancelled");
+        if(paymentMapper.markFailed(reservationId) == 1){
+            resvMapper.updateStatus(reservationId, "cancelled");
+        }
     }
 
     @Transactional(readOnly = true)

@@ -20,7 +20,10 @@
         <result column="payment_method" property="paymentMethod"/>
         <result column="amount" property="amount"/>
         <result column="service_name" property="serviceName"/>
-
+        <result column="original_amount" property="originalAmount"/>
+        <result column="coupon_discount" property="couponDiscount"/>
+        <result column="point_used" property="pointUsed"/>
+        <result column="pg_provider" property="pgProvider"/>
     </resultMap>
 
     <!-- 전체 예약 히스토리 -->
@@ -40,7 +43,11 @@
             p.transaction_id,
             p.payment_method,
             p.amount,
-            se.service_name AS service_name
+            se.service_name AS service_name,
+            p.original_amount,
+            p.coupon_discount,
+            p.point_used,
+            p.pg_provider
         FROM Reservations r
         JOIN Salons s
           ON s.salon_id = r.salon_id
@@ -108,9 +115,13 @@
             r.reservation_time, r.status,
             s.salon_name AS salon_name,
             se.service_name AS service_name,
-            se.price AS amount,
+            p.amount AS amount,
             p.transaction_id,
-            p.payment_method
+            p.payment_method,
+            p.original_amount,
+            p.coupon_discount,
+            p.point_used,
+            p.pg_provider
         FROM Reservations r
         JOIN Salons s   ON s.salon_id = r.salon_id
         JOIN Services se ON se.service_id = r.service_id

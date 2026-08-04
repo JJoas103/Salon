@@ -64,7 +64,7 @@
             </div>
             <div class="reserve-result-row">
               <dt>결제수단</dt>
-              <dd><c:out value="${reservation.paymentMethod}"/></dd>
+              <dd><c:out value="${reservation.pgProvider}"/></dd>
             </div>
             <div class="reserve-result-row">
               <dt>결제금액</dt>
@@ -81,7 +81,7 @@
           <c:choose>
             <c:when test="${success}">
               <button type="button" class="btn-modern btn-primary"
-                      onclick="location.href='<c:url value="/common/reserve"/>'">예약 내역 보기</button>
+                      onclick="location.href='<c:url value="/common/reservation"/>'">예약 내역 보기</button>
               <button type="button" class="btn-modern btn-outline"
                       onclick="location.href='<c:url value="/common/salonmap"/>'">헤어샵 더 둘러보기</button>
             </c:when>
@@ -89,7 +89,7 @@
               <%-- 실패했을 때는 방금 고르던 매장으로 곧장 돌려보낸다 --%>
               <c:if test="${not empty salonId}">
                 <button type="button" class="btn-modern btn-primary"
-                        onclick="location.href='<c:url value="/reserve"><c:param name="salonId" value="${salonId}"/></c:url>'">다시 예약하기</button>
+                        onclick="location.href='<c:url value="/common/reserve"><c:param name="salonId" value="${salonId}"/></c:url>'">다시 예약하기</button>
               </c:if>
               <button type="button" class="btn-modern btn-outline"
                       onclick="location.href='<c:url value="/common/salonmap"/>'">지도로 돌아가기</button>
