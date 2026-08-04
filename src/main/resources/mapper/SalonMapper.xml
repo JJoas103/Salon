@@ -172,4 +172,20 @@
         where salon_id = #{salonId}
           and closed_at is not null
     </update>
+
+    <!-- 점주 승격 승인 시 매장 신규 생성. 주소 등 세부정보는 아직 없어 빈 값으로 두고,
+         이후 점주가 매장정보 관리 화면에서 직접 채워넣는다 (updateSalonInfo). -->
+    <insert id="insertSalon" parameterType="com.soldesk.vo.SalonVO">
+        insert into Salons (owner_id, salon_name, address, phone_number, description)
+        values (#{ownerId}, #{salonName}, #{address}, #{phoneNumber}, #{description})
+    </insert>
+
+    <update id="updateSalonInfo" parameterType="com.soldesk.vo.SalonVO">
+        update Salons
+        set salon_name = #{salonName},
+            address = #{address},
+            phone_number = #{phoneNumber},
+            description = #{description}
+        where salon_id = #{salonId}
+    </update>
 </mapper>

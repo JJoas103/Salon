@@ -1,3 +1,5 @@
+<%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
+<%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -19,15 +21,30 @@
       <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span>${user.userName} 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
     </header>
     <main class="app-content">
+      <c:if test="${not empty error}">
+        <p class="error-text"><c:out value="${error}" /></p>
+      </c:if>
+      <c:if test="${not empty success}">
+        <p class="success-text"><c:out value="${success}" /></p>
+      </c:if>
+
       <div class="modern-card">
         <h3 style="margin-bottom: 20px;">매장 기본 정보</h3>
-        <label style="font-size: 13px; font-weight: 700; color: var(--text-sub);">매장 소개</label>
-        <textarea class="modern-input" style="height: 100px; resize: none;">트렌디한 스타일과 최상의 서비스를 제공하는 HAIR RESERVE 강남본점입니다.</textarea>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-          <div><label style="font-size: 13px; font-weight: 700;">영업 시간</label><input type="text" class="modern-input" value="10:00 - 21:00"></div>
-          <div><label style="font-size: 13px; font-weight: 700;">연락처</label><input type="text" class="modern-input" value="02-1234-5678"></div>
-        </div>
-        <button class="btn-modern btn-primary">정보 저장</button>
+        <form method="post" action="<c:url value='/owner/store/update'/>" style="display:flex; flex-direction:column; gap:16px;">
+          <div>
+            <label style="font-size: 13px; font-weight: 700;">매장명</label>
+            <input type="text" name="salonName" class="modern-input" value="${salon.salonName}" required>
+          </div>
+          <div>
+            <label style="font-size: 13px; font-weight: 700; color: var(--text-sub);">매장 소개</label>
+            <textarea name="description" class="modern-input" style="height: 100px; resize: none;">${salon.description}</textarea>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div><label style="font-size: 13px; font-weight: 700;">주소</label><input type="text" name="address" class="modern-input" value="${salon.address}" placeholder="주소를 입력해주세요"></div>
+            <div><label style="font-size: 13px; font-weight: 700;">연락처</label><input type="text" name="phoneNumber" class="modern-input" value="${salon.phoneNumber}" placeholder="02-1234-5678"></div>
+          </div>
+          <button type="submit" class="btn-modern btn-primary">정보 저장</button>
+        </form>
       </div>
       <div class="modern-card">
         <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">

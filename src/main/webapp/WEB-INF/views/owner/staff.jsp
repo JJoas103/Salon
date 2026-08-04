@@ -137,42 +137,45 @@
   </div>
 
   <!-- 스케줄 설정 모달 (디자이너 공용, JS가 대상을 채움) -->
+  <!-- 헤더/저장 버튼은 항상 고정, 가운데(캘린더~목록)만 내용이 많아지면 자체적으로 스크롤됨 -->
   <div class="modal-overlay" id="scheduleModal">
-    <div class="modal-box" style="max-width: 480px;">
-      <div class="modal-header">
+    <div class="modal-box" style="max-width: 480px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+      <div class="modal-header" style="flex-shrink: 0;">
         <h3 style="font-size: 18px;">스케줄 설정 — <span id="scheduleModalStylistName"></span></h3>
         <button type="button" class="modal-close" id="closeScheduleModalBtn"><i class="fas fa-times"></i></button>
       </div>
 
-      <div class="mini-calendar">
-        <div class="mini-cal-mode-toggle">
-          <button type="button" id="calModeRangeBtn" class="mini-cal-mode-btn is-active">범위 선택</button>
-          <button type="button" id="calModeSingleBtn" class="mini-cal-mode-btn">개별 선택</button>
+      <div style="flex: 1; min-height: 0; overflow-y: auto; margin: 0 -35px; padding: 0 35px;">
+        <div class="mini-calendar">
+          <div class="mini-cal-mode-toggle">
+            <button type="button" id="calModeRangeBtn" class="mini-cal-mode-btn is-active">범위 선택</button>
+            <button type="button" id="calModeSingleBtn" class="mini-cal-mode-btn">개별 선택</button>
+          </div>
+          <div class="mini-cal-nav">
+            <button type="button" id="calPrevBtn" class="btn-modern btn-outline" style="padding:4px 10px;">‹</button>
+            <span id="calMonthLabel" style="font-weight:700; font-size:14px;"></span>
+            <button type="button" id="calNextBtn" class="btn-modern btn-outline" style="padding:4px 10px;">›</button>
+          </div>
+          <div class="mini-cal-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
+          <div class="mini-cal-grid" id="calGrid"></div>
+          <p style="font-size:11.5px; color:var(--text-sub); margin-top:8px;" id="calHint">시작일을 클릭한 뒤 종료일을 클릭하세요.</p>
         </div>
-        <div class="mini-cal-nav">
-          <button type="button" id="calPrevBtn" class="btn-modern btn-outline" style="padding:4px 10px;">‹</button>
-          <span id="calMonthLabel" style="font-weight:700; font-size:14px;"></span>
-          <button type="button" id="calNextBtn" class="btn-modern btn-outline" style="padding:4px 10px;">›</button>
+
+        <div id="scheduleBulkApply" style="display:none; margin-top:16px; padding:12px; background:var(--bg-sub); border-radius:var(--radius-md);">
+          <p style="font-size:12.5px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">선택한 날짜 전체에 적용</p>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="time" id="bulkStartTime" class="modern-input" style="width:auto;" value="10:00">
+            <span>~</span>
+            <input type="time" id="bulkEndTime" class="modern-input" style="width:auto;" value="19:00">
+            <label style="display:flex; align-items:center; gap:4px; font-size:13px;"><input type="checkbox" id="bulkAvailable" checked> 예약 가능</label>
+            <button type="button" id="applyBulkBtn" class="btn-modern btn-outline" style="padding:6px 12px; font-size:12.5px;">전체 적용</button>
+          </div>
         </div>
-        <div class="mini-cal-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
-        <div class="mini-cal-grid" id="calGrid"></div>
-        <p style="font-size:11.5px; color:var(--text-sub); margin-top:8px;" id="calHint">시작일을 클릭한 뒤 종료일을 클릭하세요.</p>
+
+        <div id="scheduleDateList" style="margin:14px -35px 0; padding:0 12px; display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
-      <div id="scheduleBulkApply" style="display:none; margin-top:16px; padding:12px; background:var(--bg-sub); border-radius:var(--radius-md);">
-        <p style="font-size:12.5px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">선택한 날짜 전체에 적용</p>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <input type="time" id="bulkStartTime" class="modern-input" style="width:auto;" value="10:00">
-          <span>~</span>
-          <input type="time" id="bulkEndTime" class="modern-input" style="width:auto;" value="19:00">
-          <label style="display:flex; align-items:center; gap:4px; font-size:13px;"><input type="checkbox" id="bulkAvailable" checked> 예약 가능</label>
-          <button type="button" id="applyBulkBtn" class="btn-modern btn-outline" style="padding:6px 12px; font-size:12.5px;">전체 적용</button>
-        </div>
-      </div>
-
-      <div id="scheduleDateList" style="margin-top:14px; margin-left:-35px; margin-right:-35px; padding:0 12px; display:flex; flex-direction:column; gap:8px; max-height:240px; overflow-y:auto;"></div>
-
-      <form id="scheduleForm" method="post" style="margin-top:16px;">
+      <form id="scheduleForm" method="post" style="margin-top:16px; flex-shrink: 0;">
         <input type="hidden" name="scheduleData" id="scheduleDataInput">
         <button type="submit" class="btn-modern btn-primary" style="width:100%;">저장</button>
       </form>

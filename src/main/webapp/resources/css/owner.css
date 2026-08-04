@@ -30,10 +30,15 @@ body {
 .sidebar-footer { margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255, 255, 255, 0.07); }
 .sidebar-item-logout { display: flex; align-items: center; gap: 13px; color: rgba(255, 255, 255, 0.5); text-decoration: none; padding: 11px 14px; border-radius: 10px; font-weight: 500; font-size: 14.5px; transition: background 0.15s ease, color 0.15s ease; }
 .sidebar-item-logout:hover { background: rgba(255, 255, 255, 0.045); color: rgba(255, 255, 255, 0.85); }
-.salon-select-btn { background: rgba(255, 255, 255, 0.08); border: none; color: rgba(255, 255, 255, 0.5); width: 26px; height: 26px; border-radius: 7px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; transition: background 0.15s ease, color 0.15s ease; }
-.salon-select-btn:hover { background: rgba(255, 255, 255, 0.18); color: var(--white); }
-.salon-select-btn.needs-attention { background: rgba(225, 112, 85, 0.22); color: #E17055; }
-.salon-select-btn.needs-attention:hover { background: rgba(225, 112, 85, 0.34); color: #E17055; }
+.salon-select-card { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 10px 11px; margin: -6px 0 16px; cursor: pointer; transition: background 0.15s ease; }
+.salon-select-card:hover { background: rgba(255, 255, 255, 0.1); }
+.salon-select-thumb { width: 32px; height: 32px; border-radius: 8px; background: #E17055; display: flex; align-items: center; justify-content: center; font-size: 13px; color: var(--white); flex-shrink: 0; }
+.salon-select-info { min-width: 0; flex: 1; }
+.salon-select-label { font-size: 10px; color: rgba(255, 255, 255, 0.42); font-weight: 700; letter-spacing: 0.03em; }
+.salon-select-name { font-size: 13.5px; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.salon-select-chev { font-size: 10px; color: rgba(255, 255, 255, 0.4); flex-shrink: 0; }
+.salon-select-card.needs-attention { background: rgba(225, 112, 85, 0.22); border-color: rgba(225, 112, 85, 0.3); }
+.salon-select-card.needs-attention:hover { background: rgba(225, 112, 85, 0.32); }
 .sidebar-salon-notice { opacity: 0; visibility: hidden; margin: 4px 0 10px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--danger); color: var(--white); font-size: 13px; font-weight: 600; text-align: center; transition: opacity 0.5s ease, visibility 0.5s ease; }
 .sidebar-salon-notice.show { opacity: 1; visibility: visible; }
 

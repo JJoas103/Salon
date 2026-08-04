@@ -67,9 +67,46 @@ public class OwnerController {
     // 아래 3개는 아직 정적 목업 내용을 그대로 보여주는 자리표시 라우트 — 추후 각자 실데이터로 구현 예정.
     // user/salons는 헤더의 내정보 모달과 사이드바의 매장 선택 모달에 공통으로 필요해서 매번 채워준다.
     @GetMapping("/store")
-    public String store(Authentication authentication, Model model) {
+    public String store(Authentication authentication, HttpSession session, Model model) {
         fillCommonModel(authentication, model);
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId != null) {
+            UserVO user = userService.getUser(authentication.getName());
+            try {
+                model.addAttribute("salon", salonService.getSalonForOwner(salonId, user.getUserId()));
+            } catch (IllegalArgumentException e) {
+                // 세션의 selectedSalonId가 본인 소유가 아니면 빈 폼으로 둔다
+            }
+        }
         return "owner/store";
+    }
+
+    @PostMapping("/store/update")
+    public String updateSalonInfo(Authentication authentication, HttpSession session,
+            @RequestParam String salonName,
+            @RequestParam(required = false) String address,
+            @RequestParam(required = false) String phoneNumber,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        SalonVO salon = new SalonVO();
+        salon.setSalonId(salonId);
+        salon.setSalonName(salonName);
+        salon.setAddress(address);
+        salon.setPhoneNumber(phoneNumber);
+        salon.setDescription(description);
+        try {
+            salonService.updateSalonInfo(user.getUserId(), salon);
+            redirectAttributes.addFlashAttribute("success", "매장 정보가 저장되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
     }
 
     @GetMapping("/reservations")

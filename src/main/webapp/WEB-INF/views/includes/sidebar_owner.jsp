@@ -4,12 +4,25 @@
 <%-- 현재 페이지가 넘겨준 메뉴 키. 예) <jsp:param name="menu" value="reservations"/>
      포함하는 컨트롤러는 ${salons} 모델(점주 소유 매장 목록)을 채워줘야 매장 선택 모달이 뜬다. --%>
 <c:set var="menu" value="${param.menu}" />
+<c:set var="selectedSalonName" value="" />
+<c:forEach var="s" items="${salons}">
+  <c:if test="${s.salonId == sessionScope.selectedSalonId}"><c:set var="selectedSalonName" value="${s.salonName}" /></c:if>
+</c:forEach>
 <aside class="sidebar">
   <div class="sidebar-brand"><i class="fas fa-scissors" style="color: var(--accent);"></i><span>HAIR RESERVE</span></div>
+
+  <div class="salon-select-card" id="openSalonSelectBtn" title="매장 선택">
+    <div class="salon-select-thumb"><i class="fas fa-store"></i></div>
+    <div class="salon-select-info">
+      <div class="salon-select-label">선택된 매장</div>
+      <div class="salon-select-name">${empty selectedSalonName ? '매장을 선택해주세요' : selectedSalonName}</div>
+    </div>
+    <i class="fas fa-chevron-down salon-select-chev"></i>
+  </div>
+
   <ul class="sidebar-menu">
-    <li class="sidebar-item ${menu == 'store' ? 'active' : ''}" data-needs-salon="true" style="display:flex; align-items:center; padding-right:8px;">
-      <a href="<c:url value='/owner/store'/>" style="flex:1;"><i class="fas fa-store"></i> 매장정보 관리</a>
-      <button type="button" id="openSalonSelectBtn" class="salon-select-btn" title="매장 선택"><i class="fas fa-list"></i></button>
+    <li class="sidebar-item ${menu == 'store' ? 'active' : ''}" data-needs-salon="true">
+      <a href="<c:url value='/owner/store'/>"><i class="fas fa-store"></i> 매장정보 관리</a>
     </li>
     <li class="sidebar-item ${menu == 'staff' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/staff'/>"><i class="fas fa-users"></i> 직원관리</a>
