@@ -162,14 +162,10 @@ public class CommonController {
 
     // 예약 내역 가져오기
     @GetMapping("/reservation")
-    public String pageReserve(
-            @RequestParam(defaultValue = "1") int category,
-            Model model) {
+    public String pageReserve(Model model) {
         String userEmail = SecurityContextHolder.getContext().getAuthentication().getName();
 
         UserVO user = userService.getUser(userEmail);
-
-        model.addAttribute("categoryIdx", 1);
         List<ReservationVO> list = reservationService.getRevList(user.getUserId());
         model.addAttribute("reservs", list);
         return "common/reservations";

@@ -23,7 +23,7 @@
     <main class="app-content">
       <div class="res-tabs">
         <div class="res-tab ${categoryIdx == 1 ? 'active' : ''}">
-          <a href="/common/reserve?category=1">전체 예약 히스토리</a>
+          <a href="/common/reservation?category=1">전체 예약 히스토리</a>
         </div>
 
         <div class="res-tab">
