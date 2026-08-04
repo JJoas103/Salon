@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
+import com.soldesk.vo.StylistVO;
 
 @Service
 public class SalonService {
@@ -98,4 +99,22 @@ public class SalonService {
         }
         salonMapper.reopenSalon(salonId);
     }//매장 폐업 취소(재개): 존재하지 않거나 이미 운영중인 매장 재처리 방지
+
+    @Transactional
+    public void updateSalonInfo(int ownerId, SalonVO salon){
+        SalonVO existing = salonMapper.findById(salon.getSalonId());
+        if(existing == null || existing.getOwnerId() != ownerId){
+            throw new IllegalArgumentException("본인 소유의 매장만 수정할 수 있습니다.");
+        }
+        salonMapper.updateSalonInfo(salon);
+    }//점주가 매장정보 관리 화면에서 직접 수정 (소유 검증)
+
+    @Transactional(readOnly = true)
+    public SalonVO getSalonForOwner(int salonId, int ownerId){
+        SalonVO salon = salonMapper.findById(salonId);
+        if(salon == null || salon.getOwnerId() != ownerId){
+            throw new IllegalArgumentException("본인 소유의 매장만 조회할 수 있습니다.");
+        }
+        return salon;
+    }//매장정보 관리 화면 조회용 (소유 검증) — select-salon 자체는 소유 검증이 없어 세션의 selectedSalonId가 타인 매장일 수 있음
 }

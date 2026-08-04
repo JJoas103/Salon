@@ -18,11 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 // import com.soldesk.vo.ReservationVO;
 // import com.soldesk.vo.UserVO;
 
-import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.RequestMapping;
+// import org.springframework.stereotype.Controller;
+// import org.springframework.web.bind.annotation.RequestMapping;
 
 @Controller
 @RequestMapping("/reserve")
 public class ReserveController {
-    
+
 }

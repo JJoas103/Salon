@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.apache.ibatis.annotations.Param;
 
+import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
 
@@ -14,6 +15,14 @@ public interface SalonMapper {
     SalonVO findById(int salonId);
 
     List<ServiceVO> findServicesBySalonId(int salonId);
+
+    /**
+     * 특정 요일의 영업시간. 예약 가능 시간대를 만드는 바깥 테두리가 된다.
+     * dayOfWeek 는 DB ENUM 에 맞춰 '월'~'일' 한글 한 글자다.
+     * 그 요일 행이 없으면 휴무로 보고 null 을 돌려준다.
+     */
+    SalonOperatingHourVO findOperatingHour(@Param("salonId") int salonId,
+                                            @Param("dayOfWeek") String dayOfWeek);
 
     /** 점주(user_id) 기준 매장 조회 */
     List<SalonVO> findAllByOwnerId(int ownerId);
@@ -43,4 +52,10 @@ public interface SalonMapper {
 
     /** 매장 폐업 취소(재개) — 운영중인 매장 재처리 방지는 WHERE절에서 방어 */
     void reopenSalon(int salonId);
+
+    /** 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력) */
+    void insertSalon(SalonVO salon);
+
+    /** 점주가 매장정보 관리 화면에서 직접 수정 */
+    void updateSalonInfo(SalonVO salon);
 }

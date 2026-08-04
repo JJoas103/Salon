@@ -10,7 +10,7 @@
     <li class="sidebar-item ${menu == 'search' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/salonmap'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/chat'/>"><i class="fas fa-comments"></i> 1:1 상담 채팅<sec:authorize access="isAuthenticated()"><span id="navUnread" class="nav-unread" data-count="0"></span></sec:authorize></a></li>
     <li class="sidebar-item ${menu == 'community' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/community'/>"><i class="fas fa-users"></i> 스타일 커뮤니티</a></li>
-    <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/reserve?category=1'/>"><i class="fas fa-calendar-alt"></i> 예약 내역</a></li>
+    <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/reservation?category=1'/>"><i class="fas fa-calendar-alt"></i> 예약 내역</a></li>
     <li class="sidebar-item ${menu == 'ownerRequest' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/owner-request'/>"><i class="fas fa-store"></i> 점주 요청</a></li>
     <li class="sidebar-item ${menu == 'mypage' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/mypage'/>"><i class="fas fa-user"></i> 마이페이지</a></li>
   </ul>

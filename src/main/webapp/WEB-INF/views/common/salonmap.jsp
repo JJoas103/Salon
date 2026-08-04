@@ -282,7 +282,7 @@
     document.getElementById('btn-reserve').addEventListener('click', function () {
       const salon = salons[selectedIndex];
       if (!salon) return;
-      location.href = CONTEXT_PATH + 'common/search?salonId=' + salon.salonId;
+      location.href = CONTEXT_PATH + 'common/reserve?salonId=' + salon.salonId;
     });
     document.getElementById('btn-review').addEventListener('click', function () {
       const salon = salons[selectedIndex];

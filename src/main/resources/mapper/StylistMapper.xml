@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.StylistMapper">
+
+    <resultMap id="stylistResultMap" type="com.soldesk.vo.StylistVO">
+        <id     column="stylist_id"   property="stylistId" />
+        <result column="salon_id"     property="salonId" />
+        <result column="stylist_name" property="stylistName" />
+        <result column="phone_number" property="phoneNumber" />
+        <result column="description"  property="description" />
+        <result column="image_url"    property="imageUrl" />
+        <result column="created_at"   property="createdAt" />
+        <result column="updated_at"   property="updatedAt" />
+    </resultMap>
+
+    <select id="findBySalonId" resultMap="stylistResultMap">
+        select * from Stylists where salon_id = #{salonId} order by stylist_id
+    </select>
+
+    <select id="findById" resultMap="stylistResultMap">
+        select * from Stylists where stylist_id = #{stylistId}
+    </select>
+
+    <insert id="insertStylist" useGeneratedKeys="true" keyProperty="stylistId">
+        insert into Stylists (salon_id, stylist_name, phone_number, description, image_url)
+        values (#{salonId}, #{stylistName}, #{phoneNumber}, #{description}, #{imageUrl})
+    </insert>
+
+    <update id="updateStylist">
+        update Stylists
+        set stylist_name = #{stylistName}, phone_number = #{phoneNumber},
+            description = #{description}, image_url = #{imageUrl}
+        where stylist_id = #{stylistId}
+    </update>
+
+    <delete id="deleteStylist">
+        delete from Stylists where stylist_id = #{stylistId}
+    </delete>
+
+</mapper>
