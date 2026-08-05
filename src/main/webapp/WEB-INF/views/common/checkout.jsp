@@ -75,7 +75,7 @@
             </div>
           </section>
 
-          <%-- ---------- 할인 적용 (Step 4·5 에서 채운다) ---------- --%>
+          <%-- ---------- 할인 적용 ---------- --%>
           <section class="checkout-card">
             <div class="checkout-card-head">
               <h3>할인 적용</h3>
@@ -85,9 +85,31 @@
                 <span><i class="fas fa-ticket" style="margin-right:8px;"></i> 쿠폰</span>
                 <span class="tag">준비중</span>
               </div>
-              <div class="checkout-soon">
-                <span><i class="fas fa-coins" style="margin-right:8px;"></i> 적립금</span>
-                <span class="tag">준비중</span>
+
+              <div class="checkout-point">
+                <div class="checkout-point-head">
+                  <span><i class="fas fa-coins" style="margin-right:8px;"></i> 적립금</span>
+                  <span class="checkout-point-balance">
+                    보유 <strong id="pointBalance"><fmt:formatNumber value="${quote.pointBalance}" pattern="#,##0"/></strong>원
+                  </span>
+                </div>
+                <div class="checkout-point-input">
+                  <%-- 폼 밖에 두고 값만 hidden 으로 옮긴다. 입력 자체는 서버가 다시 검증하므로
+                       여기서 막는 것은 편의일 뿐이고, 권위 있는 판정은 quote() 가 한다. --%>
+                  <input type="number" id="pointInput" min="0" step="100" value="0"
+                         max="${quote.maxPointUsable}" placeholder="0">
+                  <button type="button" class="btn-modern btn-outline" id="pointAllBtn">전액 사용</button>
+                </div>
+                <p class="checkout-point-hint" id="pointHint">
+                  <c:choose>
+                    <c:when test="${quote.maxPointUsable > 0}">
+                      최대 <fmt:formatNumber value="${quote.maxPointUsable}" pattern="#,##0"/>원까지 사용할 수 있습니다.
+                    </c:when>
+                    <c:otherwise>
+                      사용할 수 있는 적립금이 없습니다.
+                    </c:otherwise>
+                  </c:choose>
+                </p>
               </div>
             </div>
           </section>
@@ -116,32 +138,38 @@
           <dl class="reserve-summary-list">
             <div class="reserve-summary-row">
               <dt>시술 금액</dt>
-              <dd><fmt:formatNumber value="${service.price}" pattern="#,##0"/>원</dd>
+              <dd><fmt:formatNumber value="${quote.originalAmount}" pattern="#,##0"/>원</dd>
             </div>
-            <%-- 아래 두 줄은 Step 4·5 전까지 항상 0 이다. 자리를 미리 잡아두면
+            <%-- 쿠폰 줄은 Step 5 전까지 항상 0 이다. 자리를 미리 잡아두면
                  할인이 붙었을 때 금액이 어디서 깎였는지 그대로 보인다. --%>
             <div class="reserve-summary-row is-discount">
               <dt>쿠폰 할인</dt>
-              <dd>-0원</dd>
+              <dd id="sumCoupon">-0원</dd>
             </div>
             <div class="reserve-summary-row is-discount">
               <dt>적립금 사용</dt>
-              <dd>-0원</dd>
+              <dd id="sumPoint">-0원</dd>
             </div>
           </dl>
 
           <div class="reserve-summary-total">
             <span>최종 결제금액</span>
-            <strong><fmt:formatNumber value="${service.price}" pattern="#,##0"/>원</strong>
+            <strong id="sumFinal"><fmt:formatNumber value="${quote.finalAmount}" pattern="#,##0"/>원</strong>
           </div>
 
-          <%-- 금액은 넘기지 않는다. 서버가 serviceId 로 가격을 다시 읽는다.
-               폼에 실린 금액을 믿으면 1원짜리 결제를 만들 수 있다. --%>
+          <p class="checkout-earn" id="sumEarn">
+            결제 후 방문을 마치면 <strong><fmt:formatNumber value="${quote.earnPreview}" pattern="#,##0"/></strong>원이 적립됩니다.
+          </p>
+
+          <%-- 금액은 넘기지 않는다. 서버가 serviceId 로 가격을 다시 읽고
+               같은 quote() 로 할인까지 재계산한다. 폼에 실린 금액을 믿으면
+               1원짜리 결제를 만들 수 있다. --%>
           <form action="<c:url value='/common/reserve'/>" method="post" id="checkoutForm">
             <input type="hidden" name="salonId"         value="${salon.salonId}">
             <input type="hidden" name="serviceId"       value="${service.serviceId}">
             <input type="hidden" name="stylistId"       value="${stylist.stylistId}">
             <input type="hidden" name="reservationTime" value="<c:out value='${reservationTime}'/>">
+            <input type="hidden" name="pointToUse"      id="fieldPointToUse" value="0">
             <button type="submit" class="btn-modern btn-accent reserve-pay-btn" id="checkoutPayBtn">
               <i class="fas fa-comment"></i> 카카오페이로 결제하기
             </button>
@@ -157,11 +185,73 @@
   </div>
 
   <script>
-    /* 결제는 되돌리기 어려운 동작이라 중복 제출을 막는다 (예약 화면과 같은 방식). */
+    const QUOTE_URL = '<c:url value="/common/reserve/checkout/quote"/>';
+    const SERVICE_ID = ${service.serviceId};
+
+    const pointInput   = document.getElementById('pointInput');
+    const pointAllBtn  = document.getElementById('pointAllBtn');
+    const pointHint    = document.getElementById('pointHint');
     const checkoutPayBtn = document.getElementById('checkoutPayBtn');
+
+    const won = n => n.toLocaleString() + '원';
+
+    /* 적립금 입력이 바뀔 때마다 서버에 다시 물어본다.
+       클라이언트에서 계산하지 않는 이유는, 화면 계산과 결제 계산이 두 벌이 되면
+       반드시 어긋나기 때문이다. 상한/단위 판정도 전부 서버 몫이다. */
+    async function refreshQuote() {
+      const body = new URLSearchParams({
+        serviceId: SERVICE_ID,
+        pointToUse: pointInput.value || 0
+      });
+
+      const res = await fetch(QUOTE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      if (!res.ok) return;               /* 실패하면 화면을 건드리지 않는다 */
+      const q = await res.json();
+
+      /* 서버가 잘라낸 값으로 입력칸을 되돌린다 — 화면과 청구가 항상 같은 값을 본다 */
+      pointInput.value = q.pointUsed;
+      document.getElementById('fieldPointToUse').value = q.pointUsed;
+
+      document.getElementById('sumCoupon').textContent = '-' + won(q.couponDiscount);
+      document.getElementById('sumPoint').textContent  = '-' + won(q.pointUsed);
+      document.getElementById('sumFinal').textContent  = won(q.finalAmount);
+      document.getElementById('sumEarn').innerHTML =
+          '결제 후 방문을 마치면 <strong>' + q.earnPreview.toLocaleString() + '</strong>원이 적립됩니다.';
+
+      /* 잘렸다면 왜 잘렸는지 알려준다 */
+      const message = q.messages && q.messages.point;
+      pointHint.textContent = message
+          || (q.maxPointUsable > 0
+                ? '최대 ' + won(q.maxPointUsable) + '까지 사용할 수 있습니다.'
+                : '사용할 수 있는 적립금이 없습니다.');
+      pointHint.classList.toggle('is-warn', !!message);
+
+      /* 전액 할인이면 결제사를 거치지 않는다 */
+      checkoutPayBtn.innerHTML = q.pgProvider === 'ZERO'
+          ? '<i class="fas fa-check"></i> 적립금으로 결제 완료하기'
+          : '<i class="fas fa-comment"></i> 카카오페이로 결제하기';
+    }
+
+    /* 타이핑마다 요청하면 과하므로 잠깐 멈췄을 때 한 번만 보낸다 */
+    let quoteTimer;
+    pointInput.addEventListener('input', () => {
+      clearTimeout(quoteTimer);
+      quoteTimer = setTimeout(refreshQuote, 350);
+    });
+
+    pointAllBtn.addEventListener('click', () => {
+      pointInput.value = ${quote.maxPointUsable};
+      refreshQuote();
+    });
+
+    /* 결제는 되돌리기 어려운 동작이라 중복 제출을 막는다 (예약 화면과 같은 방식). */
     document.getElementById('checkoutForm').addEventListener('submit', () => {
       checkoutPayBtn.disabled = true;
-      checkoutPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 결제창으로 이동 중...';
+      checkoutPayBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 결제 진행 중...';
     });
   </script>
 </body>

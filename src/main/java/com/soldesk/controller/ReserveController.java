@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.soldesk.service.CheckoutService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.StylistService;
@@ -28,6 +29,7 @@ import com.soldesk.vo.payment.PaymentApprovalVO;
 import com.soldesk.vo.payment.PaymentContextVO;
 import com.soldesk.vo.payment.PaymentReadyVO;
 import com.soldesk.vo.PaymentVO;
+import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
@@ -59,6 +61,9 @@ public class ReserveController {
 
     @Autowired
     private PaymentGatewayResolver paymentGatewayResolver;
+
+    @Autowired
+    private CheckoutService checkoutService;
     
 
     // 미용실 검색하기
@@ -116,6 +121,8 @@ public class ReserveController {
             @RequestParam int serviceId,
             @RequestParam int stylistId,
             @RequestParam String reservationTime,
+            @RequestParam(required = false) Integer userCouponId,
+            @RequestParam(defaultValue = "0") int pointToUse,
             Authentication authentication,
             HttpServletRequest request,
             Model model) {
@@ -123,8 +130,10 @@ public class ReserveController {
         UserVO user = userService.getUser(authentication.getName());
         ReservationVO reservation;
         try {
+            // 금액은 넘기지 않는다. 서비스가 quote() 로 다시 계산한다.
             reservation = reservationService.createPendingReservation(
-                    user.getUserId(), salonId, stylistId, serviceId, reservationTime);
+                    user.getUserId(), salonId, stylistId, serviceId, reservationTime,
+                    userCouponId, pointToUse);
         } catch (IllegalArgumentException e) {
             // 자리를 뺏겼거나 값이 어긋난 경우 — 예약이 만들어지지 않았으므로 되돌릴 것이 없다
             return reserveFailView(model, salonId, e.getMessage());
@@ -301,11 +310,35 @@ public class ReserveController {
             return blockedSlotView(model, salonId, stylistId, reservationTime, authentication);
         }
 
+        UserVO user = userService.getUser(authentication.getName());
+
         model.addAttribute("salon", salonService.getSalon(salonId));
         model.addAttribute("service", service);
         model.addAttribute("stylist", stylistService.findByStylistId(stylistId));
         model.addAttribute("reservationTime", reservationTime);
+        // 처음 들어왔을 때는 할인 없이 계산한 값. 사용자가 적립금을 입력하면
+        // /checkout/quote 가 같은 메서드로 다시 계산해 화면만 갱신한다.
+        model.addAttribute("quote",
+                checkoutService.quote(user.getUserId(), serviceId, null, 0));
         return "common/checkout";
+    }
+
+    /**
+     * 확인 화면에서 적립금·쿠폰을 바꿀 때마다 부르는 금액 재계산.
+     * 뷰가 아니라 JSON 을 돌려주므로 @ResponseBody 를 붙인다.
+     *
+     * 계산은 결제 시점과 <b>같은</b> CheckoutService.quote() 가 한다.
+     * 화면용 계산을 따로 만들면 보여준 금액과 청구한 금액이 어긋난다.
+     */
+    @PostMapping("/checkout/quote")
+    @ResponseBody
+    public PriceQuoteVO checkoutQuote(@RequestParam int serviceId,
+            @RequestParam(required = false) Integer userCouponId,
+            @RequestParam(defaultValue = "0") int pointToUse,
+            Authentication authentication) {
+
+        UserVO user = userService.getUser(authentication.getName());
+        return checkoutService.quote(user.getUserId(), serviceId, userCouponId, pointToUse);
     }
 
     /**

@@ -19,6 +19,7 @@ import com.soldesk.mapper.SalonMapper;
 import com.soldesk.mapper.StylistMapper;
 import com.soldesk.mapper.StylistScheduleMapper;
 import com.soldesk.vo.PaymentVO;
+import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.ServiceVO;
@@ -29,13 +30,20 @@ import com.soldesk.vo.TimeSlotVO;
 @Service
 public class ReservationService {
 
+    
     /** 예약 단위. 시술 소요시간과 무관하게 30분 간격으로만 시작할 수 있다. */
     private static final int SLOT_MINUTES = 30;
-
+    
     /** DB 의 day_of_week 는 ENUM('월','화',...) 한글이라 java 의 DayOfWeek 를 그대로 못 쓴다. */
     private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
-
+    
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
+    
+    @Autowired
+    private PointService pointService;
+
+    @Autowired
+    private CheckoutService checkoutService;
 
     @Autowired
     private ResvMapper resvMapper;
@@ -51,6 +59,7 @@ public class ReservationService {
 
     @Autowired
     private PaymentMapper paymentMapper;
+
 
     @Transactional
     public List<ReservationVO> getRevList(int userId){
@@ -150,7 +159,7 @@ public class ReservationService {
      */
     @Transactional
     public ReservationVO createPendingReservation(int userId, int salonId, int stylistId,
-            int serviceId, String reservationTime) {
+            int serviceId, String reservationTime, Integer userCouponId, int pointToUse) {
 
         // 1) 넘어온 조합이 실제로 그 매장 것인지 확인한다.
         //    폼 값만 믿으면 다른 매장의 싼 시술 가격으로 예약을 만들 수 있다.
@@ -175,26 +184,29 @@ public class ReservationService {
             throw new IllegalArgumentException("방금 다른 분이 예약했습니다. 다른 시간을 골라주세요.");
         }
 
-        // 4) 결제 행도 같이 세워둔다 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
-        //
-        //    결제사는 금액을 아는 여기서 정한다. 화면이 보낸 값을 쓰지 않는 것은
-        //    금액과 같은 이유다 — 0원이 아닌데 ZERO 로 보내면 공짜 결제가 된다.
-        //    Step 4·5 에서 할인이 붙으면 finalAmount 만 바뀌고 이 판단은 그대로 산다.
-        int finalAmount = service.getPrice().intValue();
-        String pgProvider = finalAmount == 0 ? "ZERO" : "KAKAOPAY";
+        // 4) 금액을 다시 계산한다. 화면이 보낸 금액은 쓰지 않고, 확인 화면이 보여줄 때
+        //    썼던 것과 똑같은 CheckoutService.quote() 를 부른다. 두 벌로 계산하면
+        //    화면 금액과 청구 금액이 어긋난다.
+        PriceQuoteVO quote = checkoutService.quote(userId, serviceId, userCouponId, pointToUse);
 
+        // 5) 적립금 차감. 잔액이 모자라면 예외가 나고 이 트랜잭션이 통째로 롤백되므로,
+        //    방금 만든 예약도 함께 사라진다. 되돌릴 것이 없다.
+        pointService.use(userId, reservation.getReservationId(), quote.getPointUsed());
+
+        // 6) 결제 행 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
         PaymentVO payment = new PaymentVO();
         payment.setReservationId(reservation.getReservationId());
         payment.setUserId(userId);
-        payment.setAmount(service.getPrice());
-        payment.setOriginalAmount(service.getPrice());
-        payment.setCouponDiscount(java.math.BigDecimal.ZERO);//할인 없음 = 0
-        payment.setPgProvider(pgProvider);
+        payment.setAmount(java.math.BigDecimal.valueOf(quote.getFinalAmount()));
+        payment.setOriginalAmount(java.math.BigDecimal.valueOf(quote.getOriginalAmount()));
+        payment.setCouponDiscount(java.math.BigDecimal.valueOf(quote.getCouponDiscount()));
+        payment.setPointUsed(quote.getPointUsed());
+        payment.setPgProvider(quote.getPgProvider());
         paymentMapper.insertPayment(payment);
 
         reservation.setServiceName(service.getServiceName());
-        reservation.setAmount(finalAmount);
-        reservation.setPgProvider(pgProvider);
+        reservation.setAmount(quote.getFinalAmount());
+        reservation.setPgProvider(quote.getPgProvider());
         return reservation;
     }
 
@@ -273,6 +285,7 @@ public class ReservationService {
     public void failPayment(int reservationId) {
         if(paymentMapper.markFailed(reservationId) == 1){
             resvMapper.updateStatus(reservationId, "cancelled");
+            pointService.restore(reservationId);
         }
     }
 

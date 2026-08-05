@@ -31,6 +31,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.PointService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
@@ -57,6 +58,9 @@ public class CommonController {
 
     @Autowired
     private ReservationService reservationService;
+
+    @Autowired
+    private PointService pointService;
 
     @Autowired
     private SalonService salonService;
@@ -114,8 +118,21 @@ public class CommonController {
         model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
         model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
+        model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
 
         return "common/mypage";
+    }
+
+    /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */
+    @GetMapping("/points")
+    public String points(Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
+        model.addAttribute("pointHistory", pointService.getHistory(user.getUserId()));
+
+        return "common/points";
     }
 
     /** 비밀번호 변경 (마이페이지 모달에서 AJAX로 호출) */

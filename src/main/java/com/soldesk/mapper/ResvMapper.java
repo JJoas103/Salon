@@ -8,8 +8,7 @@ import com.soldesk.vo.ReservationVO;
 
 public interface ResvMapper {
 
-    List<ReservationVO> getRevList(
-            @Param("userId") int userId);
+    List<ReservationVO> getRevList(@Param("userId") int userId);
 
     int countCompleted(@Param("userId") int userId);// 완료된 예약 건수
 

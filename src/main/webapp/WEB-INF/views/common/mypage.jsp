@@ -36,7 +36,11 @@
       <div class="stat-grid stat-grid-four">
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">누적 이용 건수</span><strong style="font-size: 26px;">${reservationCount} 회</strong></div>
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">보유 활성 쿠폰</span><span class="tag">준비중</span></div>
-        <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">적립 적립금</span><span class="tag">준비중</span></div>
+        <a class="stat-card stat-card-link" href="<c:url value='/common/points'/>">
+          <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">보유 적립금</span>
+          <strong style="font-size:26px;"><fmt:formatNumber value="${pointBalance}" pattern="#,##0"/>원</strong>
+          <small>적립금 내역 보기 <i class="fas fa-chevron-right"></i></small>
+        </a>
         <a class="stat-card stat-card-link" href="<c:url value='/common/wishlists'/>">
           <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">찜 목록</span>
           <strong style="font-size:26px;">${wishlistCount}개</strong>
