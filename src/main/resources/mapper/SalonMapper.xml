@@ -68,6 +68,13 @@
         ORDER BY price, service_id
     </select>
 
+    <select id="findServiceById" resultMap="serviceResultMap" parameterType="int">
+        SELECT service_id, salon_id, service_name, price, duration_minutes,
+               description, created_at, updated_at
+        FROM Services
+        WHERE service_id = #{serviceId}
+    </select>
+
     <resultMap id="operatingHourResultMap" type="com.soldesk.vo.SalonOperatingHourVO">
         <id     column="hour_id"      property="hourId"/>
         <result column="salon_id"     property="salonId"/>

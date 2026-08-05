@@ -19,4 +19,9 @@ public class StylistService {
     public List<StylistVO> findBySalonId(int salonId){
         return stylistMapper.findBySalonId(salonId);
     }
+
+    @Transactional
+    public StylistVO findByStylistId(int stylistId){
+        return stylistMapper.findById(stylistId);
+    }
 }
