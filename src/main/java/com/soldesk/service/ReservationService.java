@@ -149,15 +149,7 @@ public class ReservationService {
 
         // 1) 넘어온 조합이 실제로 그 매장 것인지 확인한다.
         //    폼 값만 믿으면 다른 매장의 싼 시술 가격으로 예약을 만들 수 있다.
-        StylistVO stylist = stylistMapper.findById(stylistId);
-        if (stylist == null || stylist.getSalonId() != salonId) {
-            throw new IllegalArgumentException("선택한 디자이너가 이 매장 소속이 아닙니다.");
-        }
-        ServiceVO service = salonMapper.findServicesBySalonId(salonId).stream()
-                .filter(s -> s.getServiceId() == serviceId)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("선택한 시술이 이 매장 메뉴가 아닙니다."));
-
+        ServiceVO service = validateCombination(salonId, stylistId, serviceId);
         // 2) 그 시각이 애초에 고를 수 있는 자리였는지 (영업시간/근무시간 밖이 아닌지)
         String date = reservationTime.substring(0, 10);
         String time = reservationTime.substring(11, 16);
@@ -191,6 +183,18 @@ public class ReservationService {
         reservation.setServiceName(service.getServiceName());
         reservation.setAmount(service.getPrice().intValue());
         return reservation;
+    }
+
+    @Transactional
+    public ServiceVO validateCombination(int salonId, int stylistId, int serviceId){
+        StylistVO stylist = stylistMapper.findById(stylistId);
+        if(stylist == null || stylist.getSalonId() != salonId){
+            throw new IllegalArgumentException("선택한 디자이너가 이 매장 소속이 아닙니다.");
+        }
+        return salonMapper.findServicesBySalonId(salonId).stream()
+                    .filter(s -> s.getServiceId() == serviceId)
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("선택한 시술이 이 매장 메뉴가 아닙니다."));
     }
 
     /** ready 응답으로 받은 tid 보관 */

@@ -618,6 +618,29 @@ body {
 .reserve-pay-btn:disabled { background: var(--border); color: var(--text-light); cursor: not-allowed; }
 .reserve-summary-note { margin-top: 14px; font-size: 12px; line-height: 1.6; color: var(--text-light); }
 
+/* ---- 최종 확인 (checkout.jsp) ----
+   오른쪽 요약 패널은 예약 화면(.reserve-summary)을 그대로 쓰고,
+   왼쪽 카드 껍데기만 여기서 따로 잡는다. .reserve-step 은 열림/잠김 상태에
+   묶인 transition 이 있어 정적인 카드로 쓰기에 맞지 않는다. */
+.checkout-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-bottom: 14px; }
+.checkout-card-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 17px 24px; border-bottom: 1px solid var(--border); }
+.checkout-card-head h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
+.checkout-card-body { padding: 18px 24px; }
+
+.checkout-info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 8px 0; }
+.checkout-info-row dt { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.checkout-info-row dd { text-align: right; font-size: 14px; font-weight: 600; color: var(--text-main); word-break: keep-all; }
+
+/* 결제수단 — 지금은 카카오페이 하나뿐이라 항상 선택된 상태다 (Step 3 에서 늘어난다) */
+.checkout-pay-option { display: flex; align-items: center; gap: 11px; padding: 14px 16px; border: 1.5px solid var(--accent); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; }
+.checkout-pay-option input { accent-color: var(--accent); }
+
+/* 쿠폰/적립금 자리 — Step 4·5 에서 실제 UI 로 교체된다 */
+.checkout-soon { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 7px 0; font-size: 14px; font-weight: 600; color: var(--text-sub); }
+
+/* 할인 금액 줄은 빼는 금액이라 색으로 구분한다 */
+.reserve-summary-row.is-discount dd { color: var(--success); }
+
 /* ---- 결제 결과 (reserve-result.jsp) ---- */
 .reserve-result-card { max-width: 560px; margin: 40px auto; padding: 44px 40px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); text-align: center; }
 .reserve-result-icon { font-size: 56px; margin-bottom: 20px; }

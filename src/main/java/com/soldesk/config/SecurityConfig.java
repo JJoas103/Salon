@@ -44,7 +44,6 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/user/check-email"),
                     new AntPathRequestMatcher("/resources/**"),
                     new AntPathRequestMatcher("/upload/**"),
-                    new AntPathRequestMatcher("/reserve/info"),
                     new AntPathRequestMatcher("/common/community/suspended")
                 ).permitAll()
                 .requestMatchers(
