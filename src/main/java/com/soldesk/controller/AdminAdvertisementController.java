@@ -3,6 +3,7 @@ package com.soldesk.controller;
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -17,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.soldesk.service.AdvertisementService;
 import com.soldesk.service.FileService;
+import com.soldesk.service.UserService;
 import com.soldesk.vo.AdvertisementVO;
 
 @Controller
@@ -29,14 +31,19 @@ public class AdminAdvertisementController {
     @Autowired
     private FileService fileService;
 
+    @Autowired
+    private UserService userService;
+
     @GetMapping
-    public String list(Model model) {
+    public String list(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         model.addAttribute("advertisements", advertisementService.getAllForAdmin());
         return "admin/advertisements/list";
     }
 
     @GetMapping("/new")
-    public String createForm(Model model) {
+    public String createForm(Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         if (!model.containsAttribute("advertisement")) {
             AdvertisementVO advertisement = new AdvertisementVO();
             advertisement.setActive(true);
@@ -75,6 +82,7 @@ public class AdminAdvertisementController {
 
     @GetMapping("/{advertisementId}/edit")
     public String editForm(@PathVariable int advertisementId,
+                           Authentication authentication,
                            Model model,
                            RedirectAttributes redirectAttributes) {
         AdvertisementVO advertisement = advertisementService.getById(advertisementId);
@@ -82,6 +90,7 @@ public class AdminAdvertisementController {
             redirectAttributes.addFlashAttribute("errorMessage", "광고를 찾을 수 없습니다.");
             return "redirect:/admin/advertisements";
         }
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         model.addAttribute("advertisement", advertisement);
         model.addAttribute("formMode", "edit");
         return "admin/advertisements/form";

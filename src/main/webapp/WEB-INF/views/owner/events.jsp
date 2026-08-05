@@ -16,7 +16,6 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">이벤트/공지사항</div>
-      <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span>${user.userName} 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; border-radius:50%; background:#E0E0E0; display:inline-flex; align-items:center; justify-content:center; margin-left:10px;">점</div></div>
     </header>
     <main class="app-content">
       <div class="modern-card">

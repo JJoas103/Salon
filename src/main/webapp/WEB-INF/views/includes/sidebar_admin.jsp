@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <c:set var="menu" value="${param.menu}" />
 <aside class="sidebar">
   <div class="sidebar-brand"><i class="fas fa-scissors" style="color: var(--accent);"></i><span>HAIR RESERVE</span></div>
@@ -10,6 +11,13 @@
     <li class="sidebar-item ${menu == 'advertisements' || menu == 'banners' ? 'active' : ''}"><a href="<c:url value='/admin/advertisements'/>"><i class="fas fa-bullhorn"></i> 광고 관리</a></li>
   </ul>
   <div class="sidebar-footer">
+    <div class="sidebar-user-card" id="openProfileModalBtn">
+      <div class="sidebar-user-avatar">${fn:substring(user.userName,0,1)}</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">${user.userName} 관리자님</div>
+        <div class="sidebar-user-hint">클릭해서 정보 수정</div>
+      </div>
+    </div>
     <a href="<c:url value='/user/logout'/>" class="sidebar-item-logout"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
   </div>
 </aside>

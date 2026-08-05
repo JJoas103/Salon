@@ -19,10 +19,6 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">회원관리</div>
-      <div class="user-badge" id="openProfileModalBtn" style="cursor: pointer;">
-        <span>${user.userName} 관리자님</span>
-        <div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div>
-      </div>
     </header>
     <main class="app-content">
       <c:if test="${not empty error}">

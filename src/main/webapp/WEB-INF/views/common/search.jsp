@@ -18,7 +18,9 @@
   </jsp:include>
 
   <div class="app-container">
-    <header class="app-header"></header>
+    <header class="app-header">
+      <div style="font-size: 18px; font-weight: 700;">헤어샵 검색/예약</div>
+    </header>
     <main class="app-content">
       <c:choose>
         <c:when test="${salonNotFound}">

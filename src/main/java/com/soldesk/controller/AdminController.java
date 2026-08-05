@@ -175,7 +175,8 @@ public class AdminController {
 
     // 신고된 게시글 관리자 전용 상세보기 (블라인드 상태 무시하고 전체 내용 확인)
     @GetMapping("/community/{postId}")
-    public String reportedPostDetail(@PathVariable int postId, Model model) {
+    public String reportedPostDetail(@PathVariable int postId, Authentication authentication, Model model) {
+        model.addAttribute("user", userService.getUser(authentication.getName()));
         PostVO post = postService.getPostForAdmin(postId);
         model.addAttribute("post", post);
         model.addAttribute("comments", postService.getComments(postId));

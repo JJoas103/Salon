@@ -19,9 +19,7 @@
   </jsp:include>
 
   <div class="app-container">
-    <header class="app-header">
-      <div class="user-badge"><span>${user.userName} 고객님</span><div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div></div>
-    </header>
+    <header class="app-header"></header>
     <main class="app-content">
 
       <div class="profile-hero">
