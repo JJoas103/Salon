@@ -54,4 +54,12 @@
           AND payment_status = 'pending'
     </update>
 
+    <!-- 점주 거절로 인한 환불 — 완료된 결제만 대상, 이미 환불된 건 다시 건드리지 않는다 -->
+    <update id="markRefunded" parameterType="int">
+        UPDATE Payments
+        SET payment_status = 'refunded'
+        WHERE reservation_id = #{reservationId}
+          AND payment_status = 'completed'
+    </update>
+
 </mapper>

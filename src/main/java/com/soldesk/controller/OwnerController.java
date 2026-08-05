@@ -1,5 +1,6 @@
 package com.soldesk.controller;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.StaffService;
 import com.soldesk.service.UserService;
@@ -38,6 +40,9 @@ import com.soldesk.vo.UserVO;
 @RequestMapping("/owner")
 public class OwnerController {
 
+    // 예약현황판 날짜 라벨용 (DB day_of_week 와 같은 한글 표기)
+    private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
+
     @Autowired
     private UserService userService;
 
@@ -49,6 +54,9 @@ public class OwnerController {
 
     @Autowired
     private ChatService chatService;
+
+    @Autowired
+    private ReservationService reservationService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -176,9 +184,65 @@ public class OwnerController {
     }
 
     @GetMapping("/reservations")
-    public String reservations(Authentication authentication, Model model) {
+    public String reservations(@RequestParam(required = false) String date,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication, HttpSession session, Model model) {
         fillCommonModel(authentication, model);
+        if (page < 1) page = 1;
+        if (size <= 0) size = 10;
+
+        LocalDate targetDate = (date != null && !date.isBlank()) ? LocalDate.parse(date) : LocalDate.now();
+        model.addAttribute("scheduleDate", targetDate.toString());
+        model.addAttribute("today", LocalDate.now().toString());
+        model.addAttribute("prevDate", targetDate.minusDays(1).toString());
+        model.addAttribute("nextDate", targetDate.plusDays(1).toString());
+        model.addAttribute("dayLabel", DAY_KO[targetDate.getDayOfWeek().getValue() - 1]);
+        // 거절 폼 hidden 값으로도 쓰이므로 매장 선택 여부와 무관하게 항상 담아둔다
+        model.addAttribute("page", page);
+        model.addAttribute("size", size);
+
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId != null) {
+            UserVO user = userService.getUser(authentication.getName());
+            try {
+                int totalCount = reservationService.countReservationsForOwner(salonId, user.getUserId());
+                model.addAttribute("board", reservationService.getScheduleBoard(salonId, user.getUserId(), targetDate));
+                model.addAttribute("reservations",
+                        reservationService.getReservationsForOwner(salonId, user.getUserId(), page, size));
+                model.addAttribute("totalCount", totalCount);
+                model.addAttribute("totalPages", (int) Math.ceil((double) totalCount / size));
+            } catch (IllegalArgumentException e) {
+                // 세션의 selectedSalonId가 본인 소유가 아니면 빈 목록으로 둔다
+            }
+        }
         return "owner/reservations";
+    }
+
+    @PostMapping("/reservations/{reservationId}/reject")
+    public String rejectReservation(@PathVariable int reservationId, Authentication authentication,
+            @RequestParam String rejectReason,
+            @RequestParam(defaultValue = "rejected") String resolution,
+            @RequestParam(required = false) String date,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            reservationService.rejectReservation(reservationId, user.getUserId(), rejectReason, resolution);
+            redirectAttributes.addFlashAttribute("success",
+                    "no_show".equals(resolution) ? "노쇼로 처리했습니다." : "예약을 거절하고 환불했습니다.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        // 보고 있던 날짜/페이지를 유지한다 (성공이든 롤백이든 오늘 보드로 튕기지 않도록).
+        // addAttribute 는 쿼리스트링으로 URL 인코딩되어 붙는다.
+        if (date != null && !date.isBlank()) {
+            redirectAttributes.addAttribute("date", date);
+        }
+        redirectAttributes.addAttribute("page", page);
+        redirectAttributes.addAttribute("size", size);
+        return "redirect:/owner/reservations";
     }
 
     @GetMapping("/events")
