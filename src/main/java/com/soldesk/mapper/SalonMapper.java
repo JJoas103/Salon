@@ -16,6 +16,17 @@ public interface SalonMapper {
 
     List<ServiceVO> findServicesBySalonId(int salonId);
 
+    ServiceVO findServiceById(int serviceId);
+
+    /** 점주 시술 메뉴 등록 */
+    void insertService(ServiceVO service);
+
+    /** 점주 시술 메뉴 수정 */
+    void updateService(ServiceVO service);
+
+    /** 점주 시술 메뉴 삭제 */
+    void deleteService(int serviceId);
+
     /**
      * 특정 요일의 영업시간. 예약 가능 시간대를 만드는 바깥 테두리가 된다.
      * dayOfWeek 는 DB ENUM 에 맞춰 '월'~'일' 한글 한 글자다.

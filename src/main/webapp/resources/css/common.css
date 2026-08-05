@@ -320,6 +320,8 @@
 .mini-cal-day.is-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .mini-cal-day.is-selected { background: var(--accent); color: var(--white); }
 .mini-cal-day.is-past { opacity: 0.32; cursor: default; }
+.mini-cal-day.is-off { background: var(--border); color: var(--text-light); cursor: default; }
+.mini-cal-day.is-off:hover { background: var(--border); }
 
 /* ==========================================================================
    반응형

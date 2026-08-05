@@ -258,6 +258,17 @@ public class CommonController {
     }
 
     /**
+     * 예약 화면 3단계 캘린더가 디자이너를 고른 직후 한 번 부르는 엔드포인트.
+     * 그 디자이너가 예약 가능으로 등록한 날짜 목록만 돌려주고, 캘린더는 이 목록에 없는
+     * 날짜를 회색으로 비활성화한다 — 영업시간 등 매장 쪽 예약 로직과는 무관하게 스케줄만 본다.
+     */
+    @GetMapping("/reserve/stylist-schedule")
+    @ResponseBody
+    public List<String> reserveStylistSchedule(@RequestParam int stylistId) {
+        return stylistService.getAvailableDates(stylistId);
+    }
+
+    /**
      * 예약하기 → 결제창으로 보내는 단계.
      * 예약을 pending 으로 세운 뒤 카카오페이 결제창 주소로 리다이렉트한다.
      */

@@ -74,11 +74,77 @@ public class OwnerController {
             UserVO user = userService.getUser(authentication.getName());
             try {
                 model.addAttribute("salon", salonService.getSalonForOwner(salonId, user.getUserId()));
+                model.addAttribute("services", salonService.getServices(salonId));
             } catch (IllegalArgumentException e) {
                 // 세션의 selectedSalonId가 본인 소유가 아니면 빈 폼으로 둔다
             }
         }
         return "owner/store";
+    }
+
+    @PostMapping("/store/service/register")
+    public String registerService(Authentication authentication, HttpSession session,
+            @RequestParam String serviceName,
+            @RequestParam java.math.BigDecimal price,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
+        service.setSalonId(salonId);
+        service.setServiceName(serviceName);
+        service.setPrice(price);
+        if (durationMinutes != null) {
+            service.setDurationMinutes(durationMinutes);
+        }
+        service.setDescription(description);
+        try {
+            salonService.registerService(user.getUserId(), service);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
+    }
+
+    @PostMapping("/store/service/{serviceId}/update")
+    public String updateService(@PathVariable int serviceId, Authentication authentication,
+            @RequestParam String serviceName,
+            @RequestParam java.math.BigDecimal price,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
+        service.setServiceId(serviceId);
+        service.setServiceName(serviceName);
+        service.setPrice(price);
+        if (durationMinutes != null) {
+            service.setDurationMinutes(durationMinutes);
+        }
+        service.setDescription(description);
+        try {
+            salonService.updateService(user.getUserId(), service);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
+    }
+
+    @PostMapping("/store/service/{serviceId}/delete")
+    public String deleteService(@PathVariable int serviceId, Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.deleteService(user.getUserId(), serviceId);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
     }
 
     @PostMapping("/store/update")
