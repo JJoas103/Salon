@@ -37,6 +37,28 @@ public interface ResvMapper {
 
     ReservationVO findById(int reservationId);
 
+    /**
+     * 그 자리를 지금 잡고 있는 결제 미완료 예약 1건.
+     *
+     * 확인 화면이 "자리가 찼다"고 판단했을 때, 막고 있는 것이 본인의 미완료 결제인지
+     * 남의 예약인지 구분하려고 쓴다. 조건은 findReservedTimes 의 pending 쪽과 같다.
+     *
+     * @return 없으면 null
+     */
+    ReservationVO findPendingHold(@Param("stylistId") int stylistId,
+                                  @Param("reservationTime") String reservationTime);
+
+    /**
+     * 결제창에서 이탈해 10분이 지난 예약들의 번호.
+     *
+     * 한 문장짜리 UPDATE 로 한꺼번에 접지 않고 번호를 먼저 뽑는다.
+     * UPDATE 는 몇 건인지만 알려주고 어느 건인지는 알려주지 않는데,
+     * 적립금·쿠폰은 예약번호로 묶여 있어 번호를 모르면 무엇을 되돌릴지 알 수 없기 때문이다.
+     *
+     * @return 접어야 할 예약번호 목록 (없으면 빈 목록)
+     */
+    List<Integer> findStalePendingIds();
+
     /** 결제 결과에 따라 pending → confirmed / cancelled */
     int updateStatus(@Param("reservationId") int reservationId,
                      @Param("status") String status);

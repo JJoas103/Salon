@@ -76,8 +76,13 @@ public class ReservationService {
      * @param date      'yyyy-MM-dd'
      * @return 마감분까지 포함한 그 날의 전체 시간대. 휴무거나 근무가 없으면 빈 목록.
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<TimeSlotVO> getAvailableSlots(int stylistId, String date) {
+        // 자리를 계산하기 전에 만료된 홀드부터 접는다. 슬롯을 읽는 모든 경로가
+        // 이 메서드를 지나므로 여기 한 곳이면 별도 스케줄러 없이 정리된다.
+        // (조회 전용이 아니게 되므로 readOnly 를 뗀다)
+        expireStalePending();
+
         LocalDate targetDate = LocalDate.parse(date);
 
         // 지난 날짜는 아예 볼 필요가 없다
@@ -171,17 +176,25 @@ public class ReservationService {
         }
 
         // 4) 결제 행도 같이 세워둔다 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
+        //
+        //    결제사는 금액을 아는 여기서 정한다. 화면이 보낸 값을 쓰지 않는 것은
+        //    금액과 같은 이유다 — 0원이 아닌데 ZERO 로 보내면 공짜 결제가 된다.
+        //    Step 4·5 에서 할인이 붙으면 finalAmount 만 바뀌고 이 판단은 그대로 산다.
+        int finalAmount = service.getPrice().intValue();
+        String pgProvider = finalAmount == 0 ? "ZERO" : "KAKAOPAY";
+
         PaymentVO payment = new PaymentVO();
         payment.setReservationId(reservation.getReservationId());
         payment.setUserId(userId);
         payment.setAmount(service.getPrice());
         payment.setOriginalAmount(service.getPrice());
         payment.setCouponDiscount(java.math.BigDecimal.ZERO);//할인 없음 = 0
-        payment.setPgProvider("KAKAOPAY");
+        payment.setPgProvider(pgProvider);
         paymentMapper.insertPayment(payment);
 
         reservation.setServiceName(service.getServiceName());
-        reservation.setAmount(service.getPrice().intValue());
+        reservation.setAmount(finalAmount);
+        reservation.setPgProvider(pgProvider);
         return reservation;
     }
 
@@ -224,7 +237,38 @@ public class ReservationService {
         }
     }
 
-    /** 결제 취소/실패 — 예약도 같이 접는다 */
+    /**
+     * 결제창에서 이탈해 10분이 지난 예약·결제를 접는다.
+     *
+     * 결제창을 그냥 닫거나 뒤로가기로 빠져나온 사용자는 cancel 콜백을 보내지 않는다.
+     * 그런 예약을 정리해 주는 것이 이 메서드이고, 그래서 결제 중단 처리로 들어오는 길은
+     * "콜백이 온 경우"와 "여기서 걸린 경우" 둘이다.
+     *
+     * 다만 둘 다 failPayment() 로 모이므로, 쿠폰/적립금 원복은 그 한 곳에만 넣으면 된다.
+     */
+    @Transactional
+    public void expireStalePending() {
+        // 접을 대상을 먼저 확보한다. UPDATE 를 먼저 돌리면 어느 예약이 접혔는지 알 방법이 없다.
+        for (int reservationId : resvMapper.findStalePendingIds()) {
+            // 결제창에서 [취소] 를 누른 경우와 똑같이 처리한다. 원복 로직을 두 벌로 쓰지 않기 위해서다.
+            // failPayment 안의 rowcount 가드가 중복 처리도 막아준다.
+            failPayment(reservationId);
+        }
+    }
+
+    /** 그 자리를 지금 잡고 있는 결제 미완료 예약 (없으면 null) */
+    @Transactional(readOnly = true)
+    public ReservationVO findPendingHold(int stylistId, String reservationTime) {
+        return resvMapper.findPendingHold(stylistId, reservationTime);
+    }
+
+    /**
+     * 결제 취소/실패 — 예약도 같이 접는다.
+     *
+     * 결제창 [취소] 콜백과 만료 정리(expireStalePending)가 모두 이리로 들어온다.
+     * rowcount 가드 덕분에 같은 예약이 두 경로로 들어와도 한 번만 처리된다.
+     * Step 4·5 의 적립금 환급 / 쿠폰 반납은 이 if 블록 안에 넣는다.
+     */
     @Transactional
     public void failPayment(int reservationId) {
         if(paymentMapper.markFailed(reservationId) == 1){

@@ -129,6 +129,39 @@
         WHERE r.reservation_id = #{reservationId}
     </select>
 
+    <!--
+        그 자리를 지금 잡고 있는 결제 미완료 예약. 조건은 findReservedTimes 의 pending 쪽과 같아야 한다.
+        pg_provider 를 같이 가져오는 이유는, 화면이 이 예약을 취소하는 링크를 만들 때
+        결제사가 URL 에 들어가기 때문이다.
+    -->
+    <select id="findPendingHold" resultMap="ResvResultMap">
+        SELECT
+            r.reservation_id, r.user_id, r.salon_id, r.stylist_id, r.service_id,
+            r.reservation_time, r.status,
+            p.pg_provider
+        FROM Reservations r
+        LEFT JOIN Payments p ON p.reservation_id = r.reservation_id
+        WHERE r.stylist_id = #{stylistId}
+          AND r.reservation_time = #{reservationTime}
+          AND r.status = 'pending'
+          AND r.created_at &gt; NOW() - INTERVAL 10 MINUTE
+        LIMIT 1
+    </select>
+
+    <!--
+        결제창에서 이탈해 10분이 지난 예약들의 번호.
+        조건은 findReservedTimes 의 pending 쪽과 뒤집힌 관계다 — 거기서 자리를 비켜주는 건들이
+        곧 여기서 접어야 할 건들이다. 한쪽만 바꾸면 화면에는 빈 자리인데 행은 살아 있는 상태가 된다.
+
+        UPDATE 로 한꺼번에 접지 않고 번호를 뽑는 이유는 ResvMapper 인터페이스 주석에 적어두었다.
+    -->
+    <select id="findStalePendingIds" resultType="int">
+        SELECT reservation_id
+        FROM Reservations
+        WHERE status = 'pending'
+          AND created_at &lt;= NOW() - INTERVAL 10 MINUTE
+    </select>
+
     <!-- 결제 중(pending)인 예약만 상태를 옮긴다. 이미 확정/취소된 건은 건드리지 않는다. -->
     <update id="updateStatus">
         UPDATE Reservations
