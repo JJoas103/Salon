@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+                           http://www.springframework.org/schema/beans/spring-beans.xsd
+                           http://www.springframework.org/schema/context
+                           http://www.springframework.org/schema/context/spring-context.xsd
+                           http://www.springframework.org/schema/mvc
+                           http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- @Controller, @RequestMapping 등 활성화 -->
+    <mvc:annotation-driven />
+
+    <!-- 접속정보 파일 로딩 -->
+    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties" />
+
+
+    <!-- 컴포넌트 스캔 -->
+    <context:component-scan base-package="com.soldesk.controller,
+                                            com.soldesk.service,
+                                            com.soldesk.config,
+                                            com.soldesk.validation,
+                                            com.soldesk.handler" />
+
+    <!-- ViewResolver : "home" -> /WEB-INF/views/home.jsp -->
+    <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+        <property name="prefix" value="/WEB-INF/views/" />
+        <property name="suffix" value=".jsp" />
+    </bean>
+
+    <!-- 정적 리소스 : /resources/** -> webapp/resources/ -->
+    <mvc:resources mapping="/resources/**" location="/resources/" />
+    <!-- 업로드 파일 : /upload/** -> app.properties 의 upload.path (webapp 바깥) -->
+    <mvc:resources mapping="/upload/**" location="file:${upload.path}/" />
+
+    <!-- 파일 업로드(multipart/form-data) 처리.
+         빈 이름은 반드시 "multipartResolver" — DispatcherServlet이 이 이름으로 찾는다.
+         이 빈이 없으면 요청이 MultipartHttpServletRequest로 감싸이지 않아
+         @ModelAttribute 바인딩 시 텍스트 필드까지 Part 객체로 들어가 400(BindException)이 난다.
+         용량 제한은 web.xml의 <multipart-config>를 따른다. -->
+    <bean id="multipartResolver"
+          class="org.springframework.web.multipart.support.StandardServletMultipartResolver" />
+</beans>

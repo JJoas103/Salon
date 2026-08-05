@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.CommentMapper">
+
+    <resultMap id="commentResultMap" type="com.soldesk.vo.CommentVO">
+        <id     column="comment_id"  property="commentId" />
+        <result column="post_id"     property="postId" />
+        <result column="user_id"     property="userId" />
+        <result column="content"     property="content" />
+        <result column="created_at"  property="createdAt" />
+        <result column="updated_at"  property="updatedAt" />
+        <result column="author_name" property="authorName" />
+    </resultMap>
+
+    <select id="findByPostId" parameterType="int" resultMap="commentResultMap">
+        SELECT c.comment_id, c.post_id, c.user_id, c.content, c.created_at, c.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name
+        FROM Comments c
+        LEFT JOIN Users u ON c.user_id = u.user_id
+        WHERE c.post_id = #{postId}
+        ORDER BY c.created_at ASC
+    </select>
+
+    <insert id="insert" parameterType="com.soldesk.vo.CommentVO"
+            useGeneratedKeys="true" keyProperty="commentId">
+        INSERT INTO Comments (post_id, user_id, content)
+        VALUES (#{postId}, #{userId}, #{content})
+    </insert>
+
+    <delete id="delete" parameterType="int">
+        DELETE FROM Comments WHERE comment_id = #{commentId}
+    </delete>
+
+    <delete id="deleteByPostId" parameterType="int">
+        DELETE FROM Comments WHERE post_id = #{postId}
+    </delete>
+
+</mapper>

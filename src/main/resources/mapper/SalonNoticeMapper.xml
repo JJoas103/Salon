@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.SalonNoticeMapper">
+    <resultMap id="salonNoticeResultMap" type="com.soldesk.vo.SalonNoticeVO">
+        <id column="notice_id" property="noticeId" />
+        <result column="salon_id" property="salonId" />
+        <result column="title" property="title" />
+        <result column="content" property="content" />
+        <result column="image_url" property="imageUrl" />
+        <result column="created_at" property="createdAt" />
+    </resultMap>
+
+    <sql id="columns">
+        notice_id, salon_id, title, content, image_url, created_at
+    </sql>
+
+    <select id="findBySalonId" parameterType="int" resultMap="salonNoticeResultMap">
+        SELECT <include refid="columns" />
+        FROM SalonNotices
+        WHERE salon_id = #{salonId}
+        ORDER BY created_at DESC
+    </select>
+
+    <select id="findByIdAndSalonId" resultMap="salonNoticeResultMap">
+        SELECT <include refid="columns" />
+        FROM SalonNotices
+        WHERE notice_id = #{noticeId} AND salon_id = #{salonId}
+    </select>
+
+    <insert id="insert" parameterType="com.soldesk.vo.SalonNoticeVO"
+            useGeneratedKeys="true" keyProperty="noticeId">
+        INSERT INTO SalonNotices (salon_id, title, content, image_url)
+        VALUES (#{salonId}, #{title}, #{content}, #{imageUrl})
+    </insert>
+
+    <delete id="deleteByIdAndSalonId">
+        DELETE FROM SalonNotices WHERE notice_id = #{noticeId} AND salon_id = #{salonId}
+    </delete>
+</mapper>

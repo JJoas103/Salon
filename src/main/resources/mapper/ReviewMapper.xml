@@ -9,6 +9,8 @@
         <result column="reservation_id" property="reservationId"/>
         <result column="rating" property="rating"/>
         <result column="comment" property="comment"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="image_url2" property="imageUrl2"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
         <result column="user_name" property="userName"/>
@@ -16,7 +18,7 @@
     </resultMap>
     <select id="findBySalonId" parameterType="int" resultMap="reviewResultMap">
         SELECT r.review_id, r.user_id, r.salon_id, r.reservation_id,
-               r.rating, r.comment, r.created_at, r.updated_at,
+               r.rating, r.comment, r.image_url, r.image_url2, r.created_at, r.updated_at,
                u.user_name, s.salon_name
         FROM Reviews r
         JOIN Users u ON u.user_id = r.user_id
@@ -29,7 +31,7 @@
     </select>
     <select id="findByUserId" parameterType="int" resultMap="reviewResultMap">
         SELECT r.review_id, r.user_id, r.salon_id, r.reservation_id,
-               r.rating, r.comment, r.created_at, r.updated_at,
+               r.rating, r.comment, r.image_url, r.image_url2, r.created_at, r.updated_at,
                u.user_name, s.salon_name
         FROM Reviews r
         JOIN Users u ON u.user_id = r.user_id
@@ -39,6 +41,15 @@
     </select>
     <select id="countByUserId" parameterType="int" resultType="int">
         SELECT COUNT(*) FROM Reviews WHERE user_id = #{userId}
+    </select>
+    <select id="findById" parameterType="int" resultMap="reviewResultMap">
+        SELECT r.review_id, r.user_id, r.salon_id, r.reservation_id,
+               r.rating, r.comment, r.image_url, r.image_url2, r.created_at, r.updated_at,
+               u.user_name, s.salon_name
+        FROM Reviews r
+        JOIN Users u ON u.user_id = r.user_id
+        JOIN Salons s ON s.salon_id = r.salon_id
+        WHERE r.review_id = #{reviewId}
     </select>
     <select id="findReviewableReservations" resultType="com.soldesk.vo.ReservationVO">
         SELECT r.reservation_id AS reservationId, r.user_id AS userId,
@@ -62,9 +73,14 @@
     </select>
     <insert id="insert" parameterType="com.soldesk.vo.ReviewVO"
             useGeneratedKeys="true" keyProperty="reviewId">
-        INSERT INTO Reviews (user_id, salon_id, reservation_id, rating, comment)
-        VALUES (#{userId}, #{salonId}, #{reservationId}, #{rating}, #{comment})
+        INSERT INTO Reviews (user_id, salon_id, reservation_id, rating, comment, image_url, image_url2)
+        VALUES (#{userId}, #{salonId}, #{reservationId}, #{rating}, #{comment}, #{imageUrl}, #{imageUrl2})
     </insert>
+    <update id="update" parameterType="com.soldesk.vo.ReviewVO">
+        UPDATE Reviews SET rating = #{rating}, comment = #{comment},
+            image_url = #{imageUrl}, image_url2 = #{imageUrl2}
+        WHERE review_id = #{reviewId}
+    </update>
     <update id="refreshSalonAverageRating" parameterType="int">
         UPDATE Salons SET average_rating = COALESCE(
           (SELECT ROUND(AVG(rating), 1) FROM Reviews WHERE salon_id = #{salonId}), 0)

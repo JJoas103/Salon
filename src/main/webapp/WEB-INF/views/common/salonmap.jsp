@@ -86,7 +86,13 @@
                   </div>
                 </div>
 
-                <div class="salon-detail-info">
+                <div class="salon-detail-tabs">
+                  <button type="button" class="salon-detail-tab-btn active" data-tab="info">정보</button>
+                  <button type="button" class="salon-detail-tab-btn" data-tab="notice">공지사항</button>
+                  <button type="button" class="salon-detail-tab-btn" data-tab="review">리뷰</button>
+                </div>
+
+                <div class="salon-detail-info salon-detail-tab-panel active" id="detail-tab-info">
                   <div class="salon-info-row">
                     <div class="salon-info-icon"><i class="far fa-clock"></i></div>
                     <span class="salon-info-label">운영시간</span>
@@ -99,8 +105,69 @@
                   </div>
                 </div>
 
+                <div class="salon-detail-tab-panel" id="detail-tab-notice">
+                  <div class="salon-notice-list-view" id="notice-list-view">
+                    <ul class="salon-notice-list" id="detail-notice-list"></ul>
+                  </div>
+                  <div class="salon-notice-detail-view" id="notice-detail-view" hidden>
+                    <button type="button" class="salon-back-btn" id="notice-back-btn">
+                      <i class="fas fa-arrow-left"></i> 목록으로
+                    </button>
+                    <strong class="salon-notice-detail-title" id="notice-detail-title"></strong>
+                    <img class="salon-notice-detail-image lightbox-img" id="notice-detail-image" alt="" hidden>
+                    <p class="salon-notice-detail-date" id="notice-detail-date"></p>
+                    <p class="salon-notice-detail-content" id="notice-detail-content"></p>
+                  </div>
+                </div>
+
+                <div class="salon-detail-tab-panel" id="detail-tab-review">
+                  <div class="salon-review-summary">
+                    <i class="fas fa-star"></i> <strong id="review-avg-rating">-</strong>
+                    <span id="review-count-label">리뷰 0개</span>
+                  </div>
+                  <ul class="salon-review-list" id="detail-review-list"></ul>
+
+                  <div class="salon-review-write">
+                    <h4>리뷰 작성</h4>
+                    <form id="review-write-form" enctype="multipart/form-data">
+                      <p class="review-write-help">완료된 예약을 선택하고 이용 경험을 남겨주세요.</p>
+                      <label for="reviewReservationId">이용 내역</label>
+                      <select id="reviewReservationId" name="reservationId" class="modern-input" required></select>
+                      <fieldset class="star-rating">
+                        <legend>별점</legend>
+                        <div>
+                          <input type="radio" id="reviewRating1" name="rating" value="1">
+                          <label for="reviewRating1" title="1점"><i class="fas fa-star"></i></label>
+                          <input type="radio" id="reviewRating2" name="rating" value="2">
+                          <label for="reviewRating2" title="2점"><i class="fas fa-star"></i></label>
+                          <input type="radio" id="reviewRating3" name="rating" value="3">
+                          <label for="reviewRating3" title="3점"><i class="fas fa-star"></i></label>
+                          <input type="radio" id="reviewRating4" name="rating" value="4">
+                          <label for="reviewRating4" title="4점"><i class="fas fa-star"></i></label>
+                          <input type="radio" id="reviewRating5" name="rating" value="5" checked>
+                          <label for="reviewRating5" title="5점"><i class="fas fa-star"></i></label>
+                        </div>
+                      </fieldset>
+                      <label for="reviewComment">리뷰 내용</label>
+                      <textarea id="reviewComment" name="comment" maxlength="1000" required
+                                placeholder="시술과 서비스는 어떠셨나요?"></textarea>
+                      <label for="reviewPhoto1">사진 (선택, 최대 2장)</label>
+                      <div class="review-photo-inputs">
+                        <input type="file" id="reviewPhoto1" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp">
+                        <input type="file" id="reviewPhoto2" name="imageFile2" accept="image/jpeg,image/png,image/gif,image/webp">
+                      </div>
+                      <div class="review-form-footer"><span id="reviewCommentLength">0 / 1000</span>
+                        <button type="submit" class="btn-modern btn-primary">리뷰 등록</button></div>
+                    </form>
+                    <div class="review-write-disabled" id="review-write-disabled" hidden>
+                      <i class="fas fa-receipt"></i>
+                      <p>리뷰를 작성할 수 있는 완료된 예약이 없습니다.</p>
+                      <a href="<c:url value='/common/reserve?category=2'/>">이용 내역 확인하기</a>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="salon-detail-primary-actions">
-                  <button type="button" class="btn-modern btn-outline btn-review" id="btn-review">리뷰 보기</button>
                   <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
                 </div>
               </div>
@@ -121,6 +188,8 @@
     let salons = ALL_SALONS;
 
     const CONTEXT_PATH = '<c:url value="/"/>';
+    /* 리뷰 목록에서 "내 리뷰"인지 판별하는 데 쓴다 (수정 버튼 노출 여부) */
+    const CURRENT_USER_ID = ${not empty currentUserId ? currentUserId : -1};
     /* imageUrl 이 비어 있는 미용실용 대체 이미지 (home.jsp 와 동일) */
     const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&w=800&q=80';
     let selectedIndex = -1;
@@ -161,6 +230,330 @@
     }
 
     document.getElementById('btn-back-to-list').addEventListener('click', showList);
+
+    /* ---- 정보 / 공지사항 탭 ---- */
+    const noticeListElement = document.getElementById('detail-notice-list');
+
+    function showTab(tabName) {
+      document.querySelectorAll('.salon-detail-tab-btn').forEach(function (btn) {
+        btn.classList.toggle('active', btn.dataset.tab === tabName);
+      });
+      document.getElementById('detail-tab-info').classList.toggle('active', tabName === 'info');
+      document.getElementById('detail-tab-notice').classList.toggle('active', tabName === 'notice');
+      document.getElementById('detail-tab-review').classList.toggle('active', tabName === 'review');
+    }
+
+    document.querySelectorAll('.salon-detail-tab-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { showTab(btn.dataset.tab); });
+    });
+
+    /* ---- 공지사항 목록 ⇄ 상세 (salon-list-panel ⇄ salon-detail-panel 과 같은 패턴) ---- */
+    let currentNotices = [];
+    const noticeListView = document.getElementById('notice-list-view');
+    const noticeDetailView = document.getElementById('notice-detail-view');
+
+    function showNoticeList() {
+      noticeListView.hidden = false;
+      noticeDetailView.hidden = true;
+    }
+
+    function showNoticeDetail(index) {
+      const notice = currentNotices[index];
+      if (!notice) return;
+      document.getElementById('notice-detail-title').textContent = notice.title;
+      document.getElementById('notice-detail-date').textContent = notice.createdAt;
+      document.getElementById('notice-detail-content').textContent = notice.content;
+      const detailImage = document.getElementById('notice-detail-image');
+      if (notice.imageUrl) {
+        detailImage.src = notice.imageUrl;
+        detailImage.hidden = false;
+      } else {
+        detailImage.hidden = true;
+        detailImage.removeAttribute('src');
+      }
+      noticeListView.hidden = true;
+      noticeDetailView.hidden = false;
+    }
+
+    document.getElementById('notice-back-btn').addEventListener('click', showNoticeList);
+
+    /* "자세히 보기" 버튼은 renderNotices() 가 매번 새로 만드므로, 목록 컨테이너에
+       이벤트 위임으로 한 번만 걸어둔다 (매번 개별 바인딩할 필요가 없다). */
+    noticeListElement.addEventListener('click', function (event) {
+      const button = event.target.closest('.salon-notice-more-btn');
+      if (!button) return;
+      showNoticeDetail(Number(button.dataset.index));
+    });
+
+    function renderNotices(notices) {
+      currentNotices = notices || [];
+      noticeListElement.replaceChildren();
+      if (currentNotices.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'salon-notice-empty';
+        empty.textContent = '등록된 공지사항이 없습니다.';
+        noticeListElement.appendChild(empty);
+        return;
+      }
+      currentNotices.forEach(function (notice, index) {
+        const item = document.createElement('li');
+        item.className = 'salon-notice-item';
+        item.innerHTML = '<img class="salon-notice-thumb lightbox-img" alt="" hidden>'
+          + '<div class="salon-notice-body">'
+          + '<strong class="salon-notice-title"></strong>'
+          + '<p class="salon-notice-content"></p>'
+          + '<p class="salon-notice-date"></p>'
+          + '<button type="button" class="salon-notice-more-btn">자세히 보기</button>'
+          + '</div>';
+        if (notice.imageUrl) {
+          const thumb = item.querySelector('.salon-notice-thumb');
+          thumb.src = notice.imageUrl;
+          thumb.hidden = false;
+        }
+        item.querySelector('.salon-notice-title').textContent = notice.title;
+        item.querySelector('.salon-notice-content').textContent = notice.content;
+        item.querySelector('.salon-notice-date').textContent = notice.createdAt;
+        item.querySelector('.salon-notice-more-btn').dataset.index = String(index);
+        noticeListElement.appendChild(item);
+      });
+    }
+
+    /* 매장을 고를 때마다 그 매장의 공지사항을 새로 받아온다 */
+    function loadNotices(salonId) {
+      showNoticeList();
+      noticeListElement.replaceChildren();
+      fetch(CONTEXT_PATH + 'common/salons/' + salonId + '/notices')
+        .then(function (response) {
+          if (!response.ok) {
+            console.error('공지사항 조회 실패: HTTP ' + response.status);
+            return [];
+          }
+          return response.json();
+        })
+        .then(renderNotices)
+        .catch(function (error) { console.error('공지사항 조회 실패:', error); });
+    }
+
+    /* ---- 리뷰 탭 ---- */
+    const reviewListElement = document.getElementById('detail-review-list');
+    const reviewForm = document.getElementById('review-write-form');
+    const reviewDisabledBlock = document.getElementById('review-write-disabled');
+    const reviewReservationSelect = document.getElementById('reviewReservationId');
+    const reviewComment = document.getElementById('reviewComment');
+    const reviewCommentLength = document.getElementById('reviewCommentLength');
+
+    if (reviewComment) {
+      reviewComment.addEventListener('input', function () {
+        reviewCommentLength.textContent = this.value.length + ' / 1000';
+      });
+    }
+
+    let currentReviews = [];
+
+    function buildReviewEditFormHtml(review) {
+      const rid = review.reviewId;
+      let stars = '';
+      for (let s = 1; s <= 5; s++) {
+        stars += '<input type="radio" id="editRating' + rid + '_' + s + '" name="rating" value="' + s + '"'
+          + (s === review.rating ? ' checked' : '') + '>'
+          + '<label for="editRating' + rid + '_' + s + '" title="' + s + '점"><i class="fas fa-star"></i></label>';
+      }
+      return '<fieldset class="star-rating"><legend>별점</legend><div>' + stars + '</div></fieldset>'
+        + '<textarea class="review-textarea" name="comment" maxlength="1000" required></textarea>'
+        + '<div class="review-item-photos review-edit-current-photos"></div>'
+        + '<label>새 사진으로 교체 (선택, 비워두면 기존 사진 유지)</label>'
+        + '<div class="review-photo-inputs">'
+        + '<input type="file" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp">'
+        + '<input type="file" name="imageFile2" accept="image/jpeg,image/png,image/gif,image/webp">'
+        + '</div>'
+        + '<div class="review-item-edit-actions">'
+        + '<button type="submit" class="btn-modern btn-primary">저장</button>'
+        + '<button type="button" class="btn-modern btn-outline review-edit-cancel-btn">취소</button>'
+        + '</div>';
+    }
+
+    function renderReviews(reviews) {
+      currentReviews = reviews || [];
+      reviewListElement.replaceChildren();
+      if (!reviews || reviews.length === 0) {
+        const empty = document.createElement('li');
+        empty.className = 'review-empty';
+        empty.innerHTML = '<i class="far fa-comment-dots"></i><p>아직 등록된 리뷰가 없습니다.</p><small>첫 리뷰를 작성해 보세요.</small>';
+        reviewListElement.appendChild(empty);
+        return;
+      }
+      reviews.forEach(function (review) {
+        const item = document.createElement('li');
+        item.className = 'review-item';
+        item.innerHTML = '<div class="review-author-avatar"></div>'
+          + '<div class="review-item-body">'
+          + '<div class="review-item-head">'
+          + '<div><strong class="review-author-name"></strong>'
+          + '<div class="review-stars"></div></div>'
+          + '<time class="review-item-date"></time>'
+          + '</div>'
+          + '<p class="review-item-comment"></p>'
+          + '</div>';
+        const name = review.userName || '';
+        item.querySelector('.review-author-avatar').textContent = name.charAt(0);
+        item.querySelector('.review-author-name').textContent = name;
+        item.querySelector('.review-item-date').textContent = review.createdAt;
+        item.querySelector('.review-item-comment').textContent = review.comment;
+        const starsElement = item.querySelector('.review-stars');
+        for (let star = 1; star <= 5; star++) {
+          const icon = document.createElement('i');
+          icon.className = (star <= review.rating ? 'fas' : 'far') + ' fa-star';
+          starsElement.appendChild(icon);
+        }
+        const photos = [review.imageUrl, review.imageUrl2].filter(Boolean);
+        if (photos.length > 0) {
+          const photosWrap = document.createElement('div');
+          photosWrap.className = 'review-item-photos';
+          photos.forEach(function (url) {
+            const img = document.createElement('img');
+            img.className = 'review-item-photo lightbox-img';
+            img.src = url;
+            img.alt = '';
+            photosWrap.appendChild(img);
+          });
+          item.querySelector('.review-item-body').appendChild(photosWrap);
+        }
+        if (review.userId === CURRENT_USER_ID) {
+          const editBtn = document.createElement('button');
+          editBtn.type = 'button';
+          editBtn.className = 'review-item-edit-btn';
+          editBtn.textContent = '수정';
+          editBtn.dataset.reviewId = String(review.reviewId);
+          item.querySelector('.review-item-head > div').appendChild(editBtn);
+
+          const editForm = document.createElement('form');
+          editForm.className = 'review-item-edit-form';
+          editForm.hidden = true;
+          editForm.dataset.reviewId = String(review.reviewId);
+          editForm.innerHTML = buildReviewEditFormHtml(review);
+          editForm.querySelector('textarea').value = review.comment;
+          const currentPhotosWrap = editForm.querySelector('.review-edit-current-photos');
+          photos.forEach(function (url) {
+            const img = document.createElement('img');
+            img.className = 'review-item-photo lightbox-img';
+            img.src = url;
+            img.alt = '';
+            currentPhotosWrap.appendChild(img);
+          });
+          item.querySelector('.review-item-body').appendChild(editForm);
+        }
+        reviewListElement.appendChild(item);
+      });
+    }
+
+    /* "수정"/"취소" 버튼은 renderReviews() 가 매번 새로 만드므로, 목록 컨테이너에
+       이벤트 위임으로 한 번만 걸어둔다 (공지사항 "자세히 보기"와 같은 패턴). */
+    reviewListElement.addEventListener('click', function (event) {
+      const editBtn = event.target.closest('.review-item-edit-btn');
+      if (editBtn) {
+        reviewListElement.querySelectorAll('.review-item-edit-form').forEach(function (form) {
+          form.hidden = (form.dataset.reviewId !== editBtn.dataset.reviewId);
+        });
+        return;
+      }
+      const cancelBtn = event.target.closest('.review-edit-cancel-btn');
+      if (cancelBtn) {
+        renderReviews(currentReviews);
+      }
+    });
+
+    reviewListElement.addEventListener('submit', async function (event) {
+      const form = event.target.closest('.review-item-edit-form');
+      if (!form) return;
+      event.preventDefault();
+      const salon = salons[selectedIndex];
+      if (!salon) return;
+      const reviewId = form.dataset.reviewId;
+      const submitButton = form.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      try {
+        const response = await fetch(CONTEXT_PATH + 'common/salons/' + salon.salonId + '/reviews/' + reviewId + '/ajax', {
+          method: 'POST',
+          body: new FormData(form)
+        });
+        if (!response.ok) throw new Error('리뷰 수정에 실패했습니다.');
+        const result = await response.json();
+        if (result.success) {
+          loadReviews(salon.salonId);
+        } else {
+          window.alert(result.error || '리뷰 수정에 실패했습니다.');
+        }
+      } catch (error) {
+        window.alert(error.message);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
+
+    /* 매장을 고를 때마다 그 매장의 리뷰/작성 가능한 예약을 새로 받아온다 */
+    function loadReviews(salonId) {
+      fetch(CONTEXT_PATH + 'common/salons/' + salonId + '/reviews/data')
+        .then(function (response) {
+          if (!response.ok) {
+            console.error('리뷰 조회 실패: HTTP ' + response.status);
+            return null;
+          }
+          return response.json();
+        })
+        .then(function (data) {
+          if (!data) return;
+          renderReviews(data.reviews);
+          document.getElementById('review-count-label').textContent = '리뷰 ' + data.reviewCount + '개';
+          const avg = data.averageRating != null ? Number(data.averageRating).toFixed(1) : '-';
+          document.getElementById('review-avg-rating').textContent = avg;
+          document.getElementById('detail-rating').textContent = avg;
+          const salon = salons[selectedIndex];
+          if (salon) salon.averageRating = data.averageRating;
+
+          const reservations = data.reviewableReservations || [];
+          if (reservations.length > 0) {
+            reviewReservationSelect.replaceChildren();
+            reservations.forEach(function (reservation) {
+              const option = document.createElement('option');
+              option.value = reservation.reservationId;
+              option.textContent = reservation.serviceName + ' · ' + reservation.reservationTime;
+              reviewReservationSelect.appendChild(option);
+            });
+            reviewForm.reset();
+            reviewForm.hidden = false;
+            reviewDisabledBlock.hidden = true;
+          } else {
+            reviewForm.hidden = true;
+            reviewDisabledBlock.hidden = false;
+          }
+        })
+        .catch(function (error) { console.error('리뷰 조회 실패:', error); });
+    }
+
+    reviewForm.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      const salon = salons[selectedIndex];
+      if (!salon) return;
+      const submitButton = reviewForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      try {
+        const response = await fetch(CONTEXT_PATH + 'common/salons/' + salon.salonId + '/reviews/ajax', {
+          method: 'POST',
+          body: new FormData(reviewForm)
+        });
+        if (!response.ok) throw new Error('리뷰 등록에 실패했습니다.');
+        const result = await response.json();
+        if (result.success) {
+          loadReviews(salon.salonId);
+        } else {
+          window.alert(result.error || '리뷰 등록에 실패했습니다.');
+        }
+      } catch (error) {
+        window.alert(error.message);
+      } finally {
+        submitButton.disabled = false;
+      }
+    });
 
     /* ---- 검색 결과 목록 ----
        마커와 같은 순번을 붙여서, 목록의 ②가 지도의 ②라는 걸 바로 알 수 있게 한다. */
@@ -254,7 +647,9 @@
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
       document.getElementById('btn-reserve').disabled = false;
-      document.getElementById('btn-review').disabled = false;
+      showTab('info');
+      loadNotices(salon.salonId);
+      loadReviews(salon.salonId);
       updatePinStyles();
       updateListActive();
       showDetail();
@@ -271,7 +666,14 @@
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = '-';
       document.getElementById('btn-reserve').disabled = true;
-      document.getElementById('btn-review').disabled = true;
+      showTab('info');
+      showNoticeList();
+      noticeListElement.replaceChildren();
+      reviewListElement.replaceChildren();
+      document.getElementById('review-avg-rating').textContent = '-';
+      document.getElementById('review-count-label').textContent = '리뷰 0개';
+      reviewForm.hidden = true;
+      reviewDisabledBlock.hidden = true;
       const wishlistForm = document.getElementById('detail-wishlist-form');
       wishlistForm.action = '';
       wishlistForm.dataset.salonId = '';
@@ -283,11 +685,6 @@
       const salon = salons[selectedIndex];
       if (!salon) return;
       location.href = CONTEXT_PATH + 'common/reserve?salonId=' + salon.salonId;
-    });
-    document.getElementById('btn-review').addEventListener('click', function () {
-      const salon = salons[selectedIndex];
-      if (!salon) return;
-      location.href = CONTEXT_PATH + 'common/salons/' + salon.salonId + '/reviews';
     });
 
     document.addEventListener('wishlist:changed', function (event) {
@@ -450,5 +847,6 @@
 
   </script>
   <script src="<c:url value='/resources/js/wishlist.js'/>"></script>
+  <script src="<c:url value='/resources/js/lightbox.js'/>"></script>
 </body>
 </html>

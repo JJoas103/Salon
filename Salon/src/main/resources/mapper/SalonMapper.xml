@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.SalonMapper">
+    <resultMap id="salonResultMap" type="com.soldesk.vo.SalonVO">
+        <id column="salon_id" property="salonId" />
+        <result column="owner_id" property="ownerId" />
+        <result column="salon_name" property="salonName" />
+        <result column="address" property="address" />
+        <result column="phone_number" property="phoneNumber" />
+        <result column="description" property="description" />
+        <result column="average_rating" property="averageRating" />
+        <result column="image_url" property="imageUrl" />
+        <result column="minimum_price" property="minimumPrice" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <resultMap id="serviceResultMap" type="com.soldesk.vo.ServiceVO">
+        <id column="service_id" property="serviceId" />
+        <result column="salon_id" property="salonId" />
+        <result column="service_name" property="serviceName" />
+        <result column="price" property="price" />
+        <result column="duration_minutes" property="durationMinutes" />
+        <result column="description" property="description" />
+        <result column="created_at" property="createdAt" />
+        <result column="updated_at" property="updatedAt" />
+    </resultMap>
+
+    <select id="findAllWithMinimumPrice" resultMap="salonResultMap">
+        SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
+               s.phone_number, s.description, s.average_rating, s.image_url,
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at
+        FROM Salons s
+        LEFT JOIN Services se ON se.salon_id = s.salon_id
+        GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
+                 s.phone_number, s.description, s.average_rating, s.image_url,
+                 s.created_at, s.updated_at
+        ORDER BY s.average_rating DESC, s.salon_id DESC
+    </select>
+
+    <select id="findById" resultMap="salonResultMap">
+        SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
+               s.phone_number, s.description, s.average_rating, s.image_url,
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at
+        FROM Salons s
+        LEFT JOIN Services se ON se.salon_id = s.salon_id
+        WHERE s.salon_id = #{salonId}
+        GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
+                 s.phone_number, s.description, s.average_rating, s.image_url,
+                 s.created_at, s.updated_at
+    </select>
+
+    <select id="findServicesBySalonId" resultMap="serviceResultMap">
+        SELECT service_id, salon_id, service_name, price, duration_minutes,
+               description, created_at, updated_at
+        FROM Services
+        WHERE salon_id = #{salonId}
+        ORDER BY price, service_id
+    </select>
+</mapper>

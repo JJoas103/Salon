@@ -211,7 +211,7 @@ body {
 .salon-back-btn:hover { color: var(--accent); }
 
 /* ---- 선택한 헤어샵 상세 카드 ---- */
-.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
+.salon-detail-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; max-height: 620px; overflow-y: auto; }
 .salon-detail-image { width: 100%; height: 230px; object-fit: cover; display: block; background: var(--bg-sub); }
 .salon-detail-body { padding: 26px 28px 28px; }
 .salon-detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
@@ -219,14 +219,57 @@ body {
 .salon-detail-side-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
 .salon-detail-side-actions .wishlist-btn { padding: 9px 13px; font-size: 13px; }
 .salon-detail-address { margin-top: 6px; font-size: 14px; color: var(--text-sub); }
-.salon-detail-info { margin-top: 22px; padding-top: 6px; border-top: 1px solid var(--border); }
+
+/* ---- 상세 카드 정보/공지사항 탭 ---- */
+.salon-detail-tabs { display: flex; gap: 4px; margin-top: 22px; border-bottom: 1px solid var(--border); }
+.salon-detail-tab-btn { flex: 1; background: none; border: none; padding: 12px 4px; font-size: 14px; font-weight: 700; color: var(--text-sub); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.salon-detail-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.salon-detail-tab-panel { display: none; }
+.salon-detail-tab-panel.active { display: block; }
+
+.salon-detail-info { padding-top: 6px; }
 .salon-info-row { display: flex; align-items: center; gap: 14px; padding: 13px 0; }
 .salon-info-icon { width: 38px; height: 38px; border-radius: 50%; background: var(--bg-sub); color: var(--text-sub); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
 .salon-info-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
 .salon-info-value { margin-left: auto; font-size: 15px; font-weight: 700; }
+
+.salon-notice-list-view { padding-top: 14px; }
+.salon-notice-list { display: flex; flex-direction: column; gap: 14px; }
+.salon-notice-item { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.salon-notice-item:last-child { border-bottom: none; padding-bottom: 0; }
+.salon-notice-thumb { width: 64px; height: 64px; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--border); flex-shrink: 0; }
+.salon-notice-body { flex: 1; min-width: 0; }
+.salon-notice-title { font-size: 15px; font-weight: 700; display: block; }
+.salon-notice-content { margin-top: 6px; font-size: 13px; color: var(--text-sub); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.5; }
+.salon-notice-date { margin-top: 6px; font-size: 12px; color: var(--text-sub); }
+.salon-notice-more-btn { display: block; margin-top: 6px; padding: 0; background: none; border: none; font-family: inherit; font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer; }
+.salon-notice-empty { padding: 30px 0; text-align: center; color: var(--text-sub); font-size: 14px; }
+
+.salon-notice-detail-view { padding-top: 14px; }
+.salon-notice-detail-title { font-size: 16px; font-weight: 700; display: block; }
+.salon-notice-detail-image { width: 100%; max-height: 260px; object-fit: cover; border-radius: var(--radius-md); margin-top: 14px; display: block; }
+.salon-notice-detail-date { margin-top: 6px; font-size: 12px; color: var(--text-sub); }
+.salon-notice-detail-content { margin-top: 14px; font-size: 13px; color: var(--text-sub); white-space: pre-line; line-height: 1.6; }
+
+.salon-review-summary { display: flex; align-items: center; gap: 8px; padding-top: 14px; font-size: 14px; color: var(--text-sub); }
+.salon-review-summary i { color: #ffb800; }
+.salon-review-summary strong { font-size: 16px; color: var(--text-main); }
+.salon-review-list { list-style: none; margin: 14px 0 0; padding: 0; }
+.salon-review-write { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.salon-review-write h4 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.salon-review-write textarea { width: 100%; min-height: 130px; padding: 12px; resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); font: inherit; line-height: 1.6; }
+.salon-review-write label { display: block; margin: 14px 0 6px; color: var(--text-sub); font-size: 13px; font-weight: 700; }
+.review-photo-inputs { display: flex; gap: 8px; }
+.review-photo-inputs input[type="file"] { flex: 1; min-width: 0; font-size: 12px; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--white); }
+.review-item-photos { display: flex; gap: 8px; margin-top: 10px; }
+.review-item-photo { width: 64px; height: 64px; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--border); }
+.review-textarea { width: 100%; min-height: 130px; padding: 12px; resize: vertical; border: 1px solid var(--border); border-radius: var(--radius-md); font: inherit; line-height: 1.6; }
+.review-item-edit-btn { margin-left: 10px; background: none; border: none; padding: 0; color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer; }
+.review-item-edit-form { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--border); }
+.review-item-edit-form label { display: block; margin: 12px 0 6px; color: var(--text-sub); font-size: 13px; font-weight: 700; }
+.review-item-edit-actions { display: flex; gap: 8px; margin-top: 10px; }
 .salon-detail-card .btn-reserve { width: 100%; margin-top: 18px; padding: 16px; font-size: 16px; }
-.salon-detail-primary-actions { display: grid; grid-template-columns: minmax(140px, .4fr) 1fr; gap: 10px; margin-top: 18px; }
-.salon-detail-primary-actions .btn-review,
+.salon-detail-primary-actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
 .salon-detail-primary-actions .btn-reserve { width: 100%; margin-top: 0; padding: 16px; font-size: 16px; }
 
 /* ---- 좁은 화면: 지도 아래로 상세 카드 ---- */
@@ -662,7 +705,6 @@ body {
   .review-layout, .wishlist-grid { grid-template-columns: 1fr; }
   .review-write-card { position: static; }
   .stat-grid-four { grid-template-columns: repeat(2, 1fr); }
-  .salon-detail-primary-actions { grid-template-columns: 1fr; }
   .my-review-card-head { flex-direction: column; gap: 4px; }
   .reserve-salon-head { flex-direction: column; gap: 10px; }
   .reserve-step-head { padding: 16px 18px; gap: 10px; }
