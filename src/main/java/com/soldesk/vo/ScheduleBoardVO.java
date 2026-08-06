@@ -2,7 +2,7 @@ package com.soldesk.vo;
 
 import java.util.List;
 
-// 하루치 예약현황판. 세로축이 시각, 가로축이 디자이너다
+// 하루치 예약현황
 public class ScheduleBoardVO {
 
     private List<StylistVO> stylists; // 표의 열 순서

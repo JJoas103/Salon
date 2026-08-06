@@ -40,7 +40,8 @@ public class ReservationService {
     /** 예약 단위. 시술 소요시간과 무관하게 30분 간격으로만 시작할 수 있다. */
     private static final int SLOT_MINUTES = 30;
 
-    /** 결제창에 들어간 예약이 자리를 잡아두는 시간. ResvMapper.xml 의 INTERVAL 10 MINUTE 과 같아야 한다. */
+    // 결제창에 들어간 예약이 자리를 잡아두는 시간. ResvMapper.xml 의 INTERVAL 10 MINUTE 과 같아야 함
+    // main의 findStalePendingIds 도 같은 정책
     private static final int PAYMENT_HOLD_MINUTES = 10;
 
     /** DB 의 day_of_week 는 ENUM('월','화',...) 한글이라 java 의 DayOfWeek 를 그대로 못 쓴다. */
@@ -256,7 +257,7 @@ public class ReservationService {
         return paymentMapper.findByReservationId(reservationId);
     }
 
-    // 점주 예약현황관리: 본인 매장의 예약 목록 한 페이지 (소유 검증)
+    // 점주 매장 예약현황관리: 본인 매장의 예약 목록 조회 (소유 검증)
     @Transactional(readOnly = true)
     public List<ReservationVO> getReservationsForOwner(int salonId, int ownerId, int page, int size) {
         requireOwnedSalon(salonId, ownerId);
@@ -271,6 +272,7 @@ public class ReservationService {
         return resvMapper.countBySalonId(salonId);
     }
 
+    // 세션의 selectedSalonId 는 사용자가 URL 로 바꿔 넣을 수 있어서, 조회 전에 소유주를 확인함
     private SalonVO requireOwnedSalon(int salonId, int ownerId) {
         SalonVO salon = salonMapper.findById(salonId);
         if (salon == null || salon.getOwnerId() != ownerId) {
@@ -279,19 +281,18 @@ public class ReservationService {
         return salon;
     }
 
-    /**
-     * 하루치 예약현황판. 세로축이 시각, 가로축이 디자이너다.
-     *
-     * 줄(시각)은 "디자이너들의 근무시간 슬롯 ∪ 실제 예약 시각"의 합집합으로 만든다.
-     * 근무시간만으로 만들면 점주가 근무시간을 줄이거나 휴무로 바꿨을 때 이미 잡힌 예약이
-     * 화면에서 사라져 손님을 놓친다. 틀 밖 예약은 isOutsideHours 로 따로 표시한다.
-     */
+    // 하루치 예약현황판 표 생성 (Grid)
+    //
+    // 표의 줄(시각)은 디자이너들의 근무시간 슬롯과 실제 예약 시각을 합쳐서 만듦
+    // 점주가 나중에 근무시간을 줄이거나 휴무로 바꿨을 때 이미 잡혀 있던 예약이 표에서 통째로 사라져 손님을 놓치게 됨을 방지.
+    // 그래서 근무시간 밖이라도 예약이 있으면 줄을 만들고 대신 isOutsideHours 로 경고 표시
     @Transactional(readOnly = true)
     public ScheduleBoardVO getScheduleBoard(int salonId, int ownerId, LocalDate targetDate) {
         requireOwnedSalon(salonId, ownerId);
         String date = targetDate.toString();
 
-        // 디자이너 수와 무관하게 조회는 네 번이면 끝난다
+        // 디자이너 목록 / 영업시간 / 그 날 스케줄 / 그 날 예약
+        // 디자이너 수와 무관하게 조회는 네 번으로 고정
         List<StylistVO> stylists = stylistMapper.findBySalonId(salonId);
         String dayKo = DAY_KO[targetDate.getDayOfWeek().getValue() - 1];
         SalonOperatingHourVO openHour = salonMapper.findOperatingHour(salonId, dayKo);
@@ -309,7 +310,8 @@ public class ReservationService {
                     workWindowOf(openHour, scheduleByStylist.get(stylist.getStylistId())));
         }
 
-        // 줄로 세울 시각 모으기 — 근무 슬롯 + 예약 시각(근무시간 밖이어도)
+        // 줄로 세울 시각 모으기, 근무 슬롯 + 예약 시각(근무시간 밖 예약 포함).
+        // (TreeSet)중복 제거, 시각순 정렬이 한 번에
         Set<LocalTime> times = new TreeSet<>();
         for (LocalTime[] window : windows.values()) {
             if (window == null) continue;
@@ -317,6 +319,7 @@ public class ReservationService {
                 times.add(t);
             }
         }
+        // 디자이너 → (시작시각 → 예약). 아래에서 칸마다 바로 꺼내 쓰려고 미리 묶어둠
         Map<Integer, Map<LocalTime, ReservationVO>> startsAt = new HashMap<>();
         for (ReservationVO r : reservations) {
             LocalTime start = startTimeOf(r);
@@ -324,6 +327,8 @@ public class ReservationService {
             startsAt.computeIfAbsent(r.getStylistId(), k -> new HashMap<>()).put(start, r);
         }
 
+        // 줄(시각)마다 칸(디자이너)을 채움. 칸 상태는 근무여부 / 예약 / 앞 시술의 점유 세 가지
+        // past 는 그 30분 칸이 이미 끝난 줄, current 는 지금이 그 30분 안에 들어있는 줄
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleRowVO> rows = new ArrayList<>();
         for (LocalTime t : times) {
@@ -341,6 +346,7 @@ public class ReservationService {
                 Map<LocalTime, ReservationVO> mine = startsAt.get(stylist.getStylistId());
                 if (mine != null) {
                     cell.setReservation(mine.get(t));
+                    // 펌처럼 30분 이상 소요되는 시술이 이전 시간에 시작되어 현재 시간까지 점유중인지 판별
                     cell.setOccupied(cell.getReservation() == null && coveredBy(mine.values(), t));
                 }
                 cells.add(cell);
@@ -349,6 +355,7 @@ public class ReservationService {
             rows.add(row);
         }
 
+        // 최종 반환
         ScheduleBoardVO board = new ScheduleBoardVO();
         board.setStylists(stylists);
         board.setRows(rows);
@@ -371,16 +378,13 @@ public class ReservationService {
         return LocalTime.parse(reservation.getReservationTime().substring(11, 16));
     }
 
-    /**
-     * 화면에만 쓰는 값을 채운다.
-     *
-     * 시술이 언제 끝나는지는 Services.duration_minutes 가 알고 있으므로, 커트 30분과 펌 90분이
-     * 각각 다른 시점에 "완료"가 된다. status 컬럼 자체는 건드리지 않는다 —
-     * completed 로 넘기는 일은 리뷰 기능과 함께 정해야 하는 별도 문제다.
-     *
-     * "완료"는 시각이 지난 확정 예약을 낙관적으로 그렇게 보는 것일 뿐, 손님이 실제로 왔는지는
-     * 시스템이 모른다. 손님이 오지 않은 경우는 점주가 노쇼로 마감하면 "노쇼"로 갈린다.
-     */
+    // 화면 표시 전용 값 채우기 (displayStatus / endTime / rejectable)
+    //
+    // DB의 status를 손대지 않고, 지금 시각과 시술 소요시간만 가지고 지금 어떻게 보일지를 계산
+    // ex) 커트 30분과 펌 90분이 서로 다른 시점에 "완료"로 바뀜
+    // status 를 실제로 completed 로 넘기는 건 결제/리뷰 쪽과 같이 정할 문제라 여기서는 안 함
+    // 완료는 시각이 지난 확정 예약을 확인할 뿐, 손님이 실제로 왔는지는 알 수 없음
+    // 안 온 경우는 점주가 노쇼로 마감했을 때만 노쇼로
     private void fillDisplayFields(ReservationVO reservation) {
         LocalDateTime start = LocalDateTime.parse(
                 reservation.getReservationTime().substring(0, 16).replace(' ', 'T'));
@@ -390,13 +394,15 @@ public class ReservationService {
 
         String status = reservation.getStatus();
         if ("pending".equals(status)) {
-            // 결제창에서 이탈하면 카카오페이가 알려주지 않아 pending 인 채로 남는다.
-            // 자리는 이미 놓아준 상태이므로(findReservedTimes 와 같은 10분 기준) 점주에게도 그렇게 보여준다.
+            // 손님이 결제창에서 그냥 나가버려도 카카오페이가 알려주지 않아 pending 인 채로 남음.
+            // 자리는 10분이 지나면 이미 놓아준 상태라(findReservedTimes 와 같은 기준),
+            // 점주 화면에도 결제중이 아니라 "결제 미완료"로 보여줌
             boolean abandoned = reservation.getCreatedAt() != null && LocalDateTime.parse(
                     reservation.getCreatedAt().substring(0, 16).replace(' ', 'T'))
                     .isBefore(now.minusMinutes(PAYMENT_HOLD_MINUTES));
             reservation.setDisplayStatus(abandoned ? "결제 미완료" : "결제중");
         } else if ("cancelled".equals(status)) {
+            // 같은 cancelled 라도 cancel_type / reject_reason 유무로 성격이 갈림
             if ("no_show".equals(reservation.getCancelType())) {
                 reservation.setDisplayStatus("노쇼");
             } else if (reservation.getRejectReason() != null) {
@@ -412,20 +418,17 @@ public class ReservationService {
             reservation.setDisplayStatus("완료");
         }
 
-        // 확정된 예약은 시술 여부와 무관하게 점주가 정리할 수 있다 (거절/노쇼는 점주 재량).
-        // 시점(예약됨/진행중/완료)에 따라 화면이 환불·노쇼 기본값을 다르게 잡는다.
+        // 확정된 예약이면 시술이 시작됐든 끝났든 점주가 정리할 수 있음 (거절/노쇼는 점주 재량).
+        // 대신 시점에 따라 화면이 환불/노쇼 기본값을 다르게 잡아줌
         reservation.setRejectable("confirmed".equals(status));
     }
 
-    /**
-     * 점주가 확정 예약을 정리한다. 두 갈래 — 환불 안전성이 시점에 따라 다르기 때문이다.
-     *
-     *   resolution = "rejected" : 부득이 취소하고 환불한다 (결제 완료건이면 카카오페이 환불까지).
-     *   resolution = "no_show"  : 손님이 오지 않아 노쇼로 마감한다. 선불 금액은 매장이 갖는다(환불 없음).
-     *
-     * 시술 시작 전에는 거절만 성립하고, 노쇼는 시각이 지난 예약에만 성립한다.
-     * 환불 호출이 실패하면 예외로 트랜잭션이 롤백되어 confirmed 상태 그대로 남는다.
-     */
+    // 점주가 확정 예약을 정리. 두 갈래로 나눈 건 돈을 돌려줘야 하는지가 갈리기 때문
+    //
+    //   rejected : 매장 사정으로 취소 > 결제 완료건이면 카카오페이 환불까지
+    //   no_show  : 손님이 안 옴 > 선불 금액은 매장이 가짐 (환불 없음)
+    //
+    // 아래 검증은 순서가 곧 방어 순서 - 값 > 예약 존재 > 소유 > 상태 > 시점
     @Transactional
     public void rejectReservation(int reservationId, int ownerId, String reason, String resolution) {
         if (reason == null || reason.trim().isEmpty()) {
@@ -448,25 +451,29 @@ public class ReservationService {
         }
         boolean started = !LocalDateTime.now().isBefore(LocalDateTime.parse(
                 reservation.getReservationTime().substring(0, 16).replace(' ', 'T')));
-        // 아직 오지도 않은 예약을 노쇼로 마감할 수는 없다
+        // 아직 오지도 않은 손님을 노쇼로 만들 수는 없으므로, 노쇼는 예약 시각이 지난 뒤에만 가능
         if (noShow && !started) {
             throw new IllegalArgumentException("아직 예약 시간이 되지 않아 노쇼로 처리할 수 없습니다.");
         }
 
-        // 환불은 '거절'일 때만. 노쇼는 결제 상태를 건드리지 않는다.
+        // 환불은 거절일 때만. 노쇼는 결제 상태를 그대로 둠
+        // 카카오 취소가 실패하면 예외로 트랜잭션이 통째로 롤백돼서, 예약은 confirmed 인 채로
+        // (환불은 안 됐는데 예약만 취소되는 상태가 제일 위험해서 순서를 이렇게 잡음)
         if (!noShow) {
             PaymentVO payment = paymentMapper.findByReservationId(reservationId);
             if (payment != null && "completed".equals(payment.getPaymentStatus())) {
                 try {
                     kakaoPayService.cancel(payment.getTransactionId(), payment.getAmount());
                 } catch (IllegalStateException e) {
-                    // 결제 문구가 그대로 나오면 점주는 처리가 됐는지조차 알 수 없다
+                    // 카카오 쪽 원문 메시지가 그대로 뜨면 점주는 처리가 된 건지조차 알 수 없어서 문구를 바꿔 던짐
                     throw new IllegalStateException("환불에 실패해 처리가 취소되었습니다. 잠시 후 다시 시도해 주세요.", e);
                 }
                 paymentMapper.markRefunded(reservationId);
             }
         }
 
+        // UPDATE 쪽에도 status='confirmed' 조건이 걸려 있어서, 위 검증 통과 뒤에 누가 먼저
+        // 처리했으면 0행이 됨. 그 경우도 실패로 보고 롤백시킴
         String cancelType = noShow ? "no_show" : "rejected";
         if (resvMapper.rejectReservation(reservationId, reason.trim(), cancelType) == 0) {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
