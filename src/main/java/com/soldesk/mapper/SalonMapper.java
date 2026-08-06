@@ -16,7 +16,7 @@ public interface SalonMapper {
 
     List<ServiceVO> findServicesBySalonId(int salonId);
 
-    ServiceVO findServiceById(int serviceId);
+    // ServiceVO findServiceById(int serviceId);
 
     /** 점주 시술 메뉴 등록 */
     void insertService(ServiceVO service);
@@ -27,24 +27,28 @@ public interface SalonMapper {
     /** 점주 시술 메뉴 삭제 */
     void deleteService(int serviceId);
 
+    /** 시술 1건. 금액 계산은 화면이 보낸 값이 아니라 이 결과의 price 를 쓴다. */
+    ServiceVO findServiceById(int serviceId);
+
     /**
      * 특정 요일의 영업시간. 예약 가능 시간대를 만드는 바깥 테두리가 된다.
      * dayOfWeek 는 DB ENUM 에 맞춰 '월'~'일' 한글 한 글자다.
      * 그 요일 행이 없으면 휴무로 보고 null 을 돌려준다.
      */
     SalonOperatingHourVO findOperatingHour(@Param("salonId") int salonId,
-                                            @Param("dayOfWeek") String dayOfWeek);
+            @Param("dayOfWeek") String dayOfWeek);
 
     /** 점주(user_id) 기준 매장 조회 */
     List<SalonVO> findAllByOwnerId(int ownerId);
-    //키워드로 검색하기. XML 에서 #{keyword} 를 두 번 쓰므로 @Param 으로 이름을 고정한다
+
+    // 키워드로 검색하기. XML 에서 #{keyword} 를 두 번 쓰므로 @Param 으로 이름을 고정한다
     List<SalonVO> searchByKeyword(@Param("keyword") String keyword);
 
     /** 관리자 매장목록: 매장명/주소/점주명 검색 + 운영상태 필터 + 페이지네이션 */
     List<SalonVO> findSalonsForAdmin(@Param("keyword") String keyword,
-                                      @Param("status") String status,
-                                      @Param("offset") int offset,
-                                      @Param("size") int size);
+            @Param("status") String status,
+            @Param("offset") int offset,
+            @Param("size") int size);
 
     /** findSalonsForAdmin과 동일 조건의 총 건수 */
     int countSalonsForAdmin(@Param("keyword") String keyword, @Param("status") String status);

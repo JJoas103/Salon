@@ -21,6 +21,42 @@ public class ReservationVO {
     private String paymentMethod; // 결제수단 (payments.payment_method)
     private int amount; // 결제금액 (payments.amount)
     private String serviceName; // 시술명(service.name)
+    private int originalAmount;
+    private int couponDiscount;
+    private int pointUsed;
+    private String pgProvider;    
+
+    public int getOriginalAmount() {
+        return this.originalAmount;
+    }
+
+    public void setOriginalAmount(int originalAmount) {
+        this.originalAmount = originalAmount;
+    }
+
+    public int getCouponDiscount() {
+        return this.couponDiscount;
+    }
+
+    public void setCouponDiscount(int couponDiscount) {
+        this.couponDiscount = couponDiscount;
+    }
+
+    public int getPointUsed() {
+        return this.pointUsed;
+    }
+
+    public void setPointUsed(int pointUsed) {
+        this.pointUsed = pointUsed;
+    }
+
+    public String getPgProvider() {
+        return this.pgProvider;
+    }
+
+    public void setPgProvider(String pgProvider) {
+        this.pgProvider = pgProvider;
+    }
 
     public String getServiceName() {
         return this.serviceName;

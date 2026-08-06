@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.PointMapper">
+
+    <resultMap id="pointTxResultMap" type="com.soldesk.vo.PointTransactionVO">
+        <id     column="point_tx_id"  property="pointTxId" />
+        <result column="user_id"     property="userId" />
+        <result column="reservation_id"     property="reservationId" />
+        <result column="tx_type"     property="txType" />
+        <result column="amount"  property="amount" />
+        <result column="balance_after"  property="balanceAfter" />
+        <result column="description" property="description" />
+        <result column="expires_at"          property="expiresAt" />
+        <result column="created_at" property="createdAt" />
+    </resultMap>
+
+
+    <!-- rowcount 0 = 잔액 부족. 조건과 갱신이 한 문장이라 그 사이에 끼어들 틈이 없다.
+     SELECT 로 잔액을 확인한 뒤 UPDATE 하면 두 요청이 같은 잔액을 보고 둘 다 통과한다. -->
+    <update id="deductPoint">
+        UPDATE Users
+        SET point_balance = point_balance - #{amount}
+        WHERE user_id = #{userId}
+        AND point_balance &gt;= #{amount}
+    </update>
+
+    <update id="addPoint">
+        UPDATE Users
+        SET point_balance = point_balance + #{amount}
+        WHERE user_id = #{userId}
+    </update>
+
+    <select id="findBalance" resultType="int" parameterType="int">
+        SELECT point_balance FROM Users WHERE user_id = #{userId}
+    </select>
+
+    <insert id="insertTx" useGeneratedKeys="true" keyProperty="pointTxId">
+        INSERT INTO Point_Transactions
+            (user_id, reservation_id, tx_type, amount, balance_after, description)
+        VALUES (#{userId}, #{reservationId}, #{txType}, #{amount}, #{balanceAfter}, #{description})
+    </insert>
+
+    <!-- 원복할 때 "얼마를 되돌려야 하는지" 를 여기서 읽는다 -->
+    <select id="findByReservationAndType" resultMap="pointTxResultMap">
+        SELECT * FROM Point_Transactions
+        WHERE reservation_id = #{reservationId} AND tx_type = #{txType}
+    </select>
+
+    <select id="findByUserId" resultMap="pointTxResultMap" parameterType="int">
+        SELECT * FROM Point_Transactions
+        WHERE user_id = #{userId} ORDER BY point_tx_id DESC
+    </select>
+</mapper>

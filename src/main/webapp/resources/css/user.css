@@ -618,6 +618,56 @@ body {
 .reserve-pay-btn:disabled { background: var(--border); color: var(--text-light); cursor: not-allowed; }
 .reserve-summary-note { margin-top: 14px; font-size: 12px; line-height: 1.6; color: var(--text-light); }
 
+/* ---- 최종 확인 (checkout.jsp) ----
+   오른쪽 요약 패널은 예약 화면(.reserve-summary)을 그대로 쓰고,
+   왼쪽 카드 껍데기만 여기서 따로 잡는다. .reserve-step 은 열림/잠김 상태에
+   묶인 transition 이 있어 정적인 카드로 쓰기에 맞지 않는다. */
+.checkout-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow); margin-bottom: 14px; }
+.checkout-card-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 17px 24px; border-bottom: 1px solid var(--border); }
+.checkout-card-head h3 { font-size: 15px; font-weight: 700; color: var(--text-main); }
+.checkout-card-body { padding: 18px 24px; }
+
+.checkout-info-row { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 8px 0; }
+.checkout-info-row dt { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--text-sub); }
+.checkout-info-row dd { text-align: right; font-size: 14px; font-weight: 600; color: var(--text-main); word-break: keep-all; }
+
+/* 결제수단 — 지금은 카카오페이 하나뿐이라 항상 선택된 상태다 (Step 3 에서 늘어난다) */
+.checkout-pay-option { display: flex; align-items: center; gap: 11px; padding: 14px 16px; border: 1.5px solid var(--accent); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; }
+.checkout-pay-option input { accent-color: var(--accent); }
+
+/* 쿠폰 자리 — Step 5 에서 실제 UI 로 교체된다 */
+.checkout-soon { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 7px 0; font-size: 14px; font-weight: 600; color: var(--text-sub); }
+
+/* 적립금 사용 */
+.checkout-point { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
+.checkout-point-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 14px; font-weight: 600; color: var(--text-sub); }
+.checkout-point-balance strong { color: var(--accent); font-weight: 800; }
+.checkout-point-input { display: flex; gap: 8px; margin-top: 11px; }
+.checkout-point-input input { flex: 1; min-width: 0; padding: 11px 13px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; text-align: right; }
+.checkout-point-input input:focus { outline: none; border-color: var(--accent); }
+.checkout-point-input .btn-modern { flex-shrink: 0; padding: 11px 16px; font-size: 13px; }
+.checkout-point-hint { margin-top: 8px; font-size: 12px; color: var(--text-light); }
+/* 서버가 입력을 잘라냈을 때 — 오류가 아니라 조정 안내라 danger 가 아닌 accent 로 둔다 */
+.checkout-point-hint.is-warn { color: var(--accent); font-weight: 600; }
+
+/* 적립 예정 안내 */
+.checkout-earn { margin-top: 12px; padding: 11px 14px; background: var(--bg-sub); border-radius: var(--radius-md); font-size: 12.5px; color: var(--text-sub); text-align: center; }
+.checkout-earn strong { color: var(--accent); font-weight: 800; }
+
+/* ---- 적립금 내역 (points.jsp) ----
+   머리말·빈 화면은 작성한 리뷰 페이지(.my-review-*)를 그대로 쓰고 목록만 따로 잡는다. */
+.point-list { display: flex; flex-direction: column; gap: 10px; }
+.point-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow); }
+.point-row-main strong { display: block; font-size: 15px; font-weight: 700; }
+.point-row-amount { flex-shrink: 0; text-align: right; }
+.point-row-amount strong { display: block; font-size: 17px; font-weight: 800; }
+.point-row.is-plus .point-row-amount strong { color: var(--success); }
+.point-row.is-minus .point-row-amount strong { color: var(--text-main); }
+.point-row-sub { display: block; margin-top: 5px; font-size: 12.5px; color: var(--text-light); }
+
+/* 할인 금액 줄은 빼는 금액이라 색으로 구분한다 */
+.reserve-summary-row.is-discount dd { color: var(--success); }
+
 /* ---- 결제 결과 (reserve-result.jsp) ---- */
 .reserve-result-card { max-width: 560px; margin: 40px auto; padding: 44px 40px; background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); text-align: center; }
 .reserve-result-icon { font-size: 56px; margin-bottom: 20px; }
