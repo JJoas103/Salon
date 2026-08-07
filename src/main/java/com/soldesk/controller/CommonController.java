@@ -221,10 +221,6 @@ public class CommonController {
         return salonService.searchSalons(keyword);
     }
 
-    
-
-    
-
     // 점주요청
     @PostMapping("/owner-request")
     public String ownerRequestSubmit(Authentication authentication,

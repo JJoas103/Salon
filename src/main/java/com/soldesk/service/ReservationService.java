@@ -5,9 +5,13 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -18,10 +22,14 @@ import com.soldesk.mapper.ResvMapper;
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.mapper.StylistMapper;
 import com.soldesk.mapper.StylistScheduleMapper;
+import com.soldesk.vo.OwnerScheduleSlotVO;
 import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonOperatingHourVO;
+import com.soldesk.vo.SalonVO;
+import com.soldesk.vo.ScheduleBoardVO;
+import com.soldesk.vo.ScheduleRowVO;
 import com.soldesk.vo.ServiceVO;
 import com.soldesk.vo.StylistScheduleVO;
 import com.soldesk.vo.StylistVO;
@@ -33,7 +41,11 @@ public class ReservationService {
     
     /** 예약 단위. 시술 소요시간과 무관하게 30분 간격으로만 시작할 수 있다. */
     private static final int SLOT_MINUTES = 30;
-    
+
+    // 결제창에 들어간 예약이 자리를 잡아두는 시간. ResvMapper.xml 의 INTERVAL 10 MINUTE 과 같아야 함
+    // main의 findStalePendingIds 도 같은 정책
+    private static final int PAYMENT_HOLD_MINUTES = 10;
+
     /** DB 의 day_of_week 는 ENUM('월','화',...) 한글이라 java 의 DayOfWeek 를 그대로 못 쓴다. */
     private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
     
@@ -60,6 +72,8 @@ public class ReservationService {
     @Autowired
     private PaymentMapper paymentMapper;
 
+    @Autowired
+    private KakaoPayService kakaoPayService;
 
     @Transactional
     public List<ReservationVO> getRevList(int userId){
@@ -104,38 +118,14 @@ public class ReservationService {
             return List.of();
         }
 
-        // 1) 매장 영업시간 — 그 요일 행이 없으면 휴무다
-        String dayKo = DAY_KO[targetDate.getDayOfWeek().getValue() - 1];
-        SalonOperatingHourVO hour = salonMapper.findOperatingHour(stylist.getSalonId(), dayKo);
-        if (hour == null) {
+        LocalTime[] window = computeWorkWindow(stylist, targetDate, date);
+        if (window == null) {
             return List.of();
         }
-        LocalTime windowStart = LocalTime.parse(hour.getOpenTime());
-        LocalTime windowEnd = LocalTime.parse(hour.getCloseTime());
+        LocalTime windowStart = window[0];
+        LocalTime windowEnd = window[1];
 
-        // 2) 디자이너 근무시간으로 한 번 더 좁힌다.
-        //    등록된 스케줄이 없으면 매장 영업시간 내내 근무하는 것으로 본다.
-        //    (점주가 스케줄을 넣지 않았다고 예약이 아예 막히면 오히려 곤란하다)
-        StylistScheduleVO condition = new StylistScheduleVO();
-        condition.setStylistId(stylistId);
-        condition.setDate(date);
-        StylistScheduleVO schedule = scheduleMapper.findByStylistIdAndDate(condition);
-
-        if (schedule != null) {
-            if (!schedule.getIsAvailable()) {
-                return List.of(); // 점주가 그 날 쉬는 것으로 등록했다
-            }
-            LocalTime scheduleStart = LocalTime.parse(schedule.getStartTime());
-            LocalTime scheduleEnd = LocalTime.parse(schedule.getEndTime());
-            if (scheduleStart.isAfter(windowStart)) windowStart = scheduleStart;
-            if (scheduleEnd.isBefore(windowEnd)) windowEnd = scheduleEnd;
-        }
-
-        if (!windowStart.isBefore(windowEnd)) {
-            return List.of(); // 겹치는 구간이 없다
-        }
-
-        // 3) 이미 찬 시각과, 오늘이라면 이미 지나간 시각
+        // 이미 찬 시각과, 오늘이라면 이미 지나간 시각
         Set<String> reserved = new HashSet<>(resvMapper.findReservedTimes(stylistId, date));
         LocalDateTime now = LocalDateTime.now();
 
@@ -146,6 +136,38 @@ public class ReservationService {
             slots.add(new TimeSlotVO(label, !past && !reserved.contains(label)));
         }
         return slots;
+    }
+
+    // 매장 영업시간 ∩ 디자이너 근무시간. 겹치는 구간이 없으면(휴무 포함) null
+    private LocalTime[] computeWorkWindow(StylistVO stylist, LocalDate targetDate, String date) {
+        String dayKo = DAY_KO[targetDate.getDayOfWeek().getValue() - 1];
+        StylistScheduleVO condition = new StylistScheduleVO();
+        condition.setStylistId(stylist.getStylistId());
+        condition.setDate(date);
+        return workWindowOf(salonMapper.findOperatingHour(stylist.getSalonId(), dayKo),
+                scheduleMapper.findByStylistIdAndDate(condition));
+    }
+
+    // 위 계산에서 조회를 뺀 부분. 현황판은 매장/스케줄을 한 번에 읽어와서 이쪽만 반복 호출한다
+    private LocalTime[] workWindowOf(SalonOperatingHourVO hour, StylistScheduleVO schedule) {
+        if (hour == null) {
+            return null; // 그 요일 영업시간 행이 없으면 휴무다
+        }
+        LocalTime windowStart = LocalTime.parse(hour.getOpenTime());
+        LocalTime windowEnd = LocalTime.parse(hour.getCloseTime());
+
+        // 등록된 스케줄이 없으면 매장 영업시간 내내 근무하는 것으로 본다
+        if (schedule != null) {
+            if (!schedule.getIsAvailable()) {
+                return null; // 점주가 그 날 쉬는 것으로 등록했다
+            }
+            LocalTime scheduleStart = LocalTime.parse(schedule.getStartTime());
+            LocalTime scheduleEnd = LocalTime.parse(schedule.getEndTime());
+            if (scheduleStart.isAfter(windowStart)) windowStart = scheduleStart;
+            if (scheduleEnd.isBefore(windowEnd)) windowEnd = scheduleEnd;
+        }
+
+        return windowStart.isBefore(windowEnd) ? new LocalTime[] { windowStart, windowEnd } : null;
     }
 
     /**
@@ -297,5 +319,228 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public PaymentVO getPayment(int reservationId) {
         return paymentMapper.findByReservationId(reservationId);
+    }
+
+    // 점주 매장 예약현황관리: 본인 매장의 예약 목록 조회 (소유 검증)
+    @Transactional(readOnly = true)
+    public List<ReservationVO> getReservationsForOwner(int salonId, int ownerId, int page, int size) {
+        requireOwnedSalon(salonId, ownerId);
+        List<ReservationVO> list = resvMapper.findBySalonId(salonId, (page - 1) * size, size);
+        list.forEach(this::fillDisplayFields);
+        return list;
+    }
+
+    @Transactional(readOnly = true)
+    public int countReservationsForOwner(int salonId, int ownerId) {
+        requireOwnedSalon(salonId, ownerId);
+        return resvMapper.countBySalonId(salonId);
+    }
+
+    // 세션의 selectedSalonId 는 사용자가 URL 로 바꿔 넣을 수 있어서, 조회 전에 소유주를 확인함
+    private SalonVO requireOwnedSalon(int salonId, int ownerId) {
+        SalonVO salon = salonMapper.findById(salonId);
+        if (salon == null || salon.getOwnerId() != ownerId) {
+            throw new IllegalArgumentException("본인 매장의 예약만 조회할 수 있습니다.");
+        }
+        return salon;
+    }
+
+    // 하루치 예약현황판 표 생성 (Grid)
+    //
+    // 표의 줄(시각)은 디자이너들의 근무시간 슬롯과 실제 예약 시각을 합쳐서 만듦
+    // 점주가 나중에 근무시간을 줄이거나 휴무로 바꿨을 때 이미 잡혀 있던 예약이 표에서 통째로 사라져 손님을 놓치게 됨을 방지.
+    // 그래서 근무시간 밖이라도 예약이 있으면 줄을 만들고 대신 isOutsideHours 로 경고 표시
+    @Transactional(readOnly = true)
+    public ScheduleBoardVO getScheduleBoard(int salonId, int ownerId, LocalDate targetDate) {
+        requireOwnedSalon(salonId, ownerId);
+        String date = targetDate.toString();
+
+        // 디자이너 목록 / 영업시간 / 그 날 스케줄 / 그 날 예약
+        // 디자이너 수와 무관하게 조회는 네 번으로 고정
+        List<StylistVO> stylists = stylistMapper.findBySalonId(salonId);
+        String dayKo = DAY_KO[targetDate.getDayOfWeek().getValue() - 1];
+        SalonOperatingHourVO openHour = salonMapper.findOperatingHour(salonId, dayKo);
+        Map<Integer, StylistScheduleVO> scheduleByStylist = new HashMap<>();
+        for (StylistScheduleVO s : scheduleMapper.findBySalonIdAndDate(salonId, date)) {
+            scheduleByStylist.put(s.getStylistId(), s);
+        }
+        List<ReservationVO> reservations = resvMapper.findBySalonIdAndDate(salonId, date);
+        reservations.forEach(this::fillDisplayFields);
+
+        // 디자이너별 근무 구간 (null 이면 그 날 근무 없음)
+        Map<Integer, LocalTime[]> windows = new HashMap<>();
+        for (StylistVO stylist : stylists) {
+            windows.put(stylist.getStylistId(),
+                    workWindowOf(openHour, scheduleByStylist.get(stylist.getStylistId())));
+        }
+
+        // 줄로 세울 시각 모으기, 근무 슬롯 + 예약 시각(근무시간 밖 예약 포함).
+        // (TreeSet)중복 제거, 시각순 정렬이 한 번에
+        Set<LocalTime> times = new TreeSet<>();
+        for (LocalTime[] window : windows.values()) {
+            if (window == null) continue;
+            for (LocalTime t = window[0]; t.isBefore(window[1]); t = t.plusMinutes(SLOT_MINUTES)) {
+                times.add(t);
+            }
+        }
+        // 디자이너 → (시작시각 → 예약). 아래에서 칸마다 바로 꺼내 쓰려고 미리 묶어둠
+        Map<Integer, Map<LocalTime, ReservationVO>> startsAt = new HashMap<>();
+        for (ReservationVO r : reservations) {
+            LocalTime start = startTimeOf(r);
+            times.add(start);
+            startsAt.computeIfAbsent(r.getStylistId(), k -> new HashMap<>()).put(start, r);
+        }
+
+        // 줄(시각)마다 칸(디자이너)을 채움. 칸 상태는 근무여부 / 예약 / 앞 시술의 점유 세 가지
+        // past 는 그 30분 칸이 이미 끝난 줄, current 는 지금이 그 30분 안에 들어있는 줄
+        LocalDateTime now = LocalDateTime.now();
+        List<ScheduleRowVO> rows = new ArrayList<>();
+        for (LocalTime t : times) {
+            ScheduleRowVO row = new ScheduleRowVO();
+            row.setTime(t.format(HHMM));
+            row.setPast(targetDate.atTime(t).plusMinutes(SLOT_MINUTES).isBefore(now));
+            row.setCurrent(!targetDate.atTime(t).isAfter(now)
+                    && targetDate.atTime(t).plusMinutes(SLOT_MINUTES).isAfter(now));
+
+            List<OwnerScheduleSlotVO> cells = new ArrayList<>();
+            for (StylistVO stylist : stylists) {
+                LocalTime[] window = windows.get(stylist.getStylistId());
+                boolean working = window != null && !t.isBefore(window[0]) && t.isBefore(window[1]);
+                OwnerScheduleSlotVO cell = new OwnerScheduleSlotVO(working);
+                Map<LocalTime, ReservationVO> mine = startsAt.get(stylist.getStylistId());
+                if (mine != null) {
+                    cell.setReservation(mine.get(t));
+                    // 펌처럼 30분 이상 소요되는 시술이 이전 시간에 시작되어 현재 시간까지 점유중인지 판별
+                    cell.setOccupied(cell.getReservation() == null && coveredBy(mine.values(), t));
+                }
+                cells.add(cell);
+            }
+            row.setCells(cells);
+            rows.add(row);
+        }
+
+        // 최종 반환
+        ScheduleBoardVO board = new ScheduleBoardVO();
+        board.setStylists(stylists);
+        board.setRows(rows);
+        board.setBookedCount(reservations.size());
+        return board;
+    }
+
+    // 이 시각이 앞서 시작한 시술의 소요시간 안에 들어가는지 (펌처럼 긴 시술이 자리를 물고 있는 구간)
+    private boolean coveredBy(Collection<ReservationVO> reservations, LocalTime t) {
+        for (ReservationVO r : reservations) {
+            LocalTime start = startTimeOf(r);
+            if (start.isBefore(t) && start.plusMinutes(Math.max(r.getDurationMinutes(), SLOT_MINUTES)).isAfter(t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private LocalTime startTimeOf(ReservationVO reservation) {
+        return LocalTime.parse(reservation.getReservationTime().substring(11, 16));
+    }
+
+    // 화면 표시 전용 값 채우기 (displayStatus / endTime / rejectable)
+    //
+    // DB의 status를 손대지 않고, 지금 시각과 시술 소요시간만 가지고 지금 어떻게 보일지를 계산
+    // ex) 커트 30분과 펌 90분이 서로 다른 시점에 "완료"로 바뀜
+    // status 를 실제로 completed 로 넘기는 건 결제/리뷰 쪽과 같이 정할 문제라 여기서는 안 함
+    // 완료는 시각이 지난 확정 예약을 확인할 뿐, 손님이 실제로 왔는지는 알 수 없음
+    // 안 온 경우는 점주가 노쇼로 마감했을 때만 노쇼로
+    private void fillDisplayFields(ReservationVO reservation) {
+        LocalDateTime start = LocalDateTime.parse(
+                reservation.getReservationTime().substring(0, 16).replace(' ', 'T'));
+        LocalDateTime end = start.plusMinutes(Math.max(reservation.getDurationMinutes(), SLOT_MINUTES));
+        LocalDateTime now = LocalDateTime.now();
+        reservation.setEndTime(end.toLocalTime().format(HHMM));
+
+        String status = reservation.getStatus();
+        if ("pending".equals(status)) {
+            // 손님이 결제창에서 그냥 나가버려도 카카오페이가 알려주지 않아 pending 인 채로 남음.
+            // 자리는 10분이 지나면 이미 놓아준 상태라(findReservedTimes 와 같은 기준),
+            // 점주 화면에도 결제중이 아니라 "결제 미완료"로 보여줌
+            boolean abandoned = reservation.getCreatedAt() != null && LocalDateTime.parse(
+                    reservation.getCreatedAt().substring(0, 16).replace(' ', 'T'))
+                    .isBefore(now.minusMinutes(PAYMENT_HOLD_MINUTES));
+            reservation.setDisplayStatus(abandoned ? "결제 미완료" : "결제중");
+        } else if ("cancelled".equals(status)) {
+            // 같은 cancelled 라도 cancel_type / reject_reason 유무로 성격이 갈림
+            if ("no_show".equals(reservation.getCancelType())) {
+                reservation.setDisplayStatus("노쇼");
+            } else if (reservation.getRejectReason() != null) {
+                reservation.setDisplayStatus("거절됨");
+            } else {
+                reservation.setDisplayStatus("취소됨"); // 결제 이탈로 자리만 비운 건
+            }
+        } else if (now.isBefore(start)) {
+            reservation.setDisplayStatus("예약됨");
+        } else if (now.isBefore(end)) {
+            reservation.setDisplayStatus("진행중");
+        } else {
+            reservation.setDisplayStatus("완료");
+        }
+
+        // 확정된 예약이면 시술이 시작됐든 끝났든 점주가 정리할 수 있음 (거절/노쇼는 점주 재량).
+        // 대신 시점에 따라 화면이 환불/노쇼 기본값을 다르게 잡아줌
+        reservation.setRejectable("confirmed".equals(status));
+    }
+
+    // 점주가 확정 예약을 정리. 두 갈래로 나눈 건 돈을 돌려줘야 하는지가 갈리기 때문
+    //
+    //   rejected : 매장 사정으로 취소 > 결제 완료건이면 카카오페이 환불까지
+    //   no_show  : 손님이 안 옴 > 선불 금액은 매장이 가짐 (환불 없음)
+    //
+    // 아래 검증은 순서가 곧 방어 순서 - 값 > 예약 존재 > 소유 > 상태 > 시점
+    @Transactional
+    public void rejectReservation(int reservationId, int ownerId, String reason, String resolution) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new IllegalArgumentException("사유를 입력해주세요.");
+        }
+        boolean noShow = "no_show".equals(resolution);
+        if (!noShow && !"rejected".equals(resolution)) {
+            throw new IllegalArgumentException("잘못된 요청입니다.");
+        }
+        ReservationVO reservation = resvMapper.findById(reservationId);
+        if (reservation == null) {
+            throw new IllegalArgumentException("존재하지 않는 예약입니다.");
+        }
+        SalonVO salon = salonMapper.findById(reservation.getSalonId());
+        if (salon == null || salon.getOwnerId() != ownerId) {
+            throw new IllegalArgumentException("본인 매장의 예약만 처리할 수 있습니다.");
+        }
+        if (!"confirmed".equals(reservation.getStatus())) {
+            throw new IllegalArgumentException("이미 처리된 예약입니다.");
+        }
+        boolean started = !LocalDateTime.now().isBefore(LocalDateTime.parse(
+                reservation.getReservationTime().substring(0, 16).replace(' ', 'T')));
+        // 아직 오지도 않은 손님을 노쇼로 만들 수는 없으므로, 노쇼는 예약 시각이 지난 뒤에만 가능
+        if (noShow && !started) {
+            throw new IllegalArgumentException("아직 예약 시간이 되지 않아 노쇼로 처리할 수 없습니다.");
+        }
+
+        // 환불은 거절일 때만. 노쇼는 결제 상태를 그대로 둠
+        // 카카오 취소가 실패하면 예외로 트랜잭션이 통째로 롤백돼서, 예약은 confirmed 인 채로
+        // (환불은 안 됐는데 예약만 취소되는 상태가 제일 위험해서 순서를 이렇게 잡음)
+        if (!noShow) {
+            PaymentVO payment = paymentMapper.findByReservationId(reservationId);
+            if (payment != null && "completed".equals(payment.getPaymentStatus())) {
+                try {
+                    kakaoPayService.cancel(payment.getTransactionId(), payment.getAmount());
+                } catch (IllegalStateException e) {
+                    // 카카오 쪽 원문 메시지가 그대로 뜨면 점주는 처리가 된 건지조차 알 수 없어서 문구를 바꿔 던짐
+                    throw new IllegalStateException("환불에 실패해 처리가 취소되었습니다. 잠시 후 다시 시도해 주세요.", e);
+                }
+                paymentMapper.markRefunded(reservationId);
+            }
+        }
+
+        // UPDATE 쪽에도 status='confirmed' 조건이 걸려 있어서, 위 검증 통과 뒤에 누가 먼저
+        // 처리했으면 0행이 됨. 그 경우도 실패로 보고 롤백시킴
+        String cancelType = noShow ? "no_show" : "rejected";
+        if (resvMapper.rejectReservation(reservationId, reason.trim(), cancelType) == 0) {
+            throw new IllegalArgumentException("이미 처리된 예약입니다.");
+        }
     }
 }
