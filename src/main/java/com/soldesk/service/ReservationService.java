@@ -21,6 +21,7 @@ import com.soldesk.mapper.StylistScheduleMapper;
 import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonGradeVO;
 import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.ServiceVO;
 import com.soldesk.vo.StylistScheduleVO;
@@ -70,6 +71,30 @@ public class ReservationService {
     @Transactional
     public int countCompleted(int userId){
         return resvMapper.countCompleted(userId);
+    }
+
+    /**
+     * 매장별 등급. 매장마다 점주가 서로 다른 별개 사업자라, 한 매장에서 쌓은 단골 이력이
+     * 다른 매장 등급에 영향을 주면 안 된다 — 그래서 전체 합산이 아니라 매장별로 따로 계산한다.
+     * (마이페이지 상단의 "누적 이용 건수"는 이 계산과 별개로 전체 활동량 참고용으로 남겨둔다)
+     */
+    @Transactional(readOnly = true)
+    public List<SalonGradeVO> getSalonGrades(int userId){
+        List<SalonGradeVO> grades = resvMapper.findCompletedCountsBySalon(userId);
+        for (SalonGradeVO g : grades){
+            g.setGrade(gradeOf(g.getCompletedCount()));
+        }
+        return grades;
+    }
+
+    /**
+     * 완료 예약 건수 기준 등급 매핑. 기준 횟수(0~2 / 3~9 / 10+)는 실제 방문 분포를
+     * 분석해 정한 게 아니라 상식적으로 잡은 임시값 — 서비스가 자리 잡으면 다시 조정해야 한다.
+     */
+    public String gradeOf(int completedCount){
+        if (completedCount >= 10) return "VIP";
+        if (completedCount >= 3) return "단골";
+        return "새싹";
     }
 
     /**

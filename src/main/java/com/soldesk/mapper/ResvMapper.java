@@ -5,12 +5,16 @@ import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonGradeVO;
 
 public interface ResvMapper {
 
     List<ReservationVO> getRevList(@Param("userId") int userId);
 
     int countCompleted(@Param("userId") int userId);// 완료된 예약 건수
+
+    /** 매장별 등급 산정용 — 완료 예약이 하나라도 있는 매장만, 매장별 완료 건수 */
+    List<SalonGradeVO> findCompletedCountsBySalon(@Param("userId") int userId);
 
     int countByStylistId(int stylistId);// 이 디자이너를 참조하는 예약 건수 (삭제 가능 여부 판단용)
 

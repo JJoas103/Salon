@@ -69,6 +69,17 @@
           AND status = 'completed'
     </select>
 
+    <!-- 매장별 등급 산정용 — 완료 예약이 하나라도 있는 매장만, 매장별 완료 건수 -->
+    <select id="findCompletedCountsBySalon" parameterType="int" resultType="com.soldesk.vo.SalonGradeVO">
+        SELECT r.salon_id AS salonId, s.salon_name AS salonName, COUNT(*) AS completedCount
+        FROM Reservations r
+        JOIN Salons s ON s.salon_id = r.salon_id
+        WHERE r.user_id = #{userId}
+          AND r.status = 'completed'
+        GROUP BY r.salon_id, s.salon_name
+        ORDER BY completedCount DESC
+    </select>
+
     <select id="countByStylistId" resultType="int" parameterType="int">
         select count(*) from Reservations where stylist_id = #{stylistId}
     </select>

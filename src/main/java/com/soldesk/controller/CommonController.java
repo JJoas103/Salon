@@ -114,6 +114,9 @@ public class CommonController {
 
         model.addAttribute("user", user);
         model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
+        // 등급은 매장마다 점주가 다른 별개 사업자라 전체 합산이 아니라 매장별로 따로 보여준다.
+        // "내 등급 보기" 버튼이 여는 모달에서 이 목록을 매장별 배지로 나열한다.
+        model.addAttribute("salonGrades", reservationService.getSalonGrades(user.getUserId()));
         model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
         model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
