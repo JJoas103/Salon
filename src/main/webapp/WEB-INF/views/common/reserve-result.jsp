@@ -64,7 +64,7 @@
             </div>
             <div class="reserve-result-row">
               <dt>결제수단</dt>
-              <dd><c:out value="${reservation.paymentMethod}"/></dd>
+              <dd><c:out value="${reservation.pgProvider}"/></dd>
             </div>
             <div class="reserve-result-row">
               <dt>결제금액</dt>
@@ -81,15 +81,25 @@
           <c:choose>
             <c:when test="${success}">
               <button type="button" class="btn-modern btn-primary"
-                      onclick="location.href='<c:url value="/common/reserve"/>'">예약 내역 보기</button>
+                      onclick="location.href='<c:url value="/common/reservation"/>'">예약 내역 보기</button>
               <button type="button" class="btn-modern btn-outline"
                       onclick="location.href='<c:url value="/common/salonmap"/>'">헤어샵 더 둘러보기</button>
             </c:when>
             <c:otherwise>
+              <%-- 본인의 미완료 결제가 그 자리를 잡고 있는 경우에만 나온다.
+                   결제창에서 뒤로가기로 빠져나오면 콜백이 오지 않아 예약이 pending 으로 남는데,
+                   그대로 두면 10분을 기다려야 해서 되돌릴 방법을 여기서 준다.
+                   결제 중단 콜백과 같은 주소를 그대로 쓴다. --%>
+              <c:if test="${not empty pendingReservationId}">
+                <button type="button" class="btn-modern btn-primary"
+                        onclick="location.href='<c:url value="/common/reserve/payment/${pendingProvider}/cancel"><c:param name="reservationId" value="${pendingReservationId}"/></c:url>'">
+                  이전 결제 취소하기
+                </button>
+              </c:if>
               <%-- 실패했을 때는 방금 고르던 매장으로 곧장 돌려보낸다 --%>
               <c:if test="${not empty salonId}">
                 <button type="button" class="btn-modern btn-primary"
-                        onclick="location.href='<c:url value="/reserve"><c:param name="salonId" value="${salonId}"/></c:url>'">다시 예약하기</button>
+                        onclick="location.href='<c:url value="/common/reserve"><c:param name="salonId" value="${salonId}"/></c:url>'">다시 예약하기</button>
               </c:if>
               <button type="button" class="btn-modern btn-outline"
                       onclick="location.href='<c:url value="/common/salonmap"/>'">지도로 돌아가기</button>

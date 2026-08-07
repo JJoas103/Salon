@@ -13,6 +13,12 @@ public class PaymentVO {
     private String paymentStatus; // pending/completed/failed/refunded (payment_status)
     private String transactionId; // transaction_id
     private String paidAt; // 결제 일시 (paid_at)
+    private java.math.BigDecimal originalAmount;
+    private java.math.BigDecimal couponDiscount;
+    private int pointUsed;
+    private String pgProvider;
+    private Integer userCouponId;
+
 
     public int getPaymentId() { return paymentId; }
     public void setPaymentId(int paymentId) { this.paymentId = paymentId; }
@@ -30,4 +36,46 @@ public class PaymentVO {
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public String getPaidAt() { return paidAt; }
     public void setPaidAt(String paidAt) { this.paidAt = paidAt; }
+
+    public java.math.BigDecimal getOriginalAmount() {
+        return this.originalAmount;
+    }
+
+    public void setOriginalAmount(java.math.BigDecimal originalAmount) {
+        this.originalAmount = originalAmount;
+    }
+
+    public java.math.BigDecimal getCouponDiscount() {
+        return this.couponDiscount;
+    }
+
+    public void setCouponDiscount(java.math.BigDecimal couponDiscount) {
+        this.couponDiscount = couponDiscount;
+    }
+
+    public int getPointUsed() {
+        return this.pointUsed;
+    }
+
+    public void setPointUsed(int pointUsed) {
+        this.pointUsed = pointUsed;
+    }
+
+    public String getPgProvider() {
+        return this.pgProvider;
+    }
+
+    public void setPgProvider(String pgProvider) {
+        this.pgProvider = pgProvider;
+    }
+
+    public Integer getUserCouponId() {
+        return this.userCouponId;
+    }
+
+    public void setUserCouponId(int userCouponId) {
+        this.userCouponId = userCouponId;
+    }
+    
+
 }

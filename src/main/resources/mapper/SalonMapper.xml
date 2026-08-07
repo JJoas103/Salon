@@ -68,8 +68,9 @@
         ORDER BY price, service_id
     </select>
 
-    <select id="findServiceById" resultMap="serviceResultMap">
-        SELECT service_id, salon_id, service_name, price, duration_minutes, description, created_at, updated_at
+    <select id="findServiceById" resultMap="serviceResultMap" parameterType="int">
+        SELECT service_id, salon_id, service_name, price, duration_minutes,
+               description, created_at, updated_at
         FROM Services
         WHERE service_id = #{serviceId}
     </select>

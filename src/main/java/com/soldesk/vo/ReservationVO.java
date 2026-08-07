@@ -27,11 +27,47 @@ public class ReservationVO {
     private String customerPhone; // 예약 고객 연락처, 거절 시 연락용 (users.phone_number)
     private String stylistName; // 담당 디자이너명 (stylists.stylist_name)
     private int durationMinutes; // 시술 소요시간 (services.duration_minutes)
+    private int originalAmount;
+    private int couponDiscount;
+    private int pointUsed;
+    private String pgProvider;
 
     // ===== 서비스가 계산해 넣는 값 (DB 컬럼 아님) =====
     private String displayStatus; // 화면용 상태: 결제중/결제 미완료/예약됨/진행중/완료/거절됨/취소됨
     private boolean rejectable; // 거절 가능 여부 (확정 + 아직 시술 전)
     private String endTime; // 시술 종료 예정 'HH:mm'
+
+    public int getOriginalAmount() {
+        return this.originalAmount;
+    }
+
+    public void setOriginalAmount(int originalAmount) {
+        this.originalAmount = originalAmount;
+    }
+
+    public int getCouponDiscount() {
+        return this.couponDiscount;
+    }
+
+    public void setCouponDiscount(int couponDiscount) {
+        this.couponDiscount = couponDiscount;
+    }
+
+    public int getPointUsed() {
+        return this.pointUsed;
+    }
+
+    public void setPointUsed(int pointUsed) {
+        this.pointUsed = pointUsed;
+    }
+
+    public String getPgProvider() {
+        return this.pgProvider;
+    }
+
+    public void setPgProvider(String pgProvider) {
+        this.pgProvider = pgProvider;
+    }
 
     public String getServiceName() {
         return this.serviceName;
