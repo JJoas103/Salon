@@ -65,4 +65,20 @@ public interface ResvMapper {
     /** 결제 결과에 따라 pending → confirmed / cancelled */
     int updateStatus(@Param("reservationId") int reservationId,
                      @Param("status") String status);
+
+    // 점주 예약현황관리: 이 매장의 전체 예약 목록 한 페이지 (고객명/연락처/디자이너명 포함, 최신순)
+    List<ReservationVO> findBySalonId(@Param("salonId") int salonId,
+                                       @Param("offset") int offset,
+                                       @Param("limit") int limit);
+
+    int countBySalonId(int salonId);
+
+    // 점주가 확정된 예약을 정리(거절/노쇼). 대기/이미 취소된 건은 건드리지 않는다. 1이면 성공
+    int rejectReservation(@Param("reservationId") int reservationId,
+                           @Param("rejectReason") String rejectReason,
+                           @Param("cancelType") String cancelType);
+
+    // 예약현황판: 매장 전체의 그 날 예약을 한 번에 (디자이너마다 조회하면 N+1)
+    List<ReservationVO> findBySalonIdAndDate(@Param("salonId") int salonId,
+                                              @Param("date") String date);
 }
