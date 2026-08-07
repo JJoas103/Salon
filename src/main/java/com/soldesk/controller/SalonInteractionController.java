@@ -1,5 +1,6 @@
 package com.soldesk.controller;
 
+import java.io.IOException;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.SalonService;
@@ -41,21 +43,88 @@ public class SalonInteractionController {
         model.addAttribute("wishlisted", wishlistService.isWishlisted(user.getUserId(), salonId));
         model.addAttribute("reviewableReservations",
             reviewService.getReviewableReservations(user.getUserId(), salonId));
+        model.addAttribute("currentUserId", user.getUserId());
         return "common/reviews";
     }
 
     @PostMapping("/salons/{salonId}/reviews")
     public String writeReview(@PathVariable int salonId, @RequestParam int reservationId,
                               @RequestParam int rating, @RequestParam String comment,
-                              Authentication authentication, RedirectAttributes redirectAttributes) {
+                              @RequestParam(required = false) MultipartFile imageFile,
+                              @RequestParam(required = false) MultipartFile imageFile2,
+                              Authentication authentication, RedirectAttributes redirectAttributes)
+            throws IOException {
         UserVO user = userService.getUser(authentication.getName());
         try {
-            reviewService.write(user.getUserId(), salonId, reservationId, rating, comment);
+            reviewService.write(user.getUserId(), salonId, reservationId, rating, comment, imageFile, imageFile2);
             redirectAttributes.addFlashAttribute("success", "리뷰가 등록되었습니다.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/common/salons/" + salonId + "/reviews";
+    }
+
+    @PostMapping("/salons/{salonId}/reviews/{reviewId}/update")
+    public String updateReview(@PathVariable int salonId, @PathVariable int reviewId,
+                               @RequestParam int rating, @RequestParam String comment,
+                               @RequestParam(required = false) MultipartFile imageFile,
+                               @RequestParam(required = false) MultipartFile imageFile2,
+                               Authentication authentication, RedirectAttributes redirectAttributes)
+            throws IOException {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            reviewService.update(reviewId, user.getUserId(), rating, comment, imageFile, imageFile2);
+            redirectAttributes.addFlashAttribute("success", "리뷰가 수정되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/common/salons/" + salonId + "/reviews";
+    }
+
+    @PostMapping("/salons/{salonId}/reviews/{reviewId}/ajax")
+    @ResponseBody
+    public Map<String, Object> updateReviewAjax(@PathVariable int salonId, @PathVariable int reviewId,
+            @RequestParam int rating, @RequestParam String comment,
+            @RequestParam(required = false) MultipartFile imageFile,
+            @RequestParam(required = false) MultipartFile imageFile2,
+            Authentication authentication) throws IOException {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            reviewService.update(reviewId, user.getUserId(), rating, comment, imageFile, imageFile2);
+            return Map.of("success", true);
+        } catch (IllegalArgumentException e) {
+            return Map.of("success", false, "error", e.getMessage());
+        }
+    }
+
+    @GetMapping("/salons/{salonId}/reviews/data")
+    @ResponseBody
+    public Map<String, Object> reviewData(@PathVariable int salonId, Authentication authentication) {
+        SalonVO salon = salonService.getSalon(salonId);
+        UserVO user = userService.getUser(authentication.getName());
+        return Map.of(
+            "reviews", reviewService.getReviews(salonId),
+            "reviewCount", reviewService.countReviews(salonId),
+            "averageRating", salon != null && salon.getAverageRating() != null
+                ? salon.getAverageRating() : java.math.BigDecimal.ZERO,
+            "reviewableReservations", reviewService.getReviewableReservations(user.getUserId(), salonId)
+        );
+    }
+
+    @PostMapping("/salons/{salonId}/reviews/ajax")
+    @ResponseBody
+    public Map<String, Object> writeReviewAjax(@PathVariable int salonId,
+            @RequestParam int reservationId, @RequestParam int rating, @RequestParam String comment,
+            @RequestParam(required = false) MultipartFile imageFile,
+            @RequestParam(required = false) MultipartFile imageFile2,
+            Authentication authentication) throws IOException {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            reviewService.write(user.getUserId(), salonId, reservationId, rating, comment, imageFile, imageFile2);
+            return Map.of("success", true);
+        } catch (IllegalArgumentException e) {
+            return Map.of("success", false, "error", e.getMessage());
+        }
     }
 
     @PostMapping("/salons/{salonId}/wishlist")
