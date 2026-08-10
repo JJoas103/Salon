@@ -1,5 +1,7 @@
 package com.soldesk.service;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -7,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ServiceVO;
+import com.soldesk.vo.coupon.CouponOptionVO;
 
 /**
  * 결제 금액 계산의 유일한 입구.
@@ -38,6 +41,9 @@ public class CheckoutService {
     @Autowired
     private PointService pointService;
 
+    @Autowired
+    private CouponService couponService;
+
     /**
      * 금액을 계산한다. 부수효과 없음.
      *
@@ -63,7 +69,22 @@ public class CheckoutService {
         // 2) 쿠폰 할인 — Step 5 에서 채운다.
         //    적립금보다 먼저 빼는 순서는 바뀌면 안 된다. 적립금을 먼저 빼면 %할인의
         //    대상 금액이 줄어 사용자가 손해를 본다.
+        List<CouponOptionVO> options = couponService.evaluate(
+            userId, originalAmount, service.getSalonId(), serviceId
+        );
+        quote.setCoupons(options);
+
         int couponDiscount = 0;
+        if(userCouponId != null) {
+            CouponOptionVO picked = options.stream()
+                            .filter(o -> o.getUserCouponId() == userCouponId)
+                            .findFirst().orElse(null);
+            if(picked == null || !picked.isUsable()) {
+                quote.addMessage("coupon", "선택한 쿠폰을 사용할 수 없습니다");
+            } else {
+                couponDiscount = picked.getDiscountAmount();
+            }
+        }
         quote.setCouponDiscount(couponDiscount);
         int afterCoupon = originalAmount - couponDiscount;
 

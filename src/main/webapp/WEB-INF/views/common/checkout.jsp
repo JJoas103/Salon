@@ -81,9 +81,49 @@
               <h3>할인 적용</h3>
             </div>
             <div class="checkout-card-body">
-              <div class="checkout-soon">
-                <span><i class="fas fa-ticket" style="margin-right:8px;"></i> 쿠폰</span>
-                <span class="tag">준비중</span>
+              <%-- 쿠폰 — 못 쓰는 것도 사유와 함께 보여준다.
+                   목록에서 빼버리면 "쿠폰이 사라졌다" 고 느끼고 왜 못 쓰는지 알 방법이 없다. --%>
+              <div class="checkout-coupon">
+                <div class="checkout-coupon-head">
+                  <span><i class="fas fa-ticket" style="margin-right:8px;"></i> 쿠폰</span>
+                  <span class="checkout-point-balance">
+                    보유 <strong>${fn:length(quote.coupons)}</strong>장
+                  </span>
+                </div>
+
+                <c:choose>
+                  <c:when test="${empty quote.coupons}">
+                    <p class="checkout-point-hint">사용할 수 있는 쿠폰이 없습니다.</p>
+                  </c:when>
+                  <c:otherwise>
+                    <div class="checkout-coupon-list">
+                      <%-- 예약당 1장이라 라디오다. 되돌릴 수 있게 "사용 안 함" 을 먼저 둔다. --%>
+                      <label class="checkout-coupon-item is-none">
+                        <input type="radio" name="couponPick" value="" checked>
+                        <span class="checkout-coupon-name">쿠폰 사용 안 함</span>
+                      </label>
+
+                      <c:forEach var="coupon" items="${quote.coupons}">
+                        <label class="checkout-coupon-item ${coupon.usable ? '' : 'is-disabled'}">
+                          <input type="radio" name="couponPick" value="${coupon.userCouponId}"
+                                 <c:if test="${not coupon.usable}">disabled</c:if>>
+                          <span class="checkout-coupon-name">
+                            <c:out value="${coupon.couponName}"/>
+                            <c:if test="${not coupon.usable}">
+                              <small><c:out value="${coupon.reason}"/></small>
+                            </c:if>
+                          </span>
+                          <c:if test="${coupon.usable}">
+                            <span class="checkout-coupon-amount">
+                              -<fmt:formatNumber value="${coupon.discountAmount}" pattern="#,##0"/>원
+                            </span>
+                          </c:if>
+                        </label>
+                      </c:forEach>
+                    </div>
+                  </c:otherwise>
+                </c:choose>
+                <p class="checkout-point-hint is-warn" id="couponHint" hidden></p>
               </div>
 
               <div class="checkout-point">
@@ -170,6 +210,7 @@
             <input type="hidden" name="stylistId"       value="${stylist.stylistId}">
             <input type="hidden" name="reservationTime" value="<c:out value='${reservationTime}'/>">
             <input type="hidden" name="pointToUse"      id="fieldPointToUse" value="0">
+            <input type="hidden" name="userCouponId"    id="fieldUserCouponId" value="">
             <button type="submit" class="btn-modern btn-accent reserve-pay-btn" id="checkoutPayBtn">
               <i class="fas fa-comment"></i> 카카오페이로 결제하기
             </button>
@@ -191,18 +232,28 @@
     const pointInput   = document.getElementById('pointInput');
     const pointAllBtn  = document.getElementById('pointAllBtn');
     const pointHint    = document.getElementById('pointHint');
+    const couponHint   = document.getElementById('couponHint');
     const checkoutPayBtn = document.getElementById('checkoutPayBtn');
 
     const won = n => n.toLocaleString() + '원';
 
-    /* 적립금 입력이 바뀔 때마다 서버에 다시 물어본다.
+    /* 지금 고른 쿠폰. 빈 문자열이면 사용 안 함. */
+    function pickedCouponId() {
+      const checked = document.querySelector('input[name="couponPick"]:checked');
+      return checked ? checked.value : '';
+    }
+
+    /* 쿠폰·적립금 선택이 바뀔 때마다 서버에 다시 물어본다.
        클라이언트에서 계산하지 않는 이유는, 화면 계산과 결제 계산이 두 벌이 되면
-       반드시 어긋나기 때문이다. 상한/단위 판정도 전부 서버 몫이다. */
+       반드시 어긋나기 때문이다. 상한/단위/할인액 판정이 전부 서버 몫이다. */
     async function refreshQuote() {
       const body = new URLSearchParams({
         serviceId: SERVICE_ID,
         pointToUse: pointInput.value || 0
       });
+      /* 빈 값을 보내면 @RequestParam Integer 바인딩이 실패한다. 고른 경우에만 싣는다. */
+      const couponId = pickedCouponId();
+      if (couponId) body.append('userCouponId', couponId);
 
       const res = await fetch(QUOTE_URL, {
         method: 'POST',
@@ -215,6 +266,16 @@
       /* 서버가 잘라낸 값으로 입력칸을 되돌린다 — 화면과 청구가 항상 같은 값을 본다 */
       pointInput.value = q.pointUsed;
       document.getElementById('fieldPointToUse').value = q.pointUsed;
+      document.getElementById('fieldUserCouponId').value = q.couponDiscount > 0 ? couponId : '';
+
+      /* 쿠폰이 적용되면 적립금 상한(쿠폰 적용 후 금액의 50%)이 함께 줄어든다 */
+      pointInput.max = q.maxPointUsable;
+      pointAllBtn.dataset.max = q.maxPointUsable;
+
+      /* 고른 쿠폰이 그새 못 쓰게 된 경우(다른 탭에서 사용 등)의 안내 */
+      const couponMessage = q.messages && q.messages.coupon;
+      couponHint.textContent = couponMessage || '';
+      couponHint.hidden = !couponMessage;
 
       document.getElementById('sumCoupon').textContent = '-' + won(q.couponDiscount);
       document.getElementById('sumPoint').textContent  = '-' + won(q.pointUsed);
@@ -243,9 +304,16 @@
       quoteTimer = setTimeout(refreshQuote, 350);
     });
 
+    /* 상한은 쿠폰 적용 여부에 따라 바뀌므로 마지막 응답값을 쓴다 */
+    pointAllBtn.dataset.max = ${quote.maxPointUsable};
     pointAllBtn.addEventListener('click', () => {
-      pointInput.value = ${quote.maxPointUsable};
+      pointInput.value = pointAllBtn.dataset.max;
       refreshQuote();
+    });
+
+    /* 쿠폰을 바꾸면 할인 후 금액이 달라져 적립금 상한도 다시 계산돼야 한다 */
+    document.querySelectorAll('input[name="couponPick"]').forEach(radio => {
+      radio.addEventListener('change', refreshQuote);
     });
 
     /* 결제는 되돌리기 어려운 동작이라 중복 제출을 막는다 (예약 화면과 같은 방식). */

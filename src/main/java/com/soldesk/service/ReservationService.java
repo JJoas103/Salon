@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.soldesk.mapper.CouponMapper;
 import com.soldesk.mapper.PaymentMapper;
 import com.soldesk.mapper.ResvMapper;
 import com.soldesk.mapper.SalonMapper;
@@ -74,6 +75,12 @@ public class ReservationService {
 
     @Autowired
     private KakaoPayService kakaoPayService;
+
+    @Autowired
+    private CouponMapper couponMapper;
+
+    @Autowired
+    private CouponService couponService;
 
     @Transactional
     public List<ReservationVO> getRevList(int userId){
@@ -215,7 +222,17 @@ public class ReservationService {
         //    방금 만든 예약도 함께 사라진다. 되돌릴 것이 없다.
         pointService.use(userId, reservation.getReservationId(), quote.getPointUsed());
 
-        // 6) 결제 행 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
+        // 6) 쿠폰 점유. 예외가 나면 위와 마찬가지로 통째로 롤백된다.
+        //
+        //    할인이 실제로 붙었을 때만 묶는다. 사용자가 쿠폰을 골랐어도 quote() 가
+        //    "사용 불가" 로 판정했으면 할인은 0인데, 그때 묶어버리면 할인은 못 받고
+        //    쿠폰만 없어진다.
+        boolean couponApplied = userCouponId != null && quote.getCouponDiscount() > 0;
+        if (couponApplied) {
+            couponService.reserve(userCouponId, userId, reservation.getReservationId());
+        }
+
+        // 7) 결제 행 (Payments.reservation_id 가 NOT NULL 1:1 이라 예약이 먼저 있어야 한다)
         PaymentVO payment = new PaymentVO();
         payment.setReservationId(reservation.getReservationId());
         payment.setUserId(userId);
@@ -224,6 +241,7 @@ public class ReservationService {
         payment.setCouponDiscount(java.math.BigDecimal.valueOf(quote.getCouponDiscount()));
         payment.setPointUsed(quote.getPointUsed());
         payment.setPgProvider(quote.getPgProvider());
+        payment.setUserCouponId(couponApplied ? userCouponId : null);
         paymentMapper.insertPayment(payment);
 
         reservation.setServiceName(service.getServiceName());
@@ -266,8 +284,9 @@ public class ReservationService {
             // 여기까지 왔다면 금액이 중간에 조작된 것이다. 확정하지 않는다.
             throw new IllegalStateException("결제 금액이 예약 금액과 일치하지 않습니다.");
         }
-        if(paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {   
+        if(paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
             resvMapper.updateStatus(reservationId, "confirmed");
+            couponService.confirm(reservationId);
         }
     }
 
@@ -308,6 +327,7 @@ public class ReservationService {
         if(paymentMapper.markFailed(reservationId) == 1){
             resvMapper.updateStatus(reservationId, "cancelled");
             pointService.restore(reservationId);
+            couponService.release(reservationId);
         }
     }
 
@@ -532,7 +552,17 @@ public class ReservationService {
                     // 카카오 쪽 원문 메시지가 그대로 뜨면 점주는 처리가 된 건지조차 알 수 없어서 문구를 바꿔 던짐
                     throw new IllegalStateException("환불에 실패해 처리가 취소되었습니다. 잠시 후 다시 시도해 주세요.", e);
                 }
-                paymentMapper.markRefunded(reservationId);
+                // 돈을 되돌렸으면 적립금·쿠폰도 함께 되돌린다. 매장 사정으로 취소된 것이라
+                // 사용자가 쓴 할인 수단까지 잃을 이유가 없다.
+                //
+                // 노쇼(위 if 밖)에서는 되돌리지 않는다. 환불이 없어 매장이 결제액을 그대로
+                // 가지므로, 적립금만 돌려주면 그 몫을 플랫폼이 떠안게 된다.
+                // 원복 여부는 환불 여부와 항상 같이 간다.
+                if (paymentMapper.markRefunded(reservationId) == 1) {
+                    pointService.restore(reservationId);
+                    // release 가 아니라 refund 다. 확정된 쿠폰은 used 상태라 release 로는 안 잡힌다.
+                    couponService.refund(reservationId);
+                }
             }
         }
 

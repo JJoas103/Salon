@@ -1,7 +1,10 @@
 package com.soldesk.vo;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+
+import com.soldesk.vo.coupon.CouponOptionVO;
 
 /**
  * 결제 금액 계산 결과.
@@ -23,6 +26,15 @@ public class PriceQuoteVO {
     /** finalAmount 가 0 이면 "ZERO" — 외부 결제사를 거치지 않는다 */
     private String pgProvider;
 
+    private List<CouponOptionVO> coupons;
+
+    public List<CouponOptionVO> getCoupons() {
+        return this.coupons;
+    }
+
+    public void setCoupons(List<CouponOptionVO> coupons) {
+        this.coupons = coupons;
+    }
     /**
      * 사용자에게 알려줄 안내. 필드명 → 문구.
      * 요청한 적립금이 상한을 넘으면 거절하지 않고 잘라낸 뒤 그 이유를 여기 담는다.

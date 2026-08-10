@@ -678,8 +678,21 @@ body {
 .checkout-pay-option { display: flex; align-items: center; gap: 11px; padding: 14px 16px; border: 1.5px solid var(--accent); border-radius: var(--radius-md); font-size: 14px; font-weight: 600; color: var(--text-main); cursor: pointer; }
 .checkout-pay-option input { accent-color: var(--accent); }
 
-/* 쿠폰 자리 — Step 5 에서 실제 UI 로 교체된다 */
 .checkout-soon { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 7px 0; font-size: 14px; font-weight: 600; color: var(--text-sub); }
+
+/* 쿠폰 선택 — 예약당 1장이라 라디오다 */
+.checkout-coupon-head { display: flex; justify-content: space-between; align-items: center; gap: 14px; font-size: 14px; font-weight: 600; color: var(--text-sub); }
+.checkout-coupon-list { display: flex; flex-direction: column; gap: 8px; margin-top: 11px; }
+.checkout-coupon-item { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-size: 14px; cursor: pointer; transition: border-color .15s ease; }
+.checkout-coupon-item:has(input:checked) { border-color: var(--accent); background: var(--bg-sub); }
+.checkout-coupon-item input { accent-color: var(--accent); }
+.checkout-coupon-name { flex: 1; min-width: 0; font-weight: 600; color: var(--text-main); }
+/* 사용 불가 사유는 쿠폰 이름 아래 작게 붙인다 */
+.checkout-coupon-name small { display: block; margin-top: 3px; font-size: 12px; font-weight: 500; color: var(--text-light); }
+.checkout-coupon-amount { flex-shrink: 0; font-weight: 800; color: var(--success); }
+.checkout-coupon-item.is-disabled { background: var(--bg-sub); cursor: not-allowed; }
+.checkout-coupon-item.is-disabled .checkout-coupon-name { color: var(--text-light); }
+.checkout-coupon-item.is-none { color: var(--text-sub); }
 
 /* 적립금 사용 */
 .checkout-point { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
