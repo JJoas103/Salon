@@ -46,6 +46,18 @@ public class CouponService {
         couponMapper.refundCoupon(reservationId);
     }
 
+    /** 마이페이지 "보유 활성 쿠폰" 개수. 만료분은 조회 조건에서 빠진다. */
+    @Transactional(readOnly = true)
+    public int countAvailable(int userId){
+        return couponMapper.countAvailable(userId);
+    }
+
+    /** 쿠폰함 — 사용·만료분까지 전부 (쓸 수 있는 것이 위로 온다) */
+    @Transactional(readOnly = true)
+    public List<UserCouponVO> getMyCoupons(int userId){
+        return couponMapper.findAllByUserId(userId);
+    }
+
     @Transactional(readOnly = true)
     public List<CouponOptionVO> evaluate(int userId, int originalAmount, int salonId, int serviceId){
         List<CouponOptionVO> options = new ArrayList<>();

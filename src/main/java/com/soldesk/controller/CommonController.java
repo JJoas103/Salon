@@ -31,6 +31,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.CouponService;
 import com.soldesk.service.PointService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
@@ -63,6 +64,9 @@ public class CommonController {
 
     @Autowired
     private PointService pointService;
+
+    @Autowired
+    private CouponService couponService;
 
     @Autowired
     private SalonService salonService;
@@ -124,8 +128,23 @@ public class CommonController {
         model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
         model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
 
         return "common/mypage";
+    }
+
+    /** 쿠폰함 — 마이페이지의 쿠폰 카드에서 들어온다 */
+    @GetMapping("/coupons")
+    public String coupons(Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
+        model.addAttribute("myCoupons", couponService.getMyCoupons(user.getUserId()));
+        // 화면이 기한 만료를 판단하는 기준. 만료분은 status 를 바꾸지 않으므로 날짜를 직접 견줘야 한다.
+        model.addAttribute("today", java.time.LocalDate.now().toString());
+
+        return "common/coupons";
     }
 
     /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */

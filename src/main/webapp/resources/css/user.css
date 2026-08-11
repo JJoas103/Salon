@@ -710,6 +710,25 @@ body {
 .checkout-earn { margin-top: 12px; padding: 11px 14px; background: var(--bg-sub); border-radius: var(--radius-md); font-size: 12.5px; color: var(--text-sub); text-align: center; }
 .checkout-earn strong { color: var(--accent); font-weight: 800; }
 
+/* ---- 쿠폰함 (coupons.jsp) ----
+   머리말·빈 화면은 작성한 리뷰 페이지(.my-review-*)를 그대로 쓰고 목록만 따로 잡는다. */
+.coupon-list { display: flex; flex-direction: column; gap: 12px; }
+.coupon-card { display: flex; align-items: stretch; gap: 18px; padding: 20px 24px; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--white); box-shadow: var(--shadow); }
+/* 왼쪽 할인율 칸 — 점선으로 끊어 실제 쿠폰처럼 보이게 한다 */
+.coupon-card-amount { flex-shrink: 0; width: 108px; padding-right: 18px; border-right: 2px dashed var(--border); display: flex; flex-direction: column; justify-content: center; text-align: center; }
+.coupon-card-amount strong { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.02em; }
+.coupon-card-amount span { margin-top: 4px; font-size: 11.5px; color: var(--text-light); }
+.coupon-card-body { flex: 1; min-width: 0; }
+.coupon-card-body h2 { font-size: 16px; font-weight: 700; }
+.coupon-card-terms { margin-top: 6px; font-size: 13px; color: var(--text-sub); }
+.coupon-card-date { margin-top: 4px; font-size: 12.5px; color: var(--text-light); }
+.coupon-card-state { flex-shrink: 0; display: flex; align-items: center; }
+.coupon-tag-live { background: var(--accent); color: var(--white); }
+/* 사용 완료·만료된 쿠폰은 흐리게 두되 목록에는 남긴다 */
+.coupon-card.is-dead { background: var(--bg-sub); box-shadow: none; }
+.coupon-card.is-dead .coupon-card-amount strong { color: var(--text-light); }
+.coupon-card.is-dead .coupon-card-body h2 { color: var(--text-sub); }
+
 /* ---- 적립금 내역 (points.jsp) ----
    머리말·빈 화면은 작성한 리뷰 페이지(.my-review-*)를 그대로 쓰고 목록만 따로 잡는다. */
 .point-list { display: flex; flex-direction: column; gap: 10px; }
