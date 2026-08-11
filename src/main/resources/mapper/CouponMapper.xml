@@ -22,6 +22,8 @@
         <result column="is_active"        property="isActive" />
         <result column="created_at"       property="createdAt" />
         <result column="updated_at"       property="updatedAt" />
+        <result column="issued_count"     property="issuedCount" />
+        <result column="used_count"       property="usedCount" />
     </resultMap>
 
     <!-- 사용자가 가진 쿠폰 1장 + 그 정책.
@@ -183,13 +185,26 @@
           AND CURDATE() BETWEEN valid_from AND valid_until
     </select>
 
+    <!-- 관리자 목록. "몇 장 나갔고 몇 장 쓰였나" 를 못 보면 관리 화면의 의미가 없어
+         집계를 함께 가져온다. 쿠폰 종류가 수백 개가 될 화면이 아니라 서브쿼리로 충분하다. -->
     <select id="findAllCoupons" resultMap="couponResultMap">
-        SELECT coupon_id, promotion_id, salon_id, service_id, coupon_name, coupon_code,
-               discount_type, discount_value, max_discount, min_order_amount,
-               valid_from, valid_until, issue_type, once_per_user, is_active,
-               created_at, updated_at
-        FROM Coupons
-        ORDER BY coupon_id DESC
+        SELECT c.coupon_id, c.promotion_id, c.salon_id, c.service_id, c.coupon_name, c.coupon_code,
+               c.discount_type, c.discount_value, c.max_discount, c.min_order_amount,
+               c.valid_from, c.valid_until, c.issue_type, c.once_per_user, c.is_active,
+               c.created_at, c.updated_at,
+               (SELECT COUNT(*) FROM User_Coupons uc
+                 WHERE uc.coupon_id = c.coupon_id)                        AS issued_count,
+               (SELECT COUNT(*) FROM User_Coupons uc
+                 WHERE uc.coupon_id = c.coupon_id AND uc.status = 'used')  AS used_count
+        FROM Coupons c
+        ORDER BY c.coupon_id DESC
+    </select>
+
+    <!-- 발급 실패 사유를 가르는 데 쓴다. issueCoupon 이 0 을 돌려주는 이유가
+         "이미 보유" 인지 "중지·기간 밖" 인지 관리자에게 알려줘야 한다. -->
+    <select id="countOwnedByUser" resultType="int">
+        SELECT COUNT(*) FROM User_Coupons
+        WHERE user_id = #{userId} AND coupon_id = #{couponId}
     </select>
 
     <select id="findCouponById" resultMap="couponResultMap" parameterType="int">

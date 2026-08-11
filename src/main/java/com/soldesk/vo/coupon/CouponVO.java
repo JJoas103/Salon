@@ -11,7 +11,12 @@ public class CouponVO {
     private java.math.BigDecimal discountValue;
     private java.math.BigDecimal maxDiscount;
     private java.math.BigDecimal minOrderAmount;
+    // <input type="date"> 가 보내는 'yyyy-MM-dd' 를 그대로 받는다.
+    // 이 어노테이션이 없으면 폼 제출 시 타입 변환에 실패해 400 이 난다.
+    @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd")
     private java.time.LocalDate validFrom;
+
+    @org.springframework.format.annotation.DateTimeFormat(pattern = "yyyy-MM-dd")
     private java.time.LocalDate validUntil;
     private String issueType;
     private boolean oncePerUser;
@@ -19,6 +24,17 @@ public class CouponVO {
     private String createdAt;
     private String updatedAt;
 
+    // ===== 집계 (관리자 목록에서만 채워진다) =====
+    private int issuedCount;   // 지금까지 나간 장수
+    private int usedCount;     // 그중 실제로 쓰인 장수
+
+    public int getIssuedCount() { return this.issuedCount; }
+    public void setIssuedCount(int issuedCount) { this.issuedCount = issuedCount; }
+    public int getUsedCount() { return this.usedCount; }
+    public void setUsedCount(int usedCount) { this.usedCount = usedCount; }
+
+    /** 매장 한정 쿠폰인지 (화면에서 "전 매장 공통" 과 가르는 데 쓴다) */
+    public boolean isSalonLimited() { return this.salonId != null; }
 
     public int getCouponId() {
         return this.couponId;

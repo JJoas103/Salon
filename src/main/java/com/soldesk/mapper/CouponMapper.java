@@ -66,7 +66,11 @@ public interface CouponMapper {
 
     // ---- 관리자 ----
 
+    /** 관리자 목록 — 발급/사용 집계를 함께 담아 온다 */
     List<CouponVO> findAllCoupons();
+
+    /** 발급 실패 사유 판별용 ("이미 보유" 인지 "중지·기간 밖" 인지) */
+    int countOwnedByUser(@Param("userId") int userId, @Param("couponId") int couponId);
 
     CouponVO findCouponById(int couponId);
 
