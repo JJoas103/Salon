@@ -12,8 +12,13 @@ import com.soldesk.vo.ReviewVO;
 
 @Service
 public class ReviewService {
+
+    /** 리뷰 1건당 적립액. 정액이라 시술 가격과 무관하다. */
+    private static final int REVIEW_EARN_POINT = 1000;
+
     @Autowired private ReviewMapper reviewMapper;
     @Autowired private FileService fileService;
+    @Autowired private PointService pointService;
 
     @Transactional(readOnly = true)
     public List<ReviewVO> getReviews(int salonId) { return reviewMapper.findBySalonId(salonId); }
@@ -54,6 +59,11 @@ public class ReviewService {
         }
         reviewMapper.insert(review);
         reviewMapper.refreshSalonAverageRating(salonId);
+
+        // 적립은 리뷰를 남긴 시점에 붙인다. 금액과 무관한 정액인 이유는,
+        // 리뷰 한 건의 가치가 시술 가격에 비례하지 않기 때문이다.
+        // (비율로 두면 비싼 시술에만 리뷰가 몰린다)
+        pointService.earn(userId, reservationId, REVIEW_EARN_POINT, "리뷰 작성 적립");
     }
 
     @Transactional(readOnly = true)

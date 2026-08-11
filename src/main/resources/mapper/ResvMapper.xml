@@ -70,10 +70,13 @@
     <select id="countCompleted"
             resultType="int"
             parameterType="int">
+        <!-- "누적 예약 건수". 결제까지 끝난 예약을 센다.
+             'completed' 로 가는 전이를 두지 않기로 해서(방문 여부를 알 수 없다),
+             확정된 예약을 이용 실적으로 본다. -->
         SELECT COUNT(*)
         FROM Reservations
         WHERE user_id = #{userId}
-          AND status = 'completed'
+          AND status IN ('confirmed', 'completed')
     </select>
 
     <select id="countByStylistId" resultType="int" parameterType="int">
