@@ -9,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.soldesk.mapper.CouponMapper;
 import com.soldesk.vo.coupon.CouponOptionVO;
+import com.soldesk.vo.coupon.CouponVO;
 import com.soldesk.vo.coupon.UserCouponVO;
 
 @Service
@@ -93,5 +94,12 @@ public class CouponService {
                                         coupon.getMinOrderAmount().intValue());
         }
         return null; //사용 가능
+    }
+
+    @Transactional
+    public void issueByType(int userId, String issueType){
+        for(CouponVO coupon : couponMapper.findByIssueType(issueType)){
+            couponMapper.issueCoupon(userId, coupon.getCouponId());
+        }
     }
 }
