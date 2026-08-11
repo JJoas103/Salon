@@ -16,6 +16,7 @@ public interface SalonMapper {
 
     List<ServiceVO> findServicesBySalonId(int salonId);
 
+    /** 시술 1건. 금액 계산은 화면이 보낸 값이 아니라 이 결과의 price 를 쓴다. */
     ServiceVO findServiceById(int serviceId);
 
     /** 점주 시술 메뉴 등록 */
@@ -26,6 +27,7 @@ public interface SalonMapper {
 
     /** 점주 시술 메뉴 삭제 */
     void deleteService(int serviceId);
+
 
     /**
      * 특정 요일의 영업시간. 예약 가능 시간대를 만드는 바깥 테두리가 된다.

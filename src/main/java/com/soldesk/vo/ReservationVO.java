@@ -26,8 +26,7 @@ public class ReservationVO {
     private int originalAmount;
     private int couponDiscount;
     private int pointUsed;
-    private String pgProvider;    
-
+    private String pgProvider;
 
     private String customerName; // 예약 고객명 (users.user_name)
     private String customerPhone; // 예약 고객 연락처, 거절 시 연락용 (users.phone_number)
@@ -72,6 +71,7 @@ public class ReservationVO {
         this.pgProvider = pgProvider;
     }
     
+
     public String getServiceName() {
         return this.serviceName;
     }
