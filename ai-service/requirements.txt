@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+elasticsearch>=8.15,<9
+sentence-transformers
+langchain
+langchain-ollama
+langchain-mcp-adapters
+mcp
