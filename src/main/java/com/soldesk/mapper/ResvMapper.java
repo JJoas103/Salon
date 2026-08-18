@@ -40,4 +40,9 @@ public interface ResvMapper {
     /** 결제 결과에 따라 pending → confirmed / cancelled */
     int updateStatus(@Param("reservationId") int reservationId,
                      @Param("status") String status);
+
+    /** 사용자가 자신의 확정 예약을 취소 */
+    int cancelReservation(@Param("reservationId") int reservationId,
+                          @Param("userId") int userId);
+
 }
