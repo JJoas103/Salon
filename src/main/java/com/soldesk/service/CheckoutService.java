@@ -33,7 +33,11 @@ public class CheckoutService {
     private static final int POINT_MIN_BALANCE = 1000;
 
     /** 적립률. 실제로 현금이 오간 금액에만 적용한다. */
-    private static final double EARN_RATE = 0.05;
+    /**
+     * 리뷰 1건당 적립액. ReviewService.REVIEW_EARN_POINT 와 같은 값이어야 한다.
+     * 결제액 비율이 아닌 이유는, 리뷰의 가치가 시술 가격에 비례하지 않기 때문이다.
+     */
+    private static final int REVIEW_EARN_POINT = 1000;
 
     @Autowired
     private SalonMapper salonMapper;
@@ -102,8 +106,8 @@ public class CheckoutService {
         int finalAmount = afterCoupon - pointUsed;
         quote.setFinalAmount(finalAmount);
 
-        // 적립금으로 낸 부분은 적립에서 뺀다. 그러지 않으면 적립금이 스스로를 불린다.
-        quote.setEarnPreview((int) Math.floor(finalAmount * EARN_RATE));
+        // 적립은 결제가 아니라 리뷰 작성 시점에 붙으므로 결제금액과 무관한 정액이다.
+        quote.setEarnPreview(REVIEW_EARN_POINT);
 
         // 5) 결제사 — 0 원이면 외부 결제사를 거치지 않는다
         quote.setPgProvider(finalAmount == 0 ? "ZERO" : "KAKAOPAY");

@@ -34,7 +34,7 @@
         </div>
       </div>
       <div class="stat-grid stat-grid-four">
-        <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">누적 이용 건수</span><strong style="font-size: 26px;">${reservationCount} 회</strong></div>
+        <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">누적 예약 건수</span><strong style="font-size: 26px;">${reservationCount} 회</strong></div>
         <a class="stat-card stat-card-link" href="<c:url value='/common/coupons'/>">
           <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">보유 활성 쿠폰</span>
           <strong style="font-size:26px;">${couponCount}장</strong>

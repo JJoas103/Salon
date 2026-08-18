@@ -35,6 +35,22 @@ public class PointService {
         writeTx(userId, reservationId, "use", -amount, "예약 결제 사용");
     }
 
+    /**
+     * 적립. 리뷰를 남겼을 때 불린다.
+     *
+     * 고객이 실제로 방문했는지 시스템이 알 방법이 없어 적립 시점을 리뷰 작성으로 잡았다.
+     * 리뷰는 명백한 사용자 행동이라 추정이 필요 없고, 안 간 사람은 리뷰를 쓰지 않는다.
+     *
+     * 같은 예약에 두 번 쌓이지 않는 것은 Point_Transactions 의
+     * UNIQUE(reservation_id, tx_type) 가 막아준다. 리뷰를 지웠다 다시 써도 한 번뿐이다.
+     */
+    @Transactional
+    public void earn(int userId, int reservationId, int amount, String description){
+        if (amount <= 0) return;
+        pointMapper.addPoint(userId, amount);
+        writeTx(userId, reservationId, "earn", amount, description);
+    }
+
     @Transactional
     public void restore(int reservationId){
         PointTransactionVO used = pointMapper.findByReservationAndType(reservationId, "use");

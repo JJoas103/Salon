@@ -198,7 +198,7 @@
           </div>
 
           <p class="checkout-earn" id="sumEarn">
-            결제 후 방문을 마치면 <strong><fmt:formatNumber value="${quote.earnPreview}" pattern="#,##0"/></strong>원이 적립됩니다.
+            이용 후 리뷰를 남기면 <strong><fmt:formatNumber value="${quote.earnPreview}" pattern="#,##0"/></strong>원이 적립됩니다.
           </p>
 
           <%-- 금액은 넘기지 않는다. 서버가 serviceId 로 가격을 다시 읽고
@@ -281,7 +281,7 @@
       document.getElementById('sumPoint').textContent  = '-' + won(q.pointUsed);
       document.getElementById('sumFinal').textContent  = won(q.finalAmount);
       document.getElementById('sumEarn').innerHTML =
-          '결제 후 방문을 마치면 <strong>' + q.earnPreview.toLocaleString() + '</strong>원이 적립됩니다.';
+          '이용 후 리뷰를 남기면 <strong>' + q.earnPreview.toLocaleString() + '</strong>원이 적립됩니다.';
 
       /* 잘렸다면 왜 잘렸는지 알려준다 */
       const message = q.messages && q.messages.point;

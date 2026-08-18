@@ -30,9 +30,6 @@
     <li class="sidebar-item ${menu == 'reservations' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/reservations'/>"><i class="fas fa-calendar-check"></i> 예약현황관리</a>
     </li>
-    <li class="sidebar-item ${menu == 'events' ? 'active' : ''}" data-needs-salon="true">
-      <a href="<c:url value='/owner/events'/>"><i class="fas fa-bullhorn"></i> 이벤트/공지사항</a>
-    </li>
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담<span id="navUnread" class="nav-unread" data-count="0"></span></a>
     </li>

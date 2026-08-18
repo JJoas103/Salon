@@ -61,14 +61,19 @@
         JOIN Services se ON se.service_id = r.service_id
         LEFT JOIN Reviews rv ON rv.reservation_id = r.reservation_id
         WHERE r.user_id = #{userId} AND r.salon_id = #{salonId}
-          AND r.status = 'completed' AND rv.review_id IS NULL
+          <!-- 방문 완료 여부를 시스템이 알 수 없어 'completed' 전이를 두지 않는다.
+               예약 시각이 지난 confirmed 를 이용한 것으로 본다.
+               노쇼·거절은 점주가 처리해 cancelled 가 되므로 여기서 자동으로 빠진다. -->
+          AND r.status = 'confirmed' AND r.reservation_time &lt; NOW()
+          AND rv.review_id IS NULL
         ORDER BY r.reservation_time DESC
     </select>
     <select id="countReviewableReservation" resultType="int">
         SELECT COUNT(*) FROM Reservations r
         LEFT JOIN Reviews rv ON rv.reservation_id = r.reservation_id
         WHERE r.reservation_id = #{reservationId} AND r.user_id = #{userId}
-          AND r.salon_id = #{salonId} AND r.status = 'completed'
+          AND r.salon_id = #{salonId}
+          AND r.status = 'confirmed' AND r.reservation_time &lt; NOW()
           AND rv.review_id IS NULL
     </select>
     <insert id="insert" parameterType="com.soldesk.vo.ReviewVO"
