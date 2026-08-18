@@ -61,4 +61,7 @@ public interface UserMapper {
 
     // 현재 제재중(정지/영구정지)인 회원 목록 -- CustomUserDetails.currentlySuspended와 동일한 조건
     List<UserVO> findSanctionedUsers();
+
+    // 마이페이지 "내 글에 달린 댓글" 탭 확인 시각 갱신 -- 안읽음 배지 리셋용
+    void updateLastReplyCheckAt(@Param("userId") int userId);
 }

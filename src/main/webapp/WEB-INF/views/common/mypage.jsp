@@ -56,6 +56,10 @@
           <span><i class="fas fa-star" style="margin-right:12px;"></i> 작성한 리뷰</span>
           <span><strong>${reviewCount}</strong>개 <i class="fas fa-chevron-right" style="margin-left:8px;"></i></span>
         </a>
+        <a href="<c:url value='/common/my-community'/>" class="menu-item-modern">
+          <span><i class="fas fa-comments" style="margin-right:12px;"></i> 내 커뮤니티 활동</span>
+          <span><strong>${communityReplyCount}</strong>개 새 댓글 <i class="fas fa-chevron-right" style="margin-left:8px;"></i></span>
+        </a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-credit-card" style="margin-right:12px;"></i> 결제 수단 및 카드 관리</span><span class="tag">준비중</span></a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-bell" style="margin-right:12px;"></i> 알림 설정</span><span class="tag">준비중</span></a>
         <a href="#" id="openPasswordModalBtn" class="menu-item-modern"><span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span><i class="fas fa-chevron-right"></i></a>

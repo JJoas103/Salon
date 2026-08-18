@@ -178,6 +178,12 @@
         where user_id = #{userId}
     </update>
 
+    <update id="updateLastReplyCheckAt">
+        update Users
+        set last_reply_check_at = NOW()
+        where user_id = #{userId}
+    </update>
+
     <!-- 현재 제재중인 회원 목록 (영구정지 또는 정지기간이 아직 안 끝난 정지) -->
     <select id="findSanctionedUsers" resultMap="userResultMap">
         select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
