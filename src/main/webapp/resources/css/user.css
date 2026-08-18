@@ -759,6 +759,30 @@ body {
 
 .reserve-result-actions { display: flex; gap: 10px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
 
+/* ---- AI 시술 추천 챗봇 (sidebar_common.jsp, 로그인 사용자 전용) ---- */
+.ai-chat-fab {
+  position: fixed; right: 28px; bottom: 28px; z-index: 900;
+  width: 58px; height: 58px; border: none; border-radius: var(--radius-full);
+  background: var(--accent); color: var(--white); font-size: 22px;
+  box-shadow: var(--shadow-lg); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.15s ease;
+}
+.ai-chat-fab:hover { transform: scale(1.06); }
+
+.modal-box.ai-chat-box { max-width: 480px; height: 620px; max-height: 80vh; padding: 26px; display: flex; flex-direction: column; }
+
+.ai-chat-messages { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; margin-bottom: 14px; }
+.ai-chat-msg { max-width: 82%; padding: 10px 14px; border-radius: var(--radius-md); font-size: 13.5px; line-height: 1.55; white-space: pre-wrap; }
+.ai-chat-msg.user { align-self: flex-end; background: var(--accent); color: var(--white); border-bottom-right-radius: 4px; }
+.ai-chat-msg.bot { align-self: flex-start; background: var(--bg-sub); color: var(--text-main); border-bottom-left-radius: 4px; }
+.ai-chat-msg.bot.pending { color: var(--text-light); font-style: italic; }
+
+.ai-chat-input-row { display: flex; gap: 8px; }
+.ai-chat-input-row .modern-input { flex: 1; }
+.ai-chat-input-row button { flex-shrink: 0; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }
+.ai-chat-input-row button:disabled { opacity: 0.55; cursor: not-allowed; }
+
 @media (max-width: 1280px) {
   .reserve-layout { grid-template-columns: 1fr; }
   .reserve-summary { position: static; }

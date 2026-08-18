@@ -218,3 +218,92 @@
 })();
 </script>
 </sec:authorize>
+
+<%-- AI 시술 추천 챗봇 위젯 — 개인 예약이력을 다루는 상담이라 로그인 사용자에게만 노출
+     (/api/chat 은 permitAll 목록에 없어 비로그인 호출은 어차피 401) --%>
+<sec:authorize access="isAuthenticated()">
+<button type="button" id="aiChatFab" class="ai-chat-fab" aria-label="AI 시술 추천 상담">
+  <i class="fas fa-wand-magic-sparkles"></i>
+</button>
+
+<div class="modal-overlay ai-chat-modal" id="aiChatModal">
+  <div class="modal-box ai-chat-box">
+    <div class="modal-header">
+      <h3 style="font-size: 18px;"><i class="fas fa-wand-magic-sparkles" style="margin-right:8px; color:var(--accent);"></i>AI 시술 추천</h3>
+      <button type="button" class="modal-close" id="closeAiChatBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="ai-chat-messages" id="aiChatMessages">
+      <div class="ai-chat-msg bot">안녕하세요! 원하시는 시술이나 고민을 말씀해주세요. (예: "곱슬머리에 어울리는 펌 추천해줘")</div>
+    </div>
+    <form id="aiChatForm" class="ai-chat-input-row">
+      <input type="text" id="aiChatInput" class="modern-input" placeholder="예: 손상모에 좋은 클리닉 추천해줘" maxlength="500" autocomplete="off">
+      <button type="submit" class="btn-modern btn-primary" id="aiChatSendBtn"><i class="fas fa-paper-plane"></i></button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  var fab = document.getElementById('aiChatFab');
+  var modal = document.getElementById('aiChatModal');
+  var closeBtn = document.getElementById('closeAiChatBtn');
+  var messages = document.getElementById('aiChatMessages');
+  var form = document.getElementById('aiChatForm');
+  var input = document.getElementById('aiChatInput');
+  var sendBtn = document.getElementById('aiChatSendBtn');
+
+  // 세션ID는 브라우저 탭(sessionStorage) 단위 — MCP 쪽이 이 값으로 대화 맥락을 이어간다
+  var sessionId = sessionStorage.getItem('aiChatSessionId');
+  if (!sessionId) {
+    sessionId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(16).slice(2));
+    sessionStorage.setItem('aiChatSessionId', sessionId);
+  }
+
+  function openModal() { modal.classList.add('active'); input.focus(); }
+  function closeModal() { modal.classList.remove('active'); }
+
+  fab.addEventListener('click', openModal);
+  closeBtn.addEventListener('click', closeModal);
+  modal.addEventListener('click', function (e) { if (e.target === modal) closeModal(); });
+
+  function appendMessage(text, who) {
+    var el = document.createElement('div');
+    el.className = 'ai-chat-msg ' + who;
+    el.textContent = text;
+    messages.appendChild(el);
+    messages.scrollTop = messages.scrollHeight;
+    return el;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var question = input.value.trim();
+    if (!question) return;
+
+    appendMessage(question, 'user');
+    input.value = '';
+    input.disabled = true;
+    sendBtn.disabled = true;
+    var pending = appendMessage('생각하는 중...', 'bot pending');
+
+    fetch('<c:url value="/api/chat"/>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: question, sessionId: sessionId })
+    }).then(function (res) {
+      return res.json();
+    }).then(function (data) {
+      pending.remove();
+      appendMessage(data.answer || '답변을 받지 못했습니다.', 'bot');
+    }).catch(function () {
+      pending.remove();
+      appendMessage('상담 서버에 연결할 수 없습니다.', 'bot');
+    }).finally(function () {
+      input.disabled = false;
+      sendBtn.disabled = false;
+      input.focus();
+    });
+  });
+})();
+</script>
+</sec:authorize>
