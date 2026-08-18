@@ -25,6 +25,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonNoticeService;
 import com.soldesk.service.SalonService;
@@ -61,6 +62,9 @@ public class OwnerController {
     
     @Autowired
     private SalonNoticeService salonNoticeService;
+
+    @Autowired
+    private OwnerRequestService ownerRequestService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -320,6 +324,23 @@ public class OwnerController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/owner/events";
+    }
+
+    /** 매장 추가 등록 요청 — 사이드바 매장 선택 모달의 "+ 매장 추가" 카드에서 들어온다 */
+    @GetMapping("/salon-request")
+    public String salonRequestForm(Authentication authentication, Model model) {
+        fillCommonModel(authentication, model);
+        return "owner/salon-request";
+    }
+
+    @PostMapping("/salon-request")
+    public String salonRequestSubmit(Authentication authentication,
+            @RequestParam String salonName,
+            @RequestParam String salonPhone,
+            @RequestParam String message) {
+        UserVO user = userService.getUser(authentication.getName());
+        ownerRequestService.submitAdditionalSalon(user.getUserId(), salonName, salonPhone, message);
+        return "redirect:/owner/salon-request?submitted=true";
     }
 
     /**

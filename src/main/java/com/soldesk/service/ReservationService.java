@@ -74,13 +74,13 @@ public class ReservationService {
     private PaymentMapper paymentMapper;
 
     @Autowired
-    private KakaoPayService kakaoPayService;<<<<<<<HEAD=======
+    private KakaoPayService kakaoPayService;
 
     @Autowired
     private CouponMapper couponMapper;
 
     @Autowired
-    private CouponService couponService;>>>>>>>origin/main
+    private CouponService couponService;
 
     @Transactional
     public List<ReservationVO> getRevList(int userId) {
@@ -312,11 +312,7 @@ public class ReservationService {
             // 여기까지 왔다면 금액이 중간에 조작된 것이다. 확정하지 않는다.
             throw new IllegalStateException("결제 금액이 예약 금액과 일치하지 않습니다.");
         }
-<<<<<<< HEAD
         if (paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
-=======
-        if(paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
->>>>>>> origin/main
             resvMapper.updateStatus(reservationId, "confirmed");
             couponService.confirm(reservationId);
         }

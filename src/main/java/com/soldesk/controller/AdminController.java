@@ -49,12 +49,6 @@ public class AdminController {
         return "redirect:/admin/salons";
     }
 
-    @GetMapping("/mypage")
-    public String mypage(Authentication authentication, Model model){
-        model.addAttribute("user", userService.getUser(authentication.getName()));
-        return "admin/mypage";
-    }
-
     @GetMapping("/salons")
     public String salons(@RequestParam(required = false) String keyword,
                           @RequestParam(required = false) String status,

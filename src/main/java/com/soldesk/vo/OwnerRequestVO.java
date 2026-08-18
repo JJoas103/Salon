@@ -10,6 +10,7 @@ public class OwnerRequestVO {
     private String salonName; // salon_name
     private String salonPhone; // salon_phone
     private String message; // message
+    private String requestType; // promotion(고객→점주 승격) / additional_salon(기존 점주의 매장 추가)
     private String status; // pending/approved/rejected
     private String requestedAt; // requested_at
     private String processedAt; // processed_at
@@ -25,6 +26,8 @@ public class OwnerRequestVO {
     public void setSalonPhone(String salonPhone) { this.salonPhone = salonPhone; }
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
+    public String getRequestType() { return requestType; }
+    public void setRequestType(String requestType) { this.requestType = requestType; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getRequestedAt() { return requestedAt; }

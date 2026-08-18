@@ -37,6 +37,9 @@
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담<span id="navUnread" class="nav-unread" data-count="0"></span></a>
     </li>
+    <li class="sidebar-item ${menu == 'salonRequest' ? 'active' : ''}">
+      <a href="<c:url value='/owner/salon-request'/>"><i class="fas fa-plus"></i> 매장 추가 요청</a>
+    </li>
   </ul>
 
   <%-- 채팅 소켓은 사이드바에서 연다. 채팅 페이지에서만 열면 다른 화면(예약현황 등)에 있을 때

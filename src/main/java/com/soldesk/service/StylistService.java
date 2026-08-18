@@ -46,9 +46,4 @@ public class StylistService {
         }
         return dates;
     }
-
-    @Transactional
-    public StylistVO findByStylistId(int stylistId) {
-        return stylistMapper.findById(stylistId);
-    }
 }
