@@ -31,7 +31,10 @@
         <result column="stylist_name" property="stylistName"/>
         <result column="duration_minutes" property="durationMinutes"/>
         <result column="created_at" property="createdAt"/>
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
     </resultMap>
 
     <!-- 전체 예약 히스토리 -->

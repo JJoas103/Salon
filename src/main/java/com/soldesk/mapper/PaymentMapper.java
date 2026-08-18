@@ -23,4 +23,8 @@ public interface PaymentMapper {
 
     /** 점주 거절로 인한 환불 처리 — 완료된 결제만 환불 대상이다 */
     void markRefunded(int reservationId);
+
+    /** 점주 거절로 인한 환불 처리 — 완료된 결제만 환불 대상이다 */
+    /** 환불 완료 — completed 일 때만 옮긴다. 반환값으로 적립금·쿠폰 원복 여부를 가른다. */
+    int markRefunded(int reservationId);
 }

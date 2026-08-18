@@ -26,10 +26,12 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ChatService;
 import com.soldesk.service.ReservationService;
+import com.soldesk.service.SalonNoticeService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.StaffService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.ChatRoomVO;
+import com.soldesk.vo.SalonNoticeVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.StylistScheduleVO;
 import com.soldesk.vo.StylistVO;
@@ -56,6 +58,9 @@ public class OwnerController {
 
     @Autowired
     private ReservationService reservationService;
+    
+    @Autowired
+    private SalonNoticeService salonNoticeService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -258,9 +263,63 @@ public class OwnerController {
     }
 
     @GetMapping("/events")
-    public String events(Authentication authentication, Model model) {
+    public String events(Authentication authentication, HttpSession session, Model model) {
         fillCommonModel(authentication, model);
+
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        model.addAttribute("notices", selectedSalonId == null
+                ? List.of()
+                : salonNoticeService.getBySalonId(selectedSalonId));
         return "owner/events";
+    }
+
+    /** 공지사항 작성. 세션에 선택된 매장(selectedSalonId)이 실제로 이 점주 소유인지 확인한 뒤에만 저장한다. */
+    @PostMapping("/events")
+    public String createEvent(Authentication authentication, HttpSession session,
+            @RequestParam String title,
+            @RequestParam String content,
+            @RequestParam(required = false) MultipartFile imageFile,
+            RedirectAttributes redirectAttributes) throws IOException {
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        if (selectedSalonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/events";
+        }
+
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.getSalonForOwner(selectedSalonId, user.getUserId());
+
+            SalonNoticeVO notice = new SalonNoticeVO();
+            notice.setSalonId(selectedSalonId);
+            notice.setTitle(title);
+            notice.setContent(content);
+            salonNoticeService.create(notice, imageFile);
+            redirectAttributes.addFlashAttribute("success", "공지사항이 등록되었습니다.");
+        } catch (IllegalArgumentException | IOException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/events";
+    }
+
+    @PostMapping("/events/{noticeId}/delete")
+    public String deleteEvent(@PathVariable int noticeId, Authentication authentication, HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        if (selectedSalonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/events";
+        }
+
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.getSalonForOwner(selectedSalonId, user.getUserId());
+            salonNoticeService.delete(noticeId, selectedSalonId);
+            redirectAttributes.addFlashAttribute("success", "공지사항이 삭제되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/events";
     }
 
     /**

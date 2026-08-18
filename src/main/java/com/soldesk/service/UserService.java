@@ -25,6 +25,9 @@ public class UserService {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private CouponService couponService;
+
     @Transactional
     public boolean isEmailAvailable(String userEmail){
         UserVO user = userMapper.findByEmail(userEmail);
@@ -37,6 +40,10 @@ public class UserService {
         String dbPass = passwordEncoder.encode(user.getPassword());
         user.setPassword(dbPass);
         userMapper.insertUser(user);
+
+        //가입 축하 쿠폰
+        //issue_type='signup' 정책을 만들면 그떄부터나가고, is_active를 끄면 멈춘다.
+        couponService.issueByType(user.getUserId(), "signup");
     }//회원가입
 
     @Transactional

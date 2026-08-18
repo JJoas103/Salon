@@ -17,6 +17,8 @@ public interface SalonMapper {
     List<ServiceVO> findServicesBySalonId(int salonId);
 
     // ServiceVO findServiceById(int serviceId);
+    /** 시술 1건. 금액 계산은 화면이 보낸 값이 아니라 이 결과의 price 를 쓴다. */
+    ServiceVO findServiceById(int serviceId);
 
     /** 점주 시술 메뉴 등록 */
     void insertService(ServiceVO service);
@@ -68,7 +70,9 @@ public interface SalonMapper {
     /** 매장 폐업 취소(재개) — 운영중인 매장 재처리 방지는 WHERE절에서 방어 */
     void reopenSalon(int salonId);
 
-    /** 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력). salonId 는 생성된 키로 채워져 돌아온다 */
+    /**
+     * 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력). salonId 는 생성된 키로 채워져 돌아온다
+     */
     void insertSalon(SalonVO salon);
 
     /** 신규 매장 기본 영업시간(월~토) 생성. 일요일은 휴무로 비워둠 — insertSalon 직후 salon_id 를 가지고 호출한다 */

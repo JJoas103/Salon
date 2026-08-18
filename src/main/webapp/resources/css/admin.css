@@ -130,6 +130,16 @@ body {
 .advertisement-form { width: 100%; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 24px; align-items: start; }
 .advertisement-form-fields, .advertisement-image-panel { padding: 28px; }
 .advertisement-form-fields, .advertisement-image-panel,
+/* ---- 쿠폰 관리 ---- */
+/* 표 한 칸에 주 정보와 부가 정보를 같이 담는다 (쿠폰명+코드, 할인율+상한 등) */
+.coupon-admin-sub { display: block; margin-top: 3px; font-size: 12px; font-weight: 500; color: var(--text-light); }
+.coupon-issue-target { margin-bottom: 6px; font-size: 15px; font-weight: 700; color: var(--text-main); }
+.coupon-issue-note { margin-bottom: 16px; padding: 10px 12px; background: var(--bg-sub); border-radius: var(--radius-sm); font-size: 12.5px; color: var(--text-sub); }
+.coupon-issue-label { display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; }
+#issueEmail { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; box-sizing: border-box; }
+#issueEmail:focus { outline: none; border-color: var(--primary); }
+.coupon-issue-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+
 .admin-form-field, .admin-form-row { min-width: 0; }
 .advertisement-image-panel { position: sticky; top: 0; }
 .admin-form-field { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; font-size: 14px; font-weight: 700; }

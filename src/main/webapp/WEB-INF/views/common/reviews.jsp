@@ -62,11 +62,52 @@
                         <div class="review-stars" aria-label="${review.rating}점">
                           <c:forEach begin="1" end="5" var="star"><i class="${star <= review.rating ? 'fas' : 'far'} fa-star"></i></c:forEach>
                         </div>
+                        <c:if test="${review.userId == currentUserId}">
+                          <button type="button" class="review-item-edit-btn" id="reviewEditBtn${review.reviewId}"
+                                  onclick="document.getElementById('reviewEditForm${review.reviewId}').hidden = false; this.hidden = true;">수정</button>
+                        </c:if>
                       </div>
                       <time>${review.createdAt}</time>
                     </div>
                     <p><c:out value="${review.comment}"/></p>
+                    <c:if test="${not empty review.imageUrl or not empty review.imageUrl2}">
+                      <div class="review-item-photos">
+                        <c:if test="${not empty review.imageUrl}">
+                          <img src="<c:out value='${review.imageUrl}'/>" alt="" class="review-item-photo lightbox-img">
+                        </c:if>
+                        <c:if test="${not empty review.imageUrl2}">
+                          <img src="<c:out value='${review.imageUrl2}'/>" alt="" class="review-item-photo lightbox-img">
+                        </c:if>
+                      </div>
+                    </c:if>
                     <span class="verified-visit"><i class="fas fa-check-circle"></i> 실제 방문 인증</span>
+                    <c:if test="${review.userId == currentUserId}">
+                      <form class="review-item-edit-form" id="reviewEditForm${review.reviewId}" hidden
+                            method="post" enctype="multipart/form-data"
+                            action="<c:url value='/common/salons/${salon.salonId}/reviews/${review.reviewId}/update'/>">
+                        <fieldset class="star-rating">
+                          <legend>별점</legend>
+                          <div>
+                            <c:forEach begin="1" end="5" var="score">
+                              <input type="radio" id="editRating${review.reviewId}_${score}" name="rating" value="${score}"
+                                     ${score == review.rating ? 'checked' : ''}>
+                              <label for="editRating${review.reviewId}_${score}" title="${score}점"><i class="fas fa-star"></i></label>
+                            </c:forEach>
+                          </div>
+                        </fieldset>
+                        <textarea class="review-textarea" name="comment" maxlength="1000" required><c:out value="${review.comment}"/></textarea>
+                        <label>새 사진으로 교체 (선택, 비워두면 기존 사진 유지)</label>
+                        <div class="review-photo-inputs">
+                          <input type="file" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp">
+                          <input type="file" name="imageFile2" accept="image/jpeg,image/png,image/gif,image/webp">
+                        </div>
+                        <div class="review-item-edit-actions">
+                          <button type="submit" class="btn-modern btn-primary">저장</button>
+                          <button type="button" class="btn-modern btn-outline"
+                                  onclick="document.getElementById('reviewEditForm${review.reviewId}').hidden = true; document.getElementById('reviewEditBtn${review.reviewId}').hidden = false;">취소</button>
+                        </div>
+                      </form>
+                    </c:if>
                   </div>
                 </article>
               </c:forEach>
@@ -79,7 +120,7 @@
           <c:choose>
             <c:when test="${not empty reviewableReservations}">
               <p class="review-write-help">완료된 예약을 선택하고 이용 경험을 남겨주세요.</p>
-              <form method="post" action="<c:url value='/common/salons/${salon.salonId}/reviews'/>">
+              <form method="post" action="<c:url value='/common/salons/${salon.salonId}/reviews'/>" enctype="multipart/form-data">
                 <label for="reservationId">이용 내역</label>
                 <select id="reservationId" name="reservationId" class="modern-input" required>
                   <c:forEach var="reservation" items="${reviewableReservations}">
@@ -100,6 +141,11 @@
                 <label for="comment">리뷰 내용</label>
                 <textarea id="comment" name="comment" maxlength="1000" required
                           placeholder="시술과 서비스는 어떠셨나요?"></textarea>
+                <label for="reviewPhoto1">사진 (선택, 최대 2장)</label>
+                <div class="review-photo-inputs">
+                  <input type="file" id="reviewPhoto1" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp">
+                  <input type="file" id="reviewPhoto2" name="imageFile2" accept="image/jpeg,image/png,image/gif,image/webp">
+                </div>
                 <div class="review-form-footer"><span id="reviewLength">0 / 1000</span>
                   <button type="submit" class="btn-modern btn-primary">리뷰 등록</button></div>
               </form>
@@ -123,5 +169,6 @@
     });
   </script>
   <script src="<c:url value='/resources/js/wishlist.js'/>"></script>
+  <script src="<c:url value='/resources/js/lightbox.js'/>"></script>
 </body>
 </html>

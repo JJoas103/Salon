@@ -36,3 +36,6 @@ db.properties
 # 유출되면 우리 가맹점 이름으로 결제 요청을 만들 수 있다. 각자 로컬에만 둔다.
 # 새로 받았다면 payment.properties.example 를 복사해서 채워 쓸 것.
 payment.properties
+docs/checkout-handoff.md
+docs/checkout-todo.md
+sql/migration_2026-08-04_consolidated.sql

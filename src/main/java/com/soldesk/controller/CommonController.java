@@ -29,10 +29,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.CouponService;
 import com.soldesk.service.PointService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
+import com.soldesk.service.SalonNoticeService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 import com.soldesk.service.WishlistService;
@@ -41,6 +43,7 @@ import com.soldesk.vo.ChatRoomVO;
 import com.soldesk.vo.MessageVO;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonNoticeVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 // import org.springframework.web.bind.annotation.RequestBody;
@@ -59,6 +62,9 @@ public class CommonController {
 
     @Autowired
     private PointService pointService;
+
+    @Autowired
+    private CouponService couponService;
 
     @Autowired
     private SalonService salonService;
@@ -80,6 +86,9 @@ public class CommonController {
 
     @Autowired
     private ReviewService reviewService;
+
+    @Autowired
+    private SalonNoticeService salonNoticeService;
 
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -120,8 +129,23 @@ public class CommonController {
         model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
         model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
 
         return "common/mypage";
+    }
+
+    /** 쿠폰함 — 마이페이지의 쿠폰 카드에서 들어온다 */
+    @GetMapping("/coupons")
+    public String coupons(Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
+        model.addAttribute("myCoupons", couponService.getMyCoupons(user.getUserId()));
+        // 화면이 기한 만료를 판단하는 기준. 만료분은 status 를 바꾸지 않으므로 날짜를 직접 견줘야 한다.
+        model.addAttribute("today", java.time.LocalDate.now().toString());
+
+        return "common/coupons";
     }
 
     /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */
@@ -204,6 +228,7 @@ public class CommonController {
                 && !"anonymousUser".equals(authentication.getName())) {
             UserVO user = userService.getUser(authentication.getName());
             wishlistedSalonIds = wishlistService.getSalonIds(user.getUserId());
+            model.addAttribute("currentUserId", user.getUserId());
         }
         model.addAttribute("wishlistedSalonIdsJson", objectMapper.writeValueAsString(wishlistedSalonIds));
         return "common/salonmap";
@@ -220,6 +245,13 @@ public class CommonController {
     @ResponseBody
     public List<SalonVO> searchSalons(@RequestParam(defaultValue = "") String keyword) throws Exception {
         return salonService.searchSalons(keyword);
+    }
+
+    /** 지도 상세 카드의 "공지사항" 탭이 매장을 고를 때마다 호출하는 JSON. */
+    @GetMapping("/salons/{salonId}/notices")
+    @ResponseBody
+    public List<SalonNoticeVO> salonNotices(@PathVariable int salonId) {
+        return salonNoticeService.getBySalonId(salonId);
     }
 
     // 점주요청

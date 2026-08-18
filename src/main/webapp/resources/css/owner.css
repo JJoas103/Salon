@@ -76,6 +76,7 @@ body {
 .modern-table th { text-align: left; padding: 15px; border-bottom: 2px solid var(--bg-sub); color: var(--text-sub); font-size: 13px; font-weight: 700; }
 .modern-table td { padding: 18px 15px; border-bottom: 1px solid var(--bg-sub); font-size: 14px; }
 .status-badge { padding: 5px 12px; border-radius: var(--radius-full); font-size: 11px; font-weight: 700; }
+.notice-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: var(--radius-md); border: 1px solid var(--border); flex-shrink: 0; }
 .status-confirmed { background: #E3F2FD; color: #0D47A1; }
 .status-pending { background: #FFF9DB; color: #F08C00; }
 .status-cancelled { background: var(--danger-soft); color: var(--danger); }
