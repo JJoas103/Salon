@@ -68,8 +68,12 @@ public interface SalonMapper {
     /** 매장 폐업 취소(재개) — 운영중인 매장 재처리 방지는 WHERE절에서 방어 */
     void reopenSalon(int salonId);
 
-    /** 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력) */
+    /** 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력). salonId 는 생성된 키로 채워져 돌아온다 */
     void insertSalon(SalonVO salon);
+
+    /** 신규 매장 기본 영업시간(월~토) 생성. 일요일은 휴무로 비워둠 — insertSalon 직후 salon_id 를 가지고 호출한다 */
+    void insertDefaultOperatingHours(@Param("salonId") int salonId,
+            @Param("openTime") String openTime, @Param("closeTime") String closeTime);
 
     /** 점주가 매장정보 관리 화면에서 직접 수정 */
     void updateSalonInfo(SalonVO salon);

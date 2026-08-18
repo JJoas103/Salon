@@ -52,7 +52,10 @@ public class OwnerRequestService {
         salon.setPhoneNumber(request.getSalonPhone());
         salon.setAddress("");
         salonMapper.insertSalon(salon);
-    }//승인: 요청 상태 변경 + 회원 user_type='owner' 전환 + 신청서의 매장명/연락처로 매장 생성(주소 등은 점주가 직접 입력)
+        // 영업시간 행이 하나도 없으면 findOperatingHour 가 항상 휴무로 보므로,
+        // 점주가 나중에 직접 조정할 때까지 쓸 기본값(월~토 10~20시, 일 휴무)을 같이 넣어둔다.
+        salonMapper.insertDefaultOperatingHours(salon.getSalonId(), "10:00", "20:00");
+    }//승인: 요청 상태 변경 + 회원 user_type='owner' 전환 + 신청서의 매장명/연락처로 매장 생성(주소 등은 점주가 직접 입력) + 기본 영업시간 생성
 
     @Transactional
     public void reject(int requestId, int adminUserId){

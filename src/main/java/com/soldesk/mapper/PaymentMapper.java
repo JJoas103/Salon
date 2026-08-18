@@ -21,8 +21,6 @@ public interface PaymentMapper {
 
     int markFailed(int reservationId);
 
-    void markFailed(int reservationId);
-
     /** 점주 거절로 인한 환불 처리 — 완료된 결제만 환불 대상이다 */
     void markRefunded(int reservationId);
 }
