@@ -19,10 +19,6 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">커뮤니티 관리</div>
-      <div id="openProfileModalBtn" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-        <span style="font-size: 14px; font-weight: 600;">${user.userName} 관리자님</span>
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;">관</div>
-      </div>
     </header>
     <main class="app-content">
 

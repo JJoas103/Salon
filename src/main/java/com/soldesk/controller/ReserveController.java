@@ -31,12 +31,11 @@ import com.soldesk.vo.payment.PaymentReadyVO;
 import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
-import com.soldesk.vo.SalonVO;
+// import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
-import com.soldesk.vo.StylistVO;
+// import com.soldesk.vo.StylistVO;
 import com.soldesk.vo.TimeSlotVO;
 import com.soldesk.vo.UserVO;
-
 
 @Controller
 @RequestMapping("/common/reserve")
@@ -49,10 +48,10 @@ public class ReserveController {
 
     @Autowired
     private UserService userService;
-    
+
     @Autowired
     private WishlistService wishlistService;
-    
+
     @Autowired
     private StylistService stylistService;
 
@@ -64,7 +63,6 @@ public class ReserveController {
 
     @Autowired
     private CheckoutService checkoutService;
-    
 
     // 미용실 검색하기
     @GetMapping
@@ -234,8 +232,7 @@ public class ReserveController {
             ctx.setTid(payment.getTransactionId());
             ctx.setAmount(payment.getAmount().intValue());
 
-            PaymentApprovalVO approved =
-                    paymentGatewayResolver.resolve(provider).approve(ctx, callbackParams);
+            PaymentApprovalVO approved = paymentGatewayResolver.resolve(provider).approve(ctx, callbackParams);
 
             reservationService.confirmPayment(reservationId,
                     approved.getApprovedAmount(), approved.getPaymentMethod());
@@ -293,22 +290,21 @@ public class ReserveController {
         return url.append(request.getContextPath()).toString();
     }
 
-
     /**
      * 최종 확인 화면. DB 를 쓰지 않는 조회 전용이라 자리를 선점하지 않는다.
      * 선점은 이 화면의 [결제하기] 가 POST 로 들어올 때 비로소 시작된다.
      */
     @GetMapping("/checkout")
     public String getCheckout(Model model, @RequestParam int salonId,
-                                            @RequestParam int serviceId,
-                                            @RequestParam int stylistId,
-                                            @RequestParam String reservationTime,
-                                            Authentication authentication){
-        //1) 조합 검증
+            @RequestParam int serviceId,
+            @RequestParam int stylistId,
+            @RequestParam String reservationTime,
+            Authentication authentication) {
+        // 1) 조합 검증
         ServiceVO service;
-        try{
+        try {
             service = reservationService.validateCombination(salonId, stylistId, serviceId);
-        } catch(IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             return reserveFailView(model, salonId, e.getMessage());
         }
 
@@ -316,8 +312,8 @@ public class ReserveController {
         String date = reservationTime.substring(0, 10);
         String time = reservationTime.substring(11, 16);
         boolean open = reservationService.getAvailableSlots(stylistId, date).stream()
-                        .anyMatch(s -> s.getTime().equals(time) && s.isAvailable());
-        if(!open) {
+                .anyMatch(s -> s.getTime().equals(time) && s.isAvailable());
+        if (!open) {
             return blockedSlotView(model, salonId, stylistId, reservationTime, authentication);
         }
 

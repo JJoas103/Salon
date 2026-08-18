@@ -109,5 +109,9 @@
       });
     }());
   </script>
+
+  <jsp:include page="../../includes/profile_modal.jsp">
+      <jsp:param name="roleLabel" value="관리자" />
+  </jsp:include>
 </body>
 </html>

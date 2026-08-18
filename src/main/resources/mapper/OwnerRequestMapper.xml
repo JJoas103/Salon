@@ -9,22 +9,24 @@
         <result column="salon_name"    property="salonName" />
         <result column="salon_phone"   property="salonPhone" />
         <result column="message"       property="message" />
+        <result column="request_type"  property="requestType" />
         <result column="status"        property="status" />
         <result column="requested_at"  property="requestedAt" />
         <result column="processed_at"  property="processedAt" />
         <result column="processed_by"  property="processedBy" />
     </resultMap>
 
-    <!-- 점주 승격 요청 등록 -->
+    <!-- 점주 승격 요청 등록. requestType 이 비어있으면 기존과 같은 '고객→점주 승격' -->
     <insert id="insertRequest" parameterType="com.soldesk.vo.OwnerRequestVO"
             useGeneratedKeys="true" keyProperty="requestId">
-        insert into OwnerRequests (user_id, salon_name, salon_phone, message)
-        values (#{userId}, #{salonName}, #{salonPhone}, #{message})
+        insert into OwnerRequests (user_id, salon_name, salon_phone, message, request_type)
+        values (#{userId}, #{salonName}, #{salonPhone}, #{message},
+                #{requestType, jdbcType=VARCHAR, javaType=String})
     </insert>
 
     <!-- request_id로 조회 -->
     <select id="findById" parameterType="int" resultMap="ownerRequestResultMap">
-        select request_id, user_id, salon_name, salon_phone, message, status,
+        select request_id, user_id, salon_name, salon_phone, message, request_type, status,
                requested_at, processed_at, processed_by
         from OwnerRequests
         where request_id = #{requestId}

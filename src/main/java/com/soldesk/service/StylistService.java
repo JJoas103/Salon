@@ -24,23 +24,23 @@ public class StylistService {
     private StylistScheduleMapper scheduleMapper;
 
     @Transactional
-    public List<StylistVO> findBySalonId(int salonId){
+    public List<StylistVO> findBySalonId(int salonId) {
         return stylistMapper.findBySalonId(salonId);
     }
 
     @Transactional
-    public StylistVO findByStylistId(int stylistId){
+    public StylistVO findByStylistId(int stylistId) {
         return stylistMapper.findById(stylistId);
     }
 
     /** 예약 캘린더용 — 이 디자이너가 예약 가능으로 등록한 앞으로의 날짜 목록 (로그인/소유 여부와 무관하게 공개) */
     @Transactional(readOnly = true)
-    public List<String> getAvailableDates(int stylistId){
+    public List<String> getAvailableDates(int stylistId) {
         LocalDate today = LocalDate.now();
         List<StylistScheduleVO> schedules = scheduleMapper.findByStylistId(stylistId);
         List<String> dates = new ArrayList<>();
-        for (StylistScheduleVO s : schedules){
-            if (s.getIsAvailable() && !LocalDate.parse(s.getDate()).isBefore(today)){
+        for (StylistScheduleVO s : schedules) {
+            if (s.getIsAvailable() && !LocalDate.parse(s.getDate()).isBefore(today)) {
                 dates.add(s.getDate());
             }
         }

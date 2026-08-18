@@ -20,7 +20,6 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-size: 18px; font-weight: 700;">직원관리</div>
-      <div class="user-badge" id="openProfileModalBtn" style="cursor:pointer;"><span>${user.userName} 점주님</span><div class="user-avatar-sm" style="width:32px; height:32px; font-size:12px; margin-left:10px;">점</div></div>
     </header>
     <main class="app-content">
       <c:if test="${not empty error}">

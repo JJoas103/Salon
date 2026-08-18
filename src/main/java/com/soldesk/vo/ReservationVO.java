@@ -38,7 +38,6 @@ public class ReservationVO {
     private boolean rejectable; // 거절 가능 여부 (확정 + 아직 시술 전)
     private String endTime; // 시술 종료 예정 'HH:mm'
 
-
     public int getOriginalAmount() {
         return this.originalAmount;
     }
@@ -70,7 +69,6 @@ public class ReservationVO {
     public void setPgProvider(String pgProvider) {
         this.pgProvider = pgProvider;
     }
-    
 
     public String getServiceName() {
         return this.serviceName;
@@ -80,48 +78,179 @@ public class ReservationVO {
         this.serviceName = serviceName;
     }
 
-    public int getReservationId() { return reservationId; }
-    public void setReservationId(int reservationId) { this.reservationId = reservationId; }
-    public int getUserId() { return userId; }
-    public void setUserId(int userId) { this.userId = userId; }
-    public int getSalonId() { return salonId; }
-    public void setSalonId(int salonId) { this.salonId = salonId; }
-    public int getStylistId() { return stylistId; }
-    public void setStylistId(int stylistId) { this.stylistId = stylistId; }
-    public int getServiceId() { return serviceId; }
-    public void setServiceId(int serviceId) { this.serviceId = serviceId; }
-    public String getReservationTime() { return reservationTime; }
-    public void setReservationTime(String reservationTime) { this.reservationTime = reservationTime; }
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
-    public String getCreatedAt() { return createdAt; }
-    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
-    public String getUpdatedAt() { return updatedAt; }
-    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
-    public String getSalonName() { return salonName; }
-    public void setSalonName(String name) { this.salonName = name; }
-    public String getTransactionId() { return transactionId; }
-    public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
-    public String getPaymentMethod() { return paymentMethod; }
-    public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
-    public int getAmount() { return amount; }
-    public void setAmount(int amount) { this.amount = amount; }
-    public String getRejectReason() { return rejectReason; }
-    public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
-    public String getCancelType() { return cancelType; }
-    public void setCancelType(String cancelType) { this.cancelType = cancelType; }
-    public String getCustomerName() { return customerName; }
-    public void setCustomerName(String customerName) { this.customerName = customerName; }
-    public String getCustomerPhone() { return customerPhone; }
-    public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
-    public String getStylistName() { return stylistName; }
-    public void setStylistName(String stylistName) { this.stylistName = stylistName; }
-    public int getDurationMinutes() { return durationMinutes; }
-    public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }
-    public String getDisplayStatus() { return displayStatus; }
-    public void setDisplayStatus(String displayStatus) { this.displayStatus = displayStatus; }
-    public boolean isRejectable() { return rejectable; }
-    public void setRejectable(boolean rejectable) { this.rejectable = rejectable; }
-    public String getEndTime() { return endTime; }
-    public void setEndTime(String endTime) { this.endTime = endTime; }
+    public int getReservationId() {
+        return reservationId;
+    }
+
+    public void setReservationId(int reservationId) {
+        this.reservationId = reservationId;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
+    public int getSalonId() {
+        return salonId;
+    }
+
+    public void setSalonId(int salonId) {
+        this.salonId = salonId;
+    }
+
+    public int getStylistId() {
+        return stylistId;
+    }
+
+    public void setStylistId(int stylistId) {
+        this.stylistId = stylistId;
+    }
+
+    public int getServiceId() {
+        return serviceId;
+    }
+
+    public void setServiceId(int serviceId) {
+        this.serviceId = serviceId;
+    }
+
+    public String getReservationTime() {
+        return reservationTime;
+    }
+
+    public void setReservationTime(String reservationTime) {
+        this.reservationTime = reservationTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(String createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public String getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(String updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    public String getSalonName() {
+        return salonName;
+    }
+
+    public void setSalonName(String name) {
+        this.salonName = name;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    public int getAmount() {
+        return amount;
+    }
+
+    public void setAmount(int amount) {
+        this.amount = amount;
+    }
+
+    public String getRejectReason() {
+        return rejectReason;
+    }
+
+    public void setRejectReason(String rejectReason) {
+        this.rejectReason = rejectReason;
+    }
+
+    public String getCancelType() {
+        return cancelType;
+    }
+
+    public void setCancelType(String cancelType) {
+        this.cancelType = cancelType;
+    }
+
+    public String getCustomerName() {
+        return customerName;
+    }
+
+    public void setCustomerName(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public String getCustomerPhone() {
+        return customerPhone;
+    }
+
+    public void setCustomerPhone(String customerPhone) {
+        this.customerPhone = customerPhone;
+    }
+
+    public String getStylistName() {
+        return stylistName;
+    }
+
+    public void setStylistName(String stylistName) {
+        this.stylistName = stylistName;
+    }
+
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    public void setDurationMinutes(int durationMinutes) {
+        this.durationMinutes = durationMinutes;
+    }
+
+    public String getDisplayStatus() {
+        return displayStatus;
+    }
+
+    public void setDisplayStatus(String displayStatus) {
+        this.displayStatus = displayStatus;
+    }
+
+    public boolean isRejectable() {
+        return rejectable;
+    }
+
+    public void setRejectable(boolean rejectable) {
+        this.rejectable = rejectable;
+    }
+
+    public String getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(String endTime) {
+        this.endTime = endTime;
+    }
 }
