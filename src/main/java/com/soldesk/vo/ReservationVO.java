@@ -35,6 +35,7 @@ public class ReservationVO {
 
     // ===== 서비스가 계산해 넣는 값 (DB 컬럼 아님) =====
     private String displayStatus; // 화면용 상태: 결제중/결제 미완료/예약됨/진행중/완료/거절됨/취소됨
+    private String displayPayment; // 화면용 결제수단: "카카오페이 (카드)" 등. pg_provider + payment_method 조합
     private boolean rejectable; // 거절 가능 여부 (확정 + 아직 시술 전)
     private String endTime; // 시술 종료 예정 'HH:mm'
 
@@ -236,6 +237,14 @@ public class ReservationVO {
 
     public void setDisplayStatus(String displayStatus) {
         this.displayStatus = displayStatus;
+    }
+
+    public String getDisplayPayment() {
+        return displayPayment;
+    }
+
+    public void setDisplayPayment(String displayPayment) {
+        this.displayPayment = displayPayment;
     }
 
     public boolean isRejectable() {

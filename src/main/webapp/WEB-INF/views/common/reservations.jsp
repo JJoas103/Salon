@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <!DOCTYPE html>
 <html lang="ko">
@@ -186,9 +187,16 @@
                   <strong>${reserve.serviceName} / 60분 소요 예상</strong>
                 </div>
 
+                <%-- 결제까지 못 간 예약은 Payments 행이 없어(LEFT JOIN) 금액이 0이다.
+                     그때는 금액을 붙이지 않는다 — "0원" 은 무료 시술처럼 읽힌다. --%>
                 <div class="res-meta-item">
                   <span>결제 수단 및 금액</span>
-                  <strong>${reserve.paymentMethod} / (${reserve.amount}원 완료)</strong>
+                  <strong>
+                    <c:out value="${reserve.displayPayment}"/>
+                    <c:if test="${reserve.amount > 0}">
+                      / <fmt:formatNumber value="${reserve.amount}" pattern="#,##0"/>원
+                    </c:if>
+                  </strong>
                 </div>
               </div>
 
