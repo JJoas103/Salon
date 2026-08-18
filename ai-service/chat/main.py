@@ -1,4 +1,5 @@
 import asyncio
+import re
 import sys
 from pathlib import Path
 from langchain.agents import create_agent
@@ -16,6 +17,17 @@ from langchain_mcp_adapters.prompts import load_mcp_prompt
 PYTHON_SERVICE_DIR = Path(__file__).parent/".." #python-service 디렉토리 경로
 MCP_SERVER_MODULE = "mcp_chat.mcp_product_server"   #MCP 서버 모듈 경로
 RESOURCE_URI = "catalog://salon/search-guide"      #리소스 경로
+
+# system_prompt로 마크다운 금지를 지시해도 모델이 종종 무시해서, 응답 문자열에서 강제로 벗겨냄
+_MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+_MD_HEADING_RE = re.compile(r"^#{1,6}\s*", re.MULTILINE)
+_MD_BULLET_RE = re.compile(r"^[ \t]*[-*]\s+", re.MULTILINE)
+
+def _strip_markdown(text: str) -> str:
+    text = _MD_BOLD_RE.sub(r"\1", text)
+    text = _MD_HEADING_RE.sub("", text)
+    text = _MD_BULLET_RE.sub("", text)
+    return text
 
 # MCP 연결 및 세션관리
 class McpChatService:
@@ -89,6 +101,8 @@ class McpChatService:
                         "시술 정보는 MCP Tool 결과만 근거로 답하세요."
                         "검색 결과에 없는 시술, 가격, 소요시간은 만들지 마세요."
                         "Tool 호출 여부와 인자는 현재 질문과 대화 기록을 바탕으로 판단하세요."
+                        "대화 기록에 [사용자 예약 이력]이 있으면 참고해 그 취향/고민에 맞는 시술을 우선 추천하되,"
+                        "이력에 없는 내용을 추천 근거로 지어내지 마세요. 이력이 없으면 일반 상담으로 답하세요."
                     )
                 )
 
@@ -106,9 +120,9 @@ class McpChatService:
                 raise
 
     # 에이전트를 통해 LLM에 질문하고, 세션별 대화기록을 갱신
-    async def ask(self, session_id: str, question: str)-> str:   
+    async def ask(self, session_id: str, question: str, user_context: str | None = None)-> str:
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
-        await self.start() 
+        await self.start()
 
         # 동시접근 방지(에이전트 객체가 생성 중 다른 에이전트 생성 요청이 들어오면 리턴)
         async with self._invoke_lock:
@@ -122,8 +136,13 @@ class McpChatService:
             request_messages = [
                 *self._base_messages,   # 시스템 프롬프트
                 *history,               # 세션별 대화기록
-                HumanMessage(content=question)  # 현재 질문
             ]
+            # 세션 첫 턴에만 예약이력을 얹는다 — 이후 턴은 이미 대화기록에 남아있으므로 중복으로 안 넣는다
+            if not history and user_context:
+                request_messages.append(HumanMessage(
+                    content=f"[사용자 예약 이력] 완료한 시술: {user_context}"
+                ))
+            request_messages.append(HumanMessage(content=question))
 
             # 현재 시작 인덱스 계산
             current_turn_start = len(self._base_messages) + len(history)
@@ -140,7 +159,7 @@ class McpChatService:
             history = result_messages[len(self._base_messages):]
             self._messages_by_session[session_id] = self._trim_history(history)
             self._last_access_by_session[session_id] = now # 세션별 마지막 접근 시간 갱신
-            return str(result_messages[-1].content) # LLM의 답변을 전달
+            return _strip_markdown(str(result_messages[-1].content)) # LLM의 답변을 전달
 
     # 만료된 세션 제거
     def _remove_expired_sessions(self, now: float)-> None:  # (수정) 오탈자: _remove_expried_sessions -> _remove_expired_sessions

@@ -18,7 +18,7 @@ async def chat(
     try:
         # 세션ID와 질문을 Mcp 서버에 전달해 답변을 반환
         chat_service: McpChatService = request.app.state.chat_service
-        answer = await chat_service.ask(session_id, question)
+        answer = await chat_service.ask(session_id, question, payload.user_context)
         
     except Exception as error:
         logger.exception("MCP 상풍 상담 요청에 실패했습니다")

@@ -10,6 +10,12 @@ class ChatRequest(BaseModel):
         min_length=1,
         max_length=100
     )
+    # 스프링이 로그인 사용자의 완료된 예약이력으로 직접 채워서 보내는 개인화 컨텍스트
+    user_context: str | None = Field(
+        default=None,
+        alias="userContext",
+        max_length=2000
+    )
 
 # Fast-API에서 전달할 채팅 객체(LLM 답변)
 class ChatResponse(BaseModel):

@@ -5,6 +5,8 @@ public class ChatRequest {
 
     private String question;
     private String sessionId;
+    // 클라이언트가 보내는 값은 무시하고, AiChatController 가 로그인 사용자의 예약이력으로 직접 채워 넣는다
+    private String userContext;
 
     public String getQuestion() {
         return question;
@@ -17,5 +19,11 @@ public class ChatRequest {
     }
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+    public String getUserContext() {
+        return userContext;
+    }
+    public void setUserContext(String userContext) {
+        this.userContext = userContext;
     }
 }

@@ -778,6 +778,20 @@ body {
 .ai-chat-msg.bot { align-self: flex-start; background: var(--bg-sub); color: var(--text-main); border-bottom-left-radius: 4px; }
 .ai-chat-msg.bot.pending { color: var(--text-light); font-style: italic; }
 
+.ai-chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.ai-chat-suggestion-chip {
+  border: 1px solid var(--border);
+  background: var(--bg-sub);
+  color: var(--text-main);
+  border-radius: var(--radius-full);
+  padding: 7px 12px;
+  font-size: 12.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.ai-chat-suggestion-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
+
 .ai-chat-input-row { display: flex; gap: 8px; }
 .ai-chat-input-row .modern-input { flex: 1; }
 .ai-chat-input-row button { flex-shrink: 0; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }

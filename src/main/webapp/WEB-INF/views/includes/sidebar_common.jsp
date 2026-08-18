@@ -233,10 +233,16 @@
       <button type="button" class="modal-close" id="closeAiChatBtn"><i class="fas fa-times"></i></button>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
-      <div class="ai-chat-msg bot">안녕하세요! 원하시는 시술이나 고민을 말씀해주세요. (예: "곱슬머리에 어울리는 펌 추천해줘")</div>
+      <div class="ai-chat-msg bot">안녕하세요! 최근 완료하신 시술 이력(최근 5건)을 참고해서 추천해드려요. 원하시는 시술이나 고민을 말씀해주세요. (예: "저번에 받은 거랑 어울리는 다른 스타일 추천해줘")</div>
+    </div>
+    <div class="ai-chat-suggestions" id="aiChatSuggestions">
+      <button type="button" class="ai-chat-suggestion-chip">손상모 케어 시술 추천해줘</button>
+      <button type="button" class="ai-chat-suggestion-chip">5만원 이하 펌 보여줘</button>
+      <button type="button" class="ai-chat-suggestion-chip">저번에 받은 시술이랑 어울리는 스타일 추천해줘</button>
+      <button type="button" class="ai-chat-suggestion-chip">컷 가격 알려줘</button>
     </div>
     <form id="aiChatForm" class="ai-chat-input-row">
-      <input type="text" id="aiChatInput" class="modern-input" placeholder="예: 손상모에 좋은 클리닉 추천해줘" maxlength="500" autocomplete="off">
+      <input type="text" id="aiChatInput" class="modern-input" placeholder="예: 저번 시술 참고해서 손상모 케어 추천해줘" maxlength="500" autocomplete="off">
       <button type="submit" class="btn-modern btn-primary" id="aiChatSendBtn"><i class="fas fa-paper-plane"></i></button>
     </form>
   </div>
@@ -248,6 +254,7 @@
   var modal = document.getElementById('aiChatModal');
   var closeBtn = document.getElementById('closeAiChatBtn');
   var messages = document.getElementById('aiChatMessages');
+  var suggestions = document.getElementById('aiChatSuggestions');
   var form = document.getElementById('aiChatForm');
   var input = document.getElementById('aiChatInput');
   var sendBtn = document.getElementById('aiChatSendBtn');
@@ -275,10 +282,10 @@
     return el;
   }
 
-  form.addEventListener('submit', function (e) {
-    e.preventDefault();
-    var question = input.value.trim();
+  // 예시 질문 버튼과 직접 입력이 같은 전송 경로를 타도록 공용 함수로 뺀다
+  function sendQuestion(question) {
     if (!question) return;
+    if (suggestions) { suggestions.remove(); suggestions = null; }
 
     appendMessage(question, 'user');
     input.value = '';
@@ -303,7 +310,20 @@
       sendBtn.disabled = false;
       input.focus();
     });
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    sendQuestion(input.value.trim());
   });
+
+  if (suggestions) {
+    suggestions.addEventListener('click', function (e) {
+      var chip = e.target.closest('.ai-chat-suggestion-chip');
+      if (!chip) return;
+      sendQuestion(chip.textContent.trim());
+    });
+  }
 })();
 </script>
 </sec:authorize>

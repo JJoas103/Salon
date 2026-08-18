@@ -184,7 +184,7 @@
 
                 <div class="res-meta-item">
                   <span>시술 상품 / 소요 시간</span>
-                  <strong>${reserve.serviceName} / 60분 소요 예상</strong>
+                  <strong>${reserve.serviceName} / ${reserve.durationMinutes > 0 ? reserve.durationMinutes : 60}분 소요 예상</strong>
                 </div>
 
                 <%-- 결제까지 못 간 예약은 Payments 행이 없어(LEFT JOIN) 금액이 0이다.
@@ -201,6 +201,12 @@
               </div>
 
               <div style="display:flex; flex-direction:column; gap:8px;">
+                <%-- 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트된다 (ChatService.openRoom) --%>
+                <form action="<c:url value='/common/chat/room'/>" method="post">
+                  <input type="hidden" name="salonId" value="${reserve.salonId}">
+                  <button type="submit" class="btn-modern btn-outline" style="width:100%;">1:1 문의</button>
+                </form>
+
                 <%-- JS가 예정 예약으로 분류한 confirmed 카드에서만 이 버튼을 표시한다. --%>
                 <c:if test="${reserve.status eq 'confirmed'}">
                   <button

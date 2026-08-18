@@ -22,6 +22,8 @@
         <result column="payment_method" property="paymentMethod"/>
         <result column="amount" property="amount"/>
         <result column="service_name" property="serviceName"/>
+        <result column="category" property="category"/>
+        <result column="concern" property="concern"/>
         <result column="original_amount" property="originalAmount"/>
         <result column="coupon_discount" property="couponDiscount"/>
         <result column="point_used" property="pointUsed"/>
@@ -51,6 +53,9 @@
             p.payment_method,
             p.amount,
             se.service_name AS service_name,
+            se.category AS category,
+            se.concern AS concern,
+            se.duration_minutes AS duration_minutes,
             p.original_amount,
             p.coupon_discount,
             p.point_used,
