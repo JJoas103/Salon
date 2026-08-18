@@ -1,0 +1,3 @@
+ALTER TABLE Reviews
+  ADD COLUMN image_url VARCHAR(255) NULL AFTER comment,
+  ADD COLUMN image_url2 VARCHAR(255) NULL AFTER image_url;

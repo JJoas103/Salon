@@ -1,10 +1,10 @@
 package com.soldesk.controller;
 
+import java.io.IOException;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import java.io.IOException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
@@ -18,17 +18,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.ChatService;
+import com.soldesk.service.ReservationService;
+import com.soldesk.service.SalonNoticeService;
 import com.soldesk.service.SalonService;
 import com.soldesk.service.StaffService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.ChatRoomVO;
+import com.soldesk.vo.SalonNoticeVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.StylistScheduleVO;
 import com.soldesk.vo.StylistVO;
@@ -37,6 +40,9 @@ import com.soldesk.vo.UserVO;
 @Controller
 @RequestMapping("/owner")
 public class OwnerController {
+
+    // 예약현황판 날짜 라벨용 (DB day_of_week 와 같은 한글 표기)
+    private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
 
     @Autowired
     private UserService userService;
@@ -49,6 +55,12 @@ public class OwnerController {
 
     @Autowired
     private ChatService chatService;
+
+    @Autowired
+    private ReservationService reservationService;
+    
+    @Autowired
+    private SalonNoticeService salonNoticeService;
 
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
@@ -74,11 +86,80 @@ public class OwnerController {
             UserVO user = userService.getUser(authentication.getName());
             try {
                 model.addAttribute("salon", salonService.getSalonForOwner(salonId, user.getUserId()));
+                model.addAttribute("services", salonService.getServices(salonId));
             } catch (IllegalArgumentException e) {
                 // 세션의 selectedSalonId가 본인 소유가 아니면 빈 폼으로 둔다
             }
+            model.addAttribute("notices", salonNoticeService.getBySalonId(salonId));
+        } else {
+            model.addAttribute("notices", List.of());
         }
         return "owner/store";
+    }
+
+    @PostMapping("/store/service/register")
+    public String registerService(Authentication authentication, HttpSession session,
+            @RequestParam String serviceName,
+            @RequestParam java.math.BigDecimal price,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
+        service.setSalonId(salonId);
+        service.setServiceName(serviceName);
+        service.setPrice(price);
+        if (durationMinutes != null) {
+            service.setDurationMinutes(durationMinutes);
+        }
+        service.setDescription(description);
+        try {
+            salonService.registerService(user.getUserId(), service);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
+    }
+
+    @PostMapping("/store/service/{serviceId}/update")
+    public String updateService(@PathVariable int serviceId, Authentication authentication,
+            @RequestParam String serviceName,
+            @RequestParam java.math.BigDecimal price,
+            @RequestParam(required = false) Integer durationMinutes,
+            @RequestParam(required = false) String description,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
+        service.setServiceId(serviceId);
+        service.setServiceName(serviceName);
+        service.setPrice(price);
+        if (durationMinutes != null) {
+            service.setDurationMinutes(durationMinutes);
+        }
+        service.setDescription(description);
+        try {
+            salonService.updateService(user.getUserId(), service);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
+    }
+
+    @PostMapping("/store/service/{serviceId}/delete")
+    public String deleteService(@PathVariable int serviceId, Authentication authentication,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.deleteService(user.getUserId(), serviceId);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
     }
 
     @PostMapping("/store/update")
@@ -109,16 +190,128 @@ public class OwnerController {
         return "redirect:/owner/store";
     }
 
+    // 예약현황판 + 하단 전체목록 화면
     @GetMapping("/reservations")
-    public String reservations(Authentication authentication, Model model) {
+    public String reservations(@RequestParam(required = false) String date,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication, HttpSession session, Model model) {
+        // 점주 데이터 세팅, 페이징 검증 보정
         fillCommonModel(authentication, model);
+        if (page < 1) page = 1;
+        if (size <= 0) size = 10;
+        
+        // 조회 날짜 계산 및 화면 이동용
+        // 파라미터 날짜가 없으면 오늘 날짜를 기본값으로
+        LocalDate targetDate = (date != null && !date.isBlank()) ? LocalDate.parse(date) : LocalDate.now();
+        model.addAttribute("scheduleDate", targetDate.toString());
+        model.addAttribute("today", LocalDate.now().toString());
+        model.addAttribute("prevDate", targetDate.minusDays(1).toString());
+        model.addAttribute("nextDate", targetDate.plusDays(1).toString());
+        model.addAttribute("dayLabel", DAY_KO[targetDate.getDayOfWeek().getValue() - 1]);
+        // 페이징 정보는 거절 모달의 hidden 값으로도 쓰임.
+        // 매장 미선택이라 아래 조회를 통째로 건너뛰어도 이 값은 필요해서 if 밖에 둠
+        model.addAttribute("page", page);
+        model.addAttribute("size", size);
+
+        // 세션 매장 확인 및 예약, 현황판 DB 조회
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId != null) {
+            UserVO user = userService.getUser(authentication.getName());
+            try {
+                // 해당 매장 예약 건수
+                int totalCount = reservationService.countReservationsForOwner(salonId, user.getUserId());
+                model.addAttribute("board", reservationService.getScheduleBoard(salonId, user.getUserId(), targetDate));
+                model.addAttribute("reservations",
+                        reservationService.getReservationsForOwner(salonId, user.getUserId(), page, size));
+                model.addAttribute("totalCount", totalCount);
+                model.addAttribute("totalPages", (int) Math.ceil((double) totalCount / size));
+            } catch (IllegalArgumentException e) {
+                // 서비스의 소유 검증에 걸린 경우 (세션에 남은 selectedSalonId 가 본인 매장이 아님).
+                // 여기서 안 잡으면 500
+            }
+        }
         return "owner/reservations";
     }
 
-    @GetMapping("/events")
-    public String events(Authentication authentication, Model model) {
-        fillCommonModel(authentication, model);
-        return "owner/events";
+    // 예약 거절 및 노쇼 처리
+    @PostMapping("/reservations/{reservationId}/reject")
+    public String rejectReservation(@PathVariable int reservationId, Authentication authentication,
+            @RequestParam String rejectReason, // 거절, 노쇼 사유
+            @RequestParam(defaultValue = "rejected") String resolution,
+            @RequestParam(required = false) String date,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int size,
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            // 상태 변경 + 사유 기록 + (거절이면) 환불까지 서비스에서 한 트랜잭션으로 처리.
+            // 본인 매장인지, 지금 처리해도 되는 상태인지 검증도 그쪽에 있음
+            reservationService.rejectReservation(reservationId, user.getUserId(), rejectReason, resolution);
+            redirectAttributes.addFlashAttribute("success",
+                    "no_show".equals(resolution) ? "노쇼로 처리했습니다." : "예약을 거절하고 환불했습니다.");
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        // 보고 있던 날짜/페이지를 유지
+        // 처리하고 나서 오늘 보드로 튕기지 않게, 보고 있던 날짜/페이지를 그대로 되돌려줌.
+        // 위 addFlashAttribute 는 세션에 잠깐 실려 리다이렉트 한 번만 살아있고,
+        // 여기 addAttribute 는 ?date=..&page=.. 형태로 URL 에 붙음
+        if (date != null && !date.isBlank()) {
+            redirectAttributes.addAttribute("date", date);
+        }
+        redirectAttributes.addAttribute("page", page);
+        redirectAttributes.addAttribute("size", size);
+        return "redirect:/owner/reservations";
+    }
+
+    /** 공지사항 작성. 세션에 선택된 매장(selectedSalonId)이 실제로 이 점주 소유인지 확인한 뒤에만 저장한다. */
+    @PostMapping("/store/notices")
+    public String createNotice(Authentication authentication, HttpSession session,
+            @RequestParam String title,
+            @RequestParam String content,
+            @RequestParam(required = false) MultipartFile imageFile,
+            RedirectAttributes redirectAttributes) throws IOException {
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        if (selectedSalonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.getSalonForOwner(selectedSalonId, user.getUserId());
+
+            SalonNoticeVO notice = new SalonNoticeVO();
+            notice.setSalonId(selectedSalonId);
+            notice.setTitle(title);
+            notice.setContent(content);
+            salonNoticeService.create(notice, imageFile);
+            redirectAttributes.addFlashAttribute("success", "공지사항이 등록되었습니다.");
+        } catch (IllegalArgumentException | IOException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
+    }
+
+    @PostMapping("/store/notices/{noticeId}/delete")
+    public String deleteNotice(@PathVariable int noticeId, Authentication authentication, HttpSession session,
+            RedirectAttributes redirectAttributes) {
+        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
+        if (selectedSalonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            salonService.getSalonForOwner(selectedSalonId, user.getUserId());
+            salonNoticeService.delete(noticeId, selectedSalonId);
+            redirectAttributes.addFlashAttribute("success", "공지사항이 삭제되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store";
     }
 
     /**

@@ -216,21 +216,21 @@
                 <strong id="sumPrice">-</strong>
               </div>
 
-              <%-- 결제는 상태를 바꾸는 일이라 GET 이 아니라 POST 로 보낸다.
-                   서버가 예약(pending)을 만든 뒤 카카오페이 결제창으로 리다이렉트한다. --%>
-              <form action="<c:url value='/common/reserve'/>" method="post" id="reserveForm">
+              <%-- 확인 화면으로 넘어가는 단계라 상태를 바꾸지 않는다. 그래서 POST 가 아니라 GET 이다.
+                   예약(pending)과 결제는 확인 화면의 [결제하기] 에서 비로소 시작된다. --%>
+              <form action="<c:url value='/common/reserve/checkout'/>" method="get" id="reserveForm">
                 <input type="hidden" name="salonId" value="${salon.salonId}">
                 <input type="hidden" name="serviceId" id="fieldServiceId">
                 <input type="hidden" name="stylistId" id="fieldStylistId">
                 <input type="hidden" name="reservationTime" id="fieldReservationTime">
                 <button type="submit" class="btn-modern btn-accent reserve-pay-btn" id="reservePayBtn" disabled>
-                  <i class="fas fa-comment"></i> 카카오페이로 결제하기
+                  다음 <i class="fas fa-arrow-right"></i>
                 </button>
               </form>
 
               <p class="reserve-summary-note">
-                결제가 완료되면 예약이 확정됩니다. 결제창에서 10분 내 진행하지 않으면
-                선택한 시간이 자동으로 해제됩니다.
+                다음 화면에서 쿠폰 &middot; 적립금을 적용하고 결제수단을 고를 수 있습니다.
+                이 단계에서는 아직 예약이 잡히지 않습니다.
               </p>
             </aside>
           </div>
@@ -344,7 +344,7 @@
         picked.stylistName = card.dataset.stylistName;
 
         resetFrom(3);
-        renderCalendar();
+        loadStylistSchedule();
         markDone(2, picked.stylistName + ' 디자이너');
         unlock(3);
         openStep(3, true);
@@ -364,6 +364,21 @@
     const todayStr = formatDate(today);
     /* 지금 펼쳐 보고 있는 달 */
     const calView  = { year: today.getFullYear(), month: today.getMonth() };
+
+    /* 고른 디자이너가 예약 가능으로 등록한 날짜들. 여기 없는 날은 캘린더에서 회색으로 막는다. */
+    let availableDates = new Set();
+
+    function loadStylistSchedule() {
+        availableDates = new Set();
+        renderCalendar();
+        fetch('<c:url value="/common/reserve/stylist-schedule"/>?stylistId=' + encodeURIComponent(picked.stylistId))
+            .then(res => res.ok ? res.json() : [])
+            .then(dates => {
+                availableDates = new Set(dates);
+                renderCalendar();
+            })
+            .catch(() => { availableDates = new Set(); renderCalendar(); });
+    }
 
     function formatDate(d) {
       return d.getFullYear() + '-'
@@ -394,6 +409,10 @@
           /* 지난 날짜는 고를 수 없다 */
           cell.disabled = true;
           cell.classList.add('is-past');
+        } else if (!availableDates.has(dateStr)) {
+          /* 디자이너가 예약 가능으로 등록하지 않은 날 — 회색으로 막는다 */
+          cell.disabled = true;
+          cell.classList.add('is-off');
         } else {
           if (dateStr === todayStr) cell.classList.add('is-today');
           if (dow === 0) cell.classList.add('is-sunday');
@@ -545,11 +564,11 @@
           ready ? picked.date + ' ' + picked.time : '';
     }
 
-    /* 결제는 되돌리기 어려운 동작이라 한 번 더 확인받고, 중복 제출을 막는다. */
+    /* 아직 결제가 아니라 확인 화면으로 넘어가는 단계지만, 중복 제출은 여기서도 막는다. */
     document.getElementById('reserveForm').addEventListener('submit', e => {
       if (payBtn.disabled) { e.preventDefault(); return; }
       payBtn.disabled = true;
-      payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 결제창으로 이동 중...';
+      payBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 이동 중...';
     });
   </script>
 </c:if>

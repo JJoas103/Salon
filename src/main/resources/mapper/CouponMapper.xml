@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.CouponMapper">
+
+    <!-- 쿠폰 정책 (관리자 화면용) -->
+    <resultMap id="couponResultMap" type="com.soldesk.vo.coupon.CouponVO">
+        <id     column="coupon_id"        property="couponId" />
+        <result column="promotion_id"     property="promotionId" />
+        <result column="salon_id"         property="salonId" />
+        <result column="service_id"       property="serviceId" />
+        <result column="coupon_name"      property="couponName" />
+        <result column="coupon_code"      property="couponCode" />
+        <result column="discount_type"    property="discountType" />
+        <result column="discount_value"   property="discountValue" />
+        <result column="max_discount"     property="maxDiscount" />
+        <result column="min_order_amount" property="minOrderAmount" />
+        <result column="valid_from"       property="validFrom" />
+        <result column="valid_until"      property="validUntil" />
+        <result column="issue_type"       property="issueType" />
+        <result column="once_per_user"    property="oncePerUser" />
+        <result column="is_active"        property="isActive" />
+        <result column="created_at"       property="createdAt" />
+        <result column="updated_at"       property="updatedAt" />
+        <result column="issued_count"     property="issuedCount" />
+        <result column="used_count"       property="usedCount" />
+    </resultMap>
+
+    <!-- 사용자가 가진 쿠폰 1장 + 그 정책.
+         뒤쪽 여섯은 Coupons 에서 조인해 온 값이다 (ReservationVO 가 salon_name 을 담는 것과 같은 방식).
+         salon_id / service_id 는 coupon_ 접두사를 붙였다. User_Coupons 자체엔 매장 개념이 없어
+         이름이 겹치면 어느 쪽 것인지 헷갈린다. -->
+    <resultMap id="userCouponResultMap" type="com.soldesk.vo.coupon.UserCouponVO">
+        <id     column="user_coupon_id"   property="userCouponId" />
+        <result column="user_id"          property="userId" />
+        <result column="coupon_id"        property="couponId" />
+        <result column="status"           property="status" />
+        <result column="reservation_id"   property="reservationId" />
+        <result column="issued_at"        property="issuedAt" />
+        <result column="expires_at"       property="expiresAt" />
+        <result column="used_at"          property="usedAt" />
+
+        <result column="coupon_name"       property="couponName" />
+        <result column="discount_type"     property="discountType" />
+        <result column="discount_value"    property="discountValue" />
+        <result column="max_discount"      property="maxDiscount" />
+        <result column="min_order_amount"  property="minOrderAmount" />
+        <result column="coupon_salon_id"   property="couponSalonId" />
+        <result column="coupon_service_id" property="couponServiceId" />
+    </resultMap>
+
+    <sql id="userCouponColumns">
+        uc.user_coupon_id, uc.user_id, uc.coupon_id, uc.status,
+        uc.reservation_id, uc.issued_at, uc.expires_at, uc.used_at,
+        c.coupon_name, c.discount_type, c.discount_value,
+        c.max_discount, c.min_order_amount,
+        c.salon_id   AS coupon_salon_id,
+        c.service_id AS coupon_service_id
+    </sql>
+
+
+    <!-- ===================== 사용 ===================== -->
+
+    <!-- 만료분은 상태를 바꾸지 않고 여기서 거른다.
+         예약과 달리 쿠폰은 자리 같은 자원을 점유하지 않아 정리 배치가 필요 없다. -->
+    <select id="findUsableByUserId" resultMap="userCouponResultMap" parameterType="int">
+        SELECT <include refid="userCouponColumns"/>
+        FROM User_Coupons uc
+        JOIN Coupons c ON c.coupon_id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+          AND uc.status = 'available'
+          AND uc.expires_at &gt; NOW()
+          AND c.is_active = 1
+        ORDER BY uc.expires_at
+    </select>
+
+    <!-- 조건이 곧 가드다. status = 'available' 이 있어 두 번째 요청은 0행이 된다.
+         user_id 조건이 빠지면 URL 로 남의 쿠폰 번호를 넣어 쓸 수 있다. -->
+    <update id="reserveCoupon">
+        UPDATE User_Coupons
+        SET status = 'reserved',
+            reservation_id = #{reservationId}
+        WHERE user_coupon_id = #{userCouponId}
+          AND user_id = #{userId}
+          AND status = 'available'
+          AND expires_at &gt; NOW()
+    </update>
+
+    <update id="confirmCoupon" parameterType="int">
+        UPDATE User_Coupons
+        SET status = 'used',
+            used_at = NOW()
+        WHERE reservation_id = #{reservationId}
+          AND status = 'reserved'
+    </update>
+
+    <!-- 결제창에 머무는 사이 기한이 지났을 수 있다. 되돌릴 곳을 CASE 로 가른다.
+         reservation_id 를 비워야 다음 결제에서 다시 묶일 수 있다. -->
+    <update id="releaseCoupon" parameterType="int">
+        UPDATE User_Coupons
+        SET status = CASE WHEN expires_at &gt; NOW() THEN 'available' ELSE 'expired' END,
+            reservation_id = NULL
+        WHERE reservation_id = #{reservationId}
+          AND status = 'reserved'
+    </update>
+
+    <!--
+        환불 — used → available. release 와 시작 상태가 다르다.
+        release 는 결제가 끝나기 전(reserved) 이탈을 되돌리고,
+        이쪽은 결제가 확정된(used) 뒤 환불된 건을 되돌린다.
+
+        조건을 'used' 로 좁혀 둔 덕분에, 이미 되돌린 쿠폰에 다시 불러도 0행이다.
+    -->
+    <update id="refundCoupon" parameterType="int">
+        UPDATE User_Coupons
+        SET status = CASE WHEN expires_at &gt; NOW() THEN 'available' ELSE 'expired' END,
+            reservation_id = NULL,
+            used_at = NULL
+        WHERE reservation_id = #{reservationId}
+          AND status = 'used'
+    </update>
+
+    <select id="countAvailable" resultType="int" parameterType="int">
+        SELECT COUNT(*)
+        FROM User_Coupons uc
+        JOIN Coupons c ON c.coupon_id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+          AND uc.status = 'available'
+          AND uc.expires_at &gt; NOW()
+          AND c.is_active = 1
+    </select>
+
+    <!-- 쿠폰함. 쓴 것과 만료된 것도 보여주되 쓸 수 있는 것을 위로 올린다. -->
+    <select id="findAllByUserId" resultMap="userCouponResultMap" parameterType="int">
+        SELECT <include refid="userCouponColumns"/>
+        FROM User_Coupons uc
+        JOIN Coupons c ON c.coupon_id = uc.coupon_id
+        WHERE uc.user_id = #{userId}
+        ORDER BY
+            CASE WHEN uc.status = 'available' AND uc.expires_at &gt; NOW() THEN 0 ELSE 1 END,
+            uc.expires_at DESC
+    </select>
+
+
+    <!-- ===================== 발행 ===================== -->
+
+    <!--
+        발급 가능 여부를 INSERT 문 안에서 판정한다. 반환값 0 이면 발급되지 않은 것이다.
+          - is_active 가 꺼졌거나
+          - 오늘이 유효기간 밖이거나
+          - once_per_user 인데 이미 가지고 있거나 (쓴 쿠폰도 보유로 친다)
+
+        expires_at 에 23:59:59 를 붙이는 이유: valid_until 은 DATE 라 그냥 넣으면
+        00:00:00 이 되어 만료일 하루가 통째로 사라진다.
+
+        NOT EXISTS 안을 파생 테이블로 감싼 것은 insertIfSlotFree 와 같은 이유다.
+        MySQL 은 INSERT 대상 테이블을 조건절에서 직접 참조하는 것을 막는다.
+    -->
+    <insert id="issueCoupon">
+        INSERT INTO User_Coupons (user_id, coupon_id, status, expires_at)
+        SELECT #{userId}, c.coupon_id, 'available', TIMESTAMP(c.valid_until, '23:59:59')
+        FROM Coupons c
+        WHERE c.coupon_id = #{couponId}
+          AND c.is_active = 1
+          AND CURDATE() BETWEEN c.valid_from AND c.valid_until
+          AND (c.once_per_user = 0
+               OR NOT EXISTS (
+                   SELECT 1
+                   FROM (SELECT user_id, coupon_id FROM User_Coupons) uc
+                   WHERE uc.user_id = #{userId}
+                     AND uc.coupon_id = c.coupon_id))
+    </insert>
+
+    <!-- 회원가입 시 issue_type='signup' 인 정책을 전부 발급한다.
+         정책이 하나도 없으면 아무 일도 일어나지 않는다 — 관리자가 웰컴 쿠폰을
+         만들면 그때부터 자동 발급되고, 코드 수정 없이 껐다 켤 수 있다. -->
+    <select id="findByIssueType" resultMap="couponResultMap" parameterType="string">
+        SELECT coupon_id, promotion_id, salon_id, service_id, coupon_name, coupon_code,
+               discount_type, discount_value, max_discount, min_order_amount,
+               valid_from, valid_until, issue_type, once_per_user, is_active,
+               created_at, updated_at
+        FROM Coupons
+        WHERE issue_type = #{issueType}
+          AND is_active = 1
+          AND CURDATE() BETWEEN valid_from AND valid_until
+    </select>
+
+    <!-- 관리자 목록. "몇 장 나갔고 몇 장 쓰였나" 를 못 보면 관리 화면의 의미가 없어
+         집계를 함께 가져온다. 쿠폰 종류가 수백 개가 될 화면이 아니라 서브쿼리로 충분하다. -->
+    <select id="findAllCoupons" resultMap="couponResultMap">
+        SELECT c.coupon_id, c.promotion_id, c.salon_id, c.service_id, c.coupon_name, c.coupon_code,
+               c.discount_type, c.discount_value, c.max_discount, c.min_order_amount,
+               c.valid_from, c.valid_until, c.issue_type, c.once_per_user, c.is_active,
+               c.created_at, c.updated_at,
+               (SELECT COUNT(*) FROM User_Coupons uc
+                 WHERE uc.coupon_id = c.coupon_id)                        AS issued_count,
+               (SELECT COUNT(*) FROM User_Coupons uc
+                 WHERE uc.coupon_id = c.coupon_id AND uc.status = 'used')  AS used_count
+        FROM Coupons c
+        ORDER BY c.coupon_id DESC
+    </select>
+
+    <!-- 발급 실패 사유를 가르는 데 쓴다. issueCoupon 이 0 을 돌려주는 이유가
+         "이미 보유" 인지 "중지·기간 밖" 인지 관리자에게 알려줘야 한다. -->
+    <select id="countOwnedByUser" resultType="int">
+        SELECT COUNT(*) FROM User_Coupons
+        WHERE user_id = #{userId} AND coupon_id = #{couponId}
+    </select>
+
+    <select id="findCouponById" resultMap="couponResultMap" parameterType="int">
+        SELECT coupon_id, promotion_id, salon_id, service_id, coupon_name, coupon_code,
+               discount_type, discount_value, max_discount, min_order_amount,
+               valid_from, valid_until, issue_type, once_per_user, is_active,
+               created_at, updated_at
+        FROM Coupons
+        WHERE coupon_id = #{couponId}
+    </select>
+
+    <insert id="insertCoupon" useGeneratedKeys="true" keyProperty="couponId">
+        INSERT INTO Coupons
+            (promotion_id, salon_id, service_id, coupon_name, coupon_code,
+             discount_type, discount_value, max_discount, min_order_amount,
+             valid_from, valid_until, issue_type, once_per_user, is_active)
+        VALUES
+            (#{promotionId}, #{salonId}, #{serviceId}, #{couponName}, #{couponCode},
+             #{discountType}, #{discountValue}, #{maxDiscount}, #{minOrderAmount},
+             #{validFrom}, #{validUntil}, #{issueType}, #{oncePerUser}, #{isActive})
+    </insert>
+
+    <update id="toggleActive" parameterType="int">
+        UPDATE Coupons
+        SET is_active = NOT is_active
+        WHERE coupon_id = #{couponId}
+    </update>
+
+</mapper>

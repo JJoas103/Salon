@@ -8,8 +8,7 @@ import com.soldesk.vo.ReservationVO;
 
 public interface ResvMapper {
 
-    List<ReservationVO> getRevList(
-            @Param("userId") int userId);
+    List<ReservationVO> getRevList(@Param("userId") int userId);
 
     int countCompleted(@Param("userId") int userId);// 완료된 예약 건수
 
@@ -37,12 +36,45 @@ public interface ResvMapper {
 
     ReservationVO findById(int reservationId);
 
+    /**
+     * 그 자리를 지금 잡고 있는 결제 미완료 예약 1건.
+     *
+     * 확인 화면이 "자리가 찼다"고 판단했을 때, 막고 있는 것이 본인의 미완료 결제인지
+     * 남의 예약인지 구분하려고 쓴다. 조건은 findReservedTimes 의 pending 쪽과 같다.
+     *
+     * @return 없으면 null
+     */
+    ReservationVO findPendingHold(@Param("stylistId") int stylistId,
+                                  @Param("reservationTime") String reservationTime);
+
+    /**
+     * 결제창에서 이탈해 10분이 지난 예약들의 번호.
+     *
+     * 한 문장짜리 UPDATE 로 한꺼번에 접지 않고 번호를 먼저 뽑는다.
+     * UPDATE 는 몇 건인지만 알려주고 어느 건인지는 알려주지 않는데,
+     * 적립금·쿠폰은 예약번호로 묶여 있어 번호를 모르면 무엇을 되돌릴지 알 수 없기 때문이다.
+     *
+     * @return 접어야 할 예약번호 목록 (없으면 빈 목록)
+     */
+    List<Integer> findStalePendingIds();
+
     /** 결제 결과에 따라 pending → confirmed / cancelled */
     int updateStatus(@Param("reservationId") int reservationId,
                      @Param("status") String status);
 
-    /** 사용자가 자신의 확정 예약을 취소 */
-    int cancelReservation(@Param("reservationId") int reservationId,
-                          @Param("userId") int userId);
+    // 점주 예약현황관리: 이 매장의 전체 예약 목록 한 페이지 (고객명/연락처/디자이너명 포함, 최신순)
+    List<ReservationVO> findBySalonId(@Param("salonId") int salonId,
+                                       @Param("offset") int offset,
+                                       @Param("limit") int limit);
 
+    int countBySalonId(int salonId);
+
+    // 점주가 확정된 예약을 정리(거절/노쇼). 대기/이미 취소된 건은 건드리지 않는다. 1이면 성공
+    int rejectReservation(@Param("reservationId") int reservationId,
+                           @Param("rejectReason") String rejectReason,
+                           @Param("cancelType") String cancelType);
+
+    // 예약현황판: 매장 전체의 그 날 예약을 한 번에 (디자이너마다 조회하면 N+1)
+    List<ReservationVO> findBySalonIdAndDate(@Param("salonId") int salonId,
+                                              @Param("date") String date);
 }

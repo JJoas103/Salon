@@ -14,18 +14,26 @@
         <result column="payment_status" property="paymentStatus"/>
         <result column="transaction_id" property="transactionId"/>
         <result column="paid_at"        property="paidAt"/>
+        <result column="original_amount"        property="originalAmount"/>
+        <result column="coupon_discount"        property="couponDiscount"/>
+        <result column="point_used"        property="pointUsed"/>
+        <result column="pg_provider"        property="pgProvider"/>
+        <result column="user_coupon_id"        property="userCouponId"/>
     </resultMap>
 
     <!-- transaction_id 는 ready 응답을 받은 뒤에 채운다. UNIQUE 컬럼이라 이 시점엔 NULL 로 둔다
          (MySQL 은 UNIQUE 컬럼에 NULL 이 여러 개 들어가는 것을 허용한다) -->
     <insert id="insertPayment" useGeneratedKeys="true" keyProperty="paymentId">
-        INSERT INTO Payments (reservation_id, user_id, amount, payment_method, payment_status)
-        VALUES (#{reservationId}, #{userId}, #{amount}, #{paymentMethod}, 'pending')
+        INSERT INTO Payments (reservation_id, user_id, amount, payment_method, payment_status,
+                              original_amount, coupon_discount, point_used, pg_provider, user_coupon_id)
+        VALUES (#{reservationId}, #{userId}, #{amount}, #{paymentMethod}, 'pending',
+                #{originalAmount}, #{couponDiscount}, #{pointUsed}, #{pgProvider}, #{userCouponId})
     </insert>
 
     <select id="findByReservationId" resultMap="paymentResultMap" parameterType="int">
         SELECT payment_id, reservation_id, user_id, amount, payment_method,
-               payment_status, transaction_id, paid_at
+               payment_status, transaction_id, paid_at,
+               original_amount, coupon_discount, point_used, pg_provider, user_coupon_id
         FROM Payments
         WHERE reservation_id = #{reservationId}
     </select>
@@ -52,6 +60,14 @@
         SET payment_status = 'failed'
         WHERE reservation_id = #{reservationId}
           AND payment_status = 'pending'
+    </update>
+
+    <!-- 점주 거절로 인한 환불 — 완료된 결제만 대상, 이미 환불된 건 다시 건드리지 않는다 -->
+    <update id="markRefunded" parameterType="int">
+        UPDATE Payments
+        SET payment_status = 'refunded'
+        WHERE reservation_id = #{reservationId}
+          AND payment_status = 'completed'
     </update>
 
 </mapper>

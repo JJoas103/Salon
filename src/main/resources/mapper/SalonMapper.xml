@@ -68,6 +68,29 @@
         ORDER BY price, service_id
     </select>
 
+    <select id="findServiceById" resultMap="serviceResultMap" parameterType="int">
+        SELECT service_id, salon_id, service_name, price, duration_minutes,
+               description, created_at, updated_at
+        FROM Services
+        WHERE service_id = #{serviceId}
+    </select>
+
+    <insert id="insertService" parameterType="com.soldesk.vo.ServiceVO">
+        insert into Services (salon_id, service_name, price, duration_minutes, description)
+        values (#{salonId}, #{serviceName}, #{price}, #{durationMinutes}, #{description})
+    </insert>
+
+    <update id="updateService" parameterType="com.soldesk.vo.ServiceVO">
+        update Services
+        set service_name = #{serviceName}, price = #{price},
+            duration_minutes = #{durationMinutes}, description = #{description}
+        where service_id = #{serviceId}
+    </update>
+
+    <delete id="deleteService" parameterType="int">
+        delete from Services where service_id = #{serviceId}
+    </delete>
+
     <resultMap id="operatingHourResultMap" type="com.soldesk.vo.SalonOperatingHourVO">
         <id     column="hour_id"      property="hourId"/>
         <result column="salon_id"     property="salonId"/>

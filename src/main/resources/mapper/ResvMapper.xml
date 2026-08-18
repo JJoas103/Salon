@@ -15,12 +15,22 @@
         <result column="service_id" property="serviceId"/>
         <result column="reservation_time" property="reservationTime"/>
         <result column="status" property="status"/>
+        <result column="reject_reason" property="rejectReason"/>
+        <result column="cancel_type" property="cancelType"/>
         <result column="salon_name" property="salonName"/>
         <result column="transaction_id" property="transactionId"/>
         <result column="payment_method" property="paymentMethod"/>
         <result column="amount" property="amount"/>
         <result column="service_name" property="serviceName"/>
-
+        <result column="original_amount" property="originalAmount"/>
+        <result column="coupon_discount" property="couponDiscount"/>
+        <result column="point_used" property="pointUsed"/>
+        <result column="pg_provider" property="pgProvider"/>
+        <result column="customer_name" property="customerName"/>
+        <result column="customer_phone" property="customerPhone"/>
+        <result column="stylist_name" property="stylistName"/>
+        <result column="duration_minutes" property="durationMinutes"/>
+        <result column="created_at" property="createdAt"/>
     </resultMap>
 
     <!-- 전체 예약 히스토리 -->
@@ -40,7 +50,11 @@
             p.transaction_id,
             p.payment_method,
             p.amount,
-            se.service_name AS service_name
+            se.service_name AS service_name,
+            p.original_amount,
+            p.coupon_discount,
+            p.point_used,
+            p.pg_provider
         FROM Reservations r
         JOIN Salons s
           ON s.salon_id = r.salon_id
@@ -56,15 +70,71 @@
     <select id="countCompleted"
             resultType="int"
             parameterType="int">
+        <!-- "누적 예약 건수". 결제까지 끝난 예약을 센다.
+             'completed' 로 가는 전이를 두지 않기로 해서(방문 여부를 알 수 없다),
+             확정된 예약을 이용 실적으로 본다. -->
         SELECT COUNT(*)
         FROM Reservations
         WHERE user_id = #{userId}
-          AND status = 'completed'
+          AND status IN ('confirmed', 'completed')
     </select>
 
     <select id="countByStylistId" resultType="int" parameterType="int">
         select count(*) from Reservations where stylist_id = #{stylistId}
     </select>
+
+    <!-- 점주 예약현황관리 목록/현황판이 함께 쓰는 컬럼. duration 은 진행중/완료 판정에, amount 는 환불 금액 표시에 쓴다 -->
+    <sql id="ownerColumns">
+        r.reservation_id, r.user_id, r.salon_id, r.stylist_id, r.service_id,
+        r.reservation_time, r.status, r.reject_reason, r.cancel_type, r.created_at,
+        u.user_name AS customer_name, u.phone_number AS customer_phone,
+        st.stylist_name AS stylist_name,
+        se.service_name AS service_name, se.duration_minutes AS duration_minutes,
+        p.amount AS amount
+    </sql>
+
+    <sql id="ownerJoins">
+        FROM Reservations r
+        JOIN Users u ON u.user_id = r.user_id
+        LEFT JOIN Stylists st ON st.stylist_id = r.stylist_id
+        JOIN Services se ON se.service_id = r.service_id
+        LEFT JOIN Payments p ON p.reservation_id = r.reservation_id
+    </sql>
+
+    <!-- 점주 예약현황관리: 이 매장의 전체 예약 목록 한 페이지 (최신순) -->
+    <select id="findBySalonId" resultMap="ResvResultMap">
+        SELECT <include refid="ownerColumns" />
+        <include refid="ownerJoins" />
+        WHERE r.salon_id = #{salonId}
+        ORDER BY r.reservation_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countBySalonId" resultType="int" parameterType="int">
+        SELECT COUNT(*) FROM Reservations WHERE salon_id = #{salonId}
+    </select>
+
+    <!--
+        예약현황판: 매장 전체의 그 날 예약.
+        취소/거절된 건은 자리를 비켜주므로 뺀다. 결제 이탈(10분 지난 pending)은 자리는 비켜주지만
+        점주에게는 "결제 미완료"로 보여야 하므로 여기서 거르지 않고 그대로 내려보낸다.
+    -->
+    <select id="findBySalonIdAndDate" resultMap="ResvResultMap">
+        SELECT <include refid="ownerColumns" />
+        <include refid="ownerJoins" />
+        WHERE r.salon_id = #{salonId}
+          AND DATE(r.reservation_time) = #{date}
+          AND r.status &lt;&gt; 'cancelled'
+        ORDER BY r.reservation_time
+    </select>
+
+    <!-- 점주 정리: 확정된 예약만 대상 (대기/이미 취소된 건은 건드리지 않는다). cancel_type 으로 거절/노쇼 구분 -->
+    <update id="rejectReservation">
+        UPDATE Reservations
+        SET status = 'cancelled', reject_reason = #{rejectReason}, cancel_type = #{cancelType}
+        WHERE reservation_id = #{reservationId}
+          AND status = 'confirmed'
+    </update>
 
     <!--
         이미 찬 시각 목록. 취소(cancelled)된 예약은 자리를 비켜줘야 하므로 제외한다.
@@ -108,14 +178,51 @@
             r.reservation_time, r.status,
             s.salon_name AS salon_name,
             se.service_name AS service_name,
-            se.price AS amount,
+            p.amount AS amount,
             p.transaction_id,
-            p.payment_method
+            p.payment_method,
+            p.original_amount,
+            p.coupon_discount,
+            p.point_used,
+            p.pg_provider
         FROM Reservations r
         JOIN Salons s   ON s.salon_id = r.salon_id
         JOIN Services se ON se.service_id = r.service_id
         LEFT JOIN Payments p ON p.reservation_id = r.reservation_id
         WHERE r.reservation_id = #{reservationId}
+    </select>
+
+    <!--
+        그 자리를 지금 잡고 있는 결제 미완료 예약. 조건은 findReservedTimes 의 pending 쪽과 같아야 한다.
+        pg_provider 를 같이 가져오는 이유는, 화면이 이 예약을 취소하는 링크를 만들 때
+        결제사가 URL 에 들어가기 때문이다.
+    -->
+    <select id="findPendingHold" resultMap="ResvResultMap">
+        SELECT
+            r.reservation_id, r.user_id, r.salon_id, r.stylist_id, r.service_id,
+            r.reservation_time, r.status,
+            p.pg_provider
+        FROM Reservations r
+        LEFT JOIN Payments p ON p.reservation_id = r.reservation_id
+        WHERE r.stylist_id = #{stylistId}
+          AND r.reservation_time = #{reservationTime}
+          AND r.status = 'pending'
+          AND r.created_at &gt; NOW() - INTERVAL 10 MINUTE
+        LIMIT 1
+    </select>
+
+    <!--
+        결제창에서 이탈해 10분이 지난 예약들의 번호.
+        조건은 findReservedTimes 의 pending 쪽과 뒤집힌 관계다 — 거기서 자리를 비켜주는 건들이
+        곧 여기서 접어야 할 건들이다. 한쪽만 바꾸면 화면에는 빈 자리인데 행은 살아 있는 상태가 된다.
+
+        UPDATE 로 한꺼번에 접지 않고 번호를 뽑는 이유는 ResvMapper 인터페이스 주석에 적어두었다.
+    -->
+    <select id="findStalePendingIds" resultType="int">
+        SELECT reservation_id
+        FROM Reservations
+        WHERE status = 'pending'
+          AND created_at &lt;= NOW() - INTERVAL 10 MINUTE
     </select>
 
     <!-- 결제 중(pending)인 예약만 상태를 옮긴다. 이미 확정/취소된 건은 건드리지 않는다. -->

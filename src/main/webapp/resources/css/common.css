@@ -320,6 +320,8 @@
 .mini-cal-day.is-today { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .mini-cal-day.is-selected { background: var(--accent); color: var(--white); }
 .mini-cal-day.is-past { opacity: 0.32; cursor: default; }
+.mini-cal-day.is-off { background: var(--border); color: var(--text-light); cursor: default; }
+.mini-cal-day.is-off:hover { background: var(--border); }
 
 /* ==========================================================================
    반응형
@@ -369,3 +371,11 @@
     font-size: 11px !important;
   }
 }
+
+/* ---- lightbox (업로드 사진 클릭 확대, resources/js/lightbox.js 가 사용) ---- */
+.lightbox-img { cursor: zoom-in; }
+.lightbox-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity .15s ease; }
+.lightbox-overlay.is-open { opacity: 1; visibility: visible; }
+.lightbox-image { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: var(--shadow); }
+.lightbox-close { position: absolute; top: 24px; right: 32px; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.lightbox-close:hover { background: rgba(255, 255, 255, 0.3); }

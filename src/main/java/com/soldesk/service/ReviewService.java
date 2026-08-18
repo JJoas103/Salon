@@ -1,16 +1,24 @@
 package com.soldesk.service;
 
+import java.io.IOException;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import com.soldesk.mapper.ReviewMapper;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.ReviewVO;
 
 @Service
 public class ReviewService {
+
+    /** 리뷰 1건당 적립액. 정액이라 시술 가격과 무관하다. */
+    private static final int REVIEW_EARN_POINT = 1000;
+
     @Autowired private ReviewMapper reviewMapper;
+    @Autowired private FileService fileService;
+    @Autowired private PointService pointService;
 
     @Transactional(readOnly = true)
     public List<ReviewVO> getReviews(int salonId) { return reviewMapper.findBySalonId(salonId); }
@@ -26,7 +34,8 @@ public class ReviewService {
     }
 
     @Transactional
-    public void write(int userId, int salonId, int reservationId, int rating, String comment) {
+    public void write(int userId, int salonId, int reservationId, int rating, String comment,
+            MultipartFile imageFile, MultipartFile imageFile2) throws IOException {
         String cleanComment = comment == null ? "" : comment.trim();
         if (rating < 1 || rating > 5) throw new IllegalArgumentException("별점은 1점부터 5점까지 선택해 주세요.");
         if (cleanComment.isEmpty()) throw new IllegalArgumentException("리뷰 내용을 입력해 주세요.");
@@ -40,7 +49,60 @@ public class ReviewService {
         review.setReservationId(reservationId);
         review.setRating(rating);
         review.setComment(cleanComment);
+        String saved = fileService.saveFile(imageFile);
+        if (saved != null) {
+            review.setImageUrl("/upload/" + saved);
+        }
+        String saved2 = fileService.saveFile(imageFile2);
+        if (saved2 != null) {
+            review.setImageUrl2("/upload/" + saved2);
+        }
         reviewMapper.insert(review);
         reviewMapper.refreshSalonAverageRating(salonId);
+
+        // 적립은 리뷰를 남긴 시점에 붙인다. 금액과 무관한 정액인 이유는,
+        // 리뷰 한 건의 가치가 시술 가격에 비례하지 않기 때문이다.
+        // (비율로 두면 비싼 시술에만 리뷰가 몰린다)
+        pointService.earn(userId, reservationId, REVIEW_EARN_POINT, "리뷰 작성 적립");
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewVO getReview(int reviewId) {
+        return reviewMapper.findById(reviewId);
+    }
+
+    @Transactional
+    public void update(int reviewId, int userId, int rating, String comment,
+            MultipartFile imageFile, MultipartFile imageFile2) throws IOException {
+        ReviewVO existing = reviewMapper.findById(reviewId);
+        if (existing == null || existing.getUserId() != userId) {
+            throw new IllegalArgumentException("본인이 작성한 리뷰만 수정할 수 있습니다.");
+        }
+        String cleanComment = comment == null ? "" : comment.trim();
+        if (rating < 1 || rating > 5) throw new IllegalArgumentException("별점은 1점부터 5점까지 선택해 주세요.");
+        if (cleanComment.isEmpty()) throw new IllegalArgumentException("리뷰 내용을 입력해 주세요.");
+        if (cleanComment.length() > 1000) throw new IllegalArgumentException("리뷰 내용은 1,000자 이하로 입력해 주세요.");
+
+        existing.setRating(rating);
+        existing.setComment(cleanComment);
+        String saved = fileService.saveFile(imageFile);
+        if (saved != null) {
+            fileService.deleteFile(stripUploadPrefix(existing.getImageUrl()));
+            existing.setImageUrl("/upload/" + saved);
+        }
+        String saved2 = fileService.saveFile(imageFile2);
+        if (saved2 != null) {
+            fileService.deleteFile(stripUploadPrefix(existing.getImageUrl2()));
+            existing.setImageUrl2("/upload/" + saved2);
+        }
+        reviewMapper.update(existing);
+        reviewMapper.refreshSalonAverageRating(existing.getSalonId());
+    }
+
+    private String stripUploadPrefix(String imageUrl) {
+        if (imageUrl != null && imageUrl.startsWith("/upload/")) {
+            return imageUrl.substring("/upload/".length());
+        }
+        return null;
     }
 }

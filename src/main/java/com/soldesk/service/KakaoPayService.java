@@ -90,6 +90,17 @@ public class KakaoPayService {
         return post("/online/v1/payment/approve", body);
     }
 
+    // 결제취소(환불). 점주가 확정된 예약을 거절할 때 이미 승인된 결제를 되돌리기 위해 부른다. 전액취소만 쓴다.
+    public Map<String, Object> cancel(String tid, BigDecimal cancelAmount) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("cid", cid);
+        body.put("tid", tid);
+        body.put("cancel_amount", cancelAmount.intValue());
+        body.put("cancel_tax_free_amount", 0);
+
+        return post("/online/v1/payment/cancel", body);
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> post(String path, Map<String, Object> body) {
         if (secretKey == null || secretKey.isBlank()) {

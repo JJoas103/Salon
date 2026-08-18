@@ -81,5 +81,29 @@
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 
-    
+    <!-- ⑤ 에러 페이지: 4xx/5xx만 대상, 3xx는 정상 리다이렉트라 해당 없음 -->
+    <error-page>
+        <error-code>403</error-code>
+        <location>/WEB-INF/views/error/403.jsp</location>
+    </error-page>
+    <error-page>
+        <error-code>404</error-code>
+        <location>/WEB-INF/views/error/404.jsp</location>
+    </error-page>
+    <error-page>
+        <error-code>500</error-code>
+        <location>/WEB-INF/views/error/500.jsp</location>
+    </error-page>
+    <!-- throwExceptionIfNoHandlerFound=true 라 매칭 안 되는 URL은 404 상태코드가 아니라
+         NoHandlerFoundException 으로 던져짐, error-code 만으로는 못 잡아서 별도 매핑 필요 -->
+    <error-page>
+        <exception-type>org.springframework.web.servlet.NoHandlerFoundException</exception-type>
+        <location>/WEB-INF/views/error/404.jsp</location>
+    </error-page>
+    <!-- 그 외 예상 못한 모든 예외에 대한 안전망 -->
+    <error-page>
+        <exception-type>java.lang.Throwable</exception-type>
+        <location>/WEB-INF/views/error/500.jsp</location>
+    </error-page>
+
 </web-app>

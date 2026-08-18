@@ -11,6 +11,8 @@ public class ReviewVO {
     private int reservationId; // reservation_id
     private int rating; // 1~5
     private String comment;
+    private String imageUrl; // image_url
+    private String imageUrl2; // image_url2
     private String createdAt; // created_at
     private String updatedAt; // updated_at
     private String userName;
@@ -28,6 +30,10 @@ public class ReviewVO {
     public void setRating(int rating) { this.rating = rating; }
     public String getComment() { return comment; }
     public void setComment(String comment) { this.comment = comment; }
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+    public String getImageUrl2() { return imageUrl2; }
+    public void setImageUrl2(String imageUrl2) { this.imageUrl2 = imageUrl2; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }

@@ -15,6 +15,8 @@ public interface ReviewMapper {
     int countReviewableReservation(@Param("reservationId") int reservationId,
                                    @Param("userId") int userId,
                                    @Param("salonId") int salonId);
+    ReviewVO findById(int reviewId);
     void insert(ReviewVO review);
+    int update(ReviewVO review);
     void refreshSalonAverageRating(int salonId);
 }

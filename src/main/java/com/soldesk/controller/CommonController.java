@@ -31,22 +31,23 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.soldesk.service.AdvertisementService;
 import com.soldesk.service.ChatService;
-import com.soldesk.service.KakaoPayService;
+import com.soldesk.service.CouponService;
 import com.soldesk.service.OwnerRequestService;
+import com.soldesk.service.PointService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
+import com.soldesk.service.AdvertisementService;
+import com.soldesk.service.SalonNoticeService;
 import com.soldesk.service.SalonService;
-import com.soldesk.service.StylistService;
 import com.soldesk.service.UserService;
 import com.soldesk.service.WishlistService;
 import com.soldesk.validation.PasswordChangeValidator;
 import com.soldesk.vo.ChatRoomVO;
 import com.soldesk.vo.MessageVO;
 import com.soldesk.vo.PasswordChangeVO;
-import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonNoticeVO;
 import com.soldesk.vo.SalonVO;
-import com.soldesk.vo.TimeSlotVO;
 import com.soldesk.vo.UserVO;
 
 @Controller
@@ -61,6 +62,12 @@ public class CommonController {
 
     @Autowired
     private ReservationService reservationService;
+
+    @Autowired
+    private PointService pointService;
+
+    @Autowired
+    private CouponService couponService;
 
     @Autowired
     private SalonService salonService;
@@ -84,10 +91,7 @@ public class CommonController {
     private ReviewService reviewService;
 
     @Autowired
-    private StylistService stylistService;
-
-    @Autowired
-    private KakaoPayService kakaoPayService;
+    private SalonNoticeService salonNoticeService;
 
     // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 생성
     private final ObjectMapper objectMapper =
@@ -157,27 +161,42 @@ public class CommonController {
                 userService.getUser(authentication.getName());
 
         model.addAttribute("user", user);
-
-        model.addAttribute(
-                "reservationCount",
-                reservationService.countCompleted(user.getUserId()));
-
-        model.addAttribute(
-                "wishlistCount",
-                wishlistService.count(user.getUserId()));
-
-        model.addAttribute(
-                "reviewCount",
-                reviewService.countUserReviews(user.getUserId()));
+        model.addAttribute("reservationCount", reservationService.countCompleted(user.getUserId()));
+        model.addAttribute("wishlistCount", wishlistService.count(user.getUserId()));
+        model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
+        model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
 
         return "common/mypage";
     }
 
+    /** 쿠폰함 — 마이페이지의 쿠폰 카드에서 들어온다 */
+    @GetMapping("/coupons")
+    public String coupons(Authentication authentication, Model model) {
 
-    /* =========================================================
-       비밀번호 변경
-       ========================================================= */
+        UserVO user = userService.getUser(authentication.getName());
 
+        model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
+        model.addAttribute("myCoupons", couponService.getMyCoupons(user.getUserId()));
+        // 화면이 기한 만료를 판단하는 기준. 만료분은 status 를 바꾸지 않으므로 날짜를 직접 견줘야 한다.
+        model.addAttribute("today", java.time.LocalDate.now().toString());
+
+        return "common/coupons";
+    }
+
+    /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */
+    @GetMapping("/points")
+    public String points(Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
+        model.addAttribute("pointHistory", pointService.getHistory(user.getUserId()));
+
+        return "common/points";
+    }
+
+    /** 비밀번호 변경 (마이페이지 모달에서 AJAX로 호출) */
     @PostMapping("/mypage/password")
     @ResponseBody
     public Map<String, Object> passwordSubmit(
@@ -391,14 +410,9 @@ public class CommonController {
         if (authentication != null
                 && authentication.isAuthenticated()
                 && !"anonymousUser".equals(authentication.getName())) {
-
-            UserVO user =
-                    userService.getUser(
-                            authentication.getName());
-
-            wishlistedSalonIds =
-                    wishlistService.getSalonIds(
-                            user.getUserId());
+            UserVO user = userService.getUser(authentication.getName());
+            wishlistedSalonIds = wishlistService.getSalonIds(user.getUserId());
+            model.addAttribute("currentUserId", user.getUserId());
         }
 
         model.addAttribute(
@@ -424,402 +438,11 @@ public class CommonController {
         return salonService.searchSalons(keyword);
     }
 
-
-    /* =========================================================
-       미용실 예약 화면
-       ========================================================= */
-
-    @GetMapping("/reserve")
-    public String search(
-            @RequestParam(required = false)
-            Integer salonId,
-            Authentication authentication,
-            Model model) {
-
-        if (salonId == null) {
-
-            List<SalonVO> salons =
-                    salonService.getSalons();
-
-            if (salons.isEmpty()) {
-
-                model.addAttribute(
-                        "salonNotFound",
-                        true);
-
-                return "common/reserve";
-            }
-
-            salonId =
-                    salons.get(0).getSalonId();
-        }
-
-        SalonVO salon =
-                salonService.getSalon(salonId);
-
-        if (salon == null) {
-
-            model.addAttribute(
-                    "salonNotFound",
-                    true);
-
-            return "common/reserve";
-        }
-
-        model.addAttribute(
-                "salon",
-                salon);
-
-        UserVO user =
-                userService.getUser(
-                        authentication.getName());
-
-        model.addAttribute(
-                "wishlisted",
-                wishlistService.isWishlisted(
-                        user.getUserId(),
-                        salonId));
-
-        model.addAttribute(
-                "services",
-                salonService.getServices(
-                        salonId));
-
-        model.addAttribute(
-                "stylists",
-                stylistService.findBySalonId(
-                        salonId));
-
-        return "common/reserve";
-    }
-
-
-    /* =========================================================
-       예약 가능 시간 조회
-       ========================================================= */
-
-    @GetMapping("/reserve/slots")
+    /** 지도 상세 카드의 "공지사항" 탭이 매장을 고를 때마다 호출하는 JSON. */
+    @GetMapping("/salons/{salonId}/notices")
     @ResponseBody
-    public List<TimeSlotVO> reserveSlots(
-            @RequestParam int stylistId,
-            @RequestParam String date) {
-
-        return reservationService
-                .getAvailableSlots(
-                        stylistId,
-                        date);
-    }
-
-
-    /* =========================================================
-       예약 생성 → 카카오페이 결제창
-       ========================================================= */
-
-    @PostMapping("/reserve")
-    public String reserveSubmit(
-            @RequestParam int salonId,
-            @RequestParam int serviceId,
-            @RequestParam int stylistId,
-            @RequestParam String reservationTime,
-            Authentication authentication,
-            HttpServletRequest request,
-            Model model) {
-
-        UserVO user =
-                userService.getUser(
-                        authentication.getName());
-
-        ReservationVO reservation;
-
-        try {
-
-            reservation =
-                    reservationService
-                            .createPendingReservation(
-                                    user.getUserId(),
-                                    salonId,
-                                    stylistId,
-                                    serviceId,
-                                    reservationTime);
-
-        } catch (IllegalArgumentException e) {
-
-            return reserveFailView(
-                    model,
-                    salonId,
-                    e.getMessage());
-        }
-
-        int reservationId =
-                reservation.getReservationId();
-
-        String callbackBase =
-                baseUrlOf(request)
-                        + "/common/reserve/payment";
-
-        try {
-
-            Map<String, Object> ready =
-                    kakaoPayService.ready(
-                            reservationId,
-                            user.getUserId(),
-                            reservation.getServiceName(),
-                            java.math.BigDecimal.valueOf(
-                                    reservation.getAmount()),
-                            callbackBase
-                                    + "/approve?reservationId="
-                                    + reservationId,
-                            callbackBase
-                                    + "/cancel?reservationId="
-                                    + reservationId,
-                            callbackBase
-                                    + "/fail?reservationId="
-                                    + reservationId);
-
-            reservationService
-                    .saveTransactionId(
-                            reservationId,
-                            (String) ready.get("tid"));
-
-            return "redirect:"
-                    + ready.get(
-                            "next_redirect_pc_url");
-
-        } catch (IllegalStateException e) {
-
-            reservationService
-                    .failPayment(
-                            reservationId);
-
-            return reserveFailView(
-                    model,
-                    salonId,
-                    e.getMessage());
-        }
-    }
-
-
-    /* =========================================================
-       카카오페이 결제 승인
-       ========================================================= */
-
-    @GetMapping("/reserve/payment/approve")
-    public String reserveApprove(
-            @RequestParam int reservationId,
-            @RequestParam("pg_token")
-            String pgToken,
-            Authentication authentication,
-            Model model) {
-
-        UserVO user =
-                userService.getUser(
-                        authentication.getName());
-
-        ReservationVO reservation =
-                reservationService
-                        .getReservation(
-                                reservationId);
-
-        if (reservation == null
-                || reservation.getUserId()
-                != user.getUserId()) {
-
-            return reserveFailView(
-                    model,
-                    0,
-                    "예약 정보를 찾을 수 없습니다.");
-        }
-
-        PaymentVO payment =
-                reservationService
-                        .getPayment(
-                                reservationId);
-
-        if (payment == null
-                || payment.getTransactionId()
-                == null) {
-
-            return reserveFailView(
-                    model,
-                    reservation.getSalonId(),
-                    "결제 정보를 찾을 수 없습니다.");
-        }
-
-        /*
-         * 이미 결제가 완료된 페이지를 새로고침하면
-         * pg_token 재사용 오류가 발생하므로
-         * 먼저 완료 여부를 확인한다.
-         */
-        if ("completed".equals(
-                payment.getPaymentStatus())) {
-
-            model.addAttribute(
-                    "success",
-                    true);
-
-            model.addAttribute(
-                    "reservation",
-                    reservation);
-
-            return "common/reserve-result";
-        }
-
-        try {
-
-            Map<String, Object> approved =
-                    kakaoPayService.approve(
-                            reservationId,
-                            user.getUserId(),
-                            payment.getTransactionId(),
-                            pgToken);
-
-            @SuppressWarnings("unchecked")
-            Map<String, Object> amount =
-                    (Map<String, Object>)
-                            approved.get("amount");
-
-            int total =
-                    ((Number)
-                            amount.get("total"))
-                            .intValue();
-
-            reservationService
-                    .confirmPayment(
-                            reservationId,
-                            total,
-                            (String) approved.get(
-                                    "payment_method_type"));
-
-        } catch (IllegalStateException e) {
-
-            reservationService
-                    .failPayment(
-                            reservationId);
-
-            return reserveFailView(
-                    model,
-                    reservation.getSalonId(),
-                    e.getMessage());
-        }
-
-        model.addAttribute(
-                "success",
-                true);
-
-        model.addAttribute(
-                "reservation",
-                reservationService
-                        .getReservation(
-                                reservationId));
-
-        return "common/reserve-result";
-    }
-
-
-    /* =========================================================
-       카카오페이 결제 취소 / 실패
-       ========================================================= */
-
-    @GetMapping({
-            "/reserve/payment/cancel",
-            "/reserve/payment/fail"
-    })
-    public String reservePaymentAborted(
-            @RequestParam int reservationId,
-            Authentication authentication,
-            Model model) {
-
-        UserVO user =
-                userService.getUser(
-                        authentication.getName());
-
-        ReservationVO reservation =
-                reservationService
-                        .getReservation(
-                                reservationId);
-
-        if (reservation != null
-                && reservation.getUserId()
-                == user.getUserId()) {
-
-            reservationService
-                    .failPayment(
-                            reservationId);
-        }
-
-        return reserveFailView(
-                model,
-                reservation == null
-                        ? 0
-                        : reservation.getSalonId(),
-                "결제가 취소되었습니다. 예약은 저장되지 않았습니다.");
-    }
-
-
-    /* =========================================================
-       예약 실패 화면
-       ========================================================= */
-
-    private String reserveFailView(
-            Model model,
-            int salonId,
-            String message) {
-
-        model.addAttribute(
-                "success",
-                false);
-
-        model.addAttribute(
-                "errorMessage",
-                message);
-
-        if (salonId > 0) {
-
-            model.addAttribute(
-                    "salonId",
-                    salonId);
-        }
-
-        return "common/reserve-result";
-    }
-
-
-    /* =========================================================
-       Callback Base URL 생성
-       ========================================================= */
-
-    private String baseUrlOf(
-            HttpServletRequest request) {
-
-        StringBuilder url =
-                new StringBuilder()
-                        .append(
-                                request.getScheme())
-                        .append("://")
-                        .append(
-                                request.getServerName());
-
-        int port =
-                request.getServerPort();
-
-        boolean defaultPort =
-                ("http".equals(
-                        request.getScheme())
-                        && port == 80)
-                ||
-                ("https".equals(
-                        request.getScheme())
-                        && port == 443);
-
-        if (!defaultPort) {
-            url.append(':')
-                    .append(port);
-        }
-
-        return url
-                .append(
-                        request.getContextPath())
-                .toString();
+    public List<SalonNoticeVO> salonNotices(@PathVariable int salonId) {
+        return salonNoticeService.getBySalonId(salonId);
     }
 
 
