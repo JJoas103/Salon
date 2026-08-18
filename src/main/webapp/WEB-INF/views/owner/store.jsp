@@ -61,7 +61,10 @@
             <div class="menu-grid">
               <c:forEach var="svc" items="${services}">
                 <div class="menu-card">
-                  <h4 style="margin-bottom: 8px;"><c:out value="${svc.serviceName}" /></h4>
+                  <h4 style="margin-bottom: 8px;">
+                    <c:out value="${svc.serviceName}" />
+                    <c:if test="${not empty svc.category}"> <span class="tag">${svc.category}</span></c:if>
+                  </h4>
                   <p style="color: var(--accent); font-weight: 700; margin-bottom: 4px;"><fmt:formatNumber value="${svc.price}" pattern="#,##0" />원</p>
                   <p class="tag" style="margin-bottom: 12px;">
                     <c:choose>
@@ -72,8 +75,10 @@
                   <div style="display: flex; gap: 5px;">
                     <button type="button" class="btn-modern btn-outline edit-service-btn" style="flex: 1;"
                             data-service-id="${svc.serviceId}" data-service-name="${svc.serviceName}"
+                            data-service-category="${svc.category}"
                             data-service-price="${svc.price}" data-service-duration="${svc.durationMinutes}"
-                            data-service-description="${svc.description}">수정</button>
+                            data-service-description="${svc.description}"
+                            data-service-concern="${svc.concern}">수정</button>
                     <form action="${ctx}/owner/store/service/${svc.serviceId}/delete" method="post"
                           onsubmit="return confirm('이 메뉴를 삭제하시겠습니까?')" style="display:inline;">
                       <button type="submit" class="btn-modern btn-danger"><i class="fas fa-trash"></i></button>
@@ -97,12 +102,23 @@
       <form action="${ctx}/owner/store/service/register" method="post">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">메뉴명</label>
         <input type="text" name="serviceName" class="modern-input" required>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">카테고리</label>
+        <select name="category" class="modern-input">
+          <option value="">미분류</option>
+          <option value="컷">컷</option>
+          <option value="펌">펌</option>
+          <option value="염색">염색</option>
+          <option value="클리닉">클리닉</option>
+          <option value="세트">세트</option>
+        </select>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">가격(원)</label>
         <input type="number" name="price" class="modern-input" min="0" step="100" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">소요시간(분)</label>
         <input type="number" name="durationMinutes" class="modern-input" min="0" step="5" placeholder="예: 60">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">설명</label>
         <textarea name="description" class="modern-input" style="height:80px; resize:none;"></textarea>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">추천 고민 (선택)</label>
+        <input type="text" name="concern" class="modern-input" placeholder="예: 곱슬머리, 손상모, 볼륨 다운">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">등록하기</button>
       </form>
     </div>
@@ -117,12 +133,23 @@
       <form id="editServiceForm" method="post">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">메뉴명</label>
         <input type="text" name="serviceName" id="editServiceName" class="modern-input" required>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">카테고리</label>
+        <select name="category" id="editServiceCategory" class="modern-input">
+          <option value="">미분류</option>
+          <option value="컷">컷</option>
+          <option value="펌">펌</option>
+          <option value="염색">염색</option>
+          <option value="클리닉">클리닉</option>
+          <option value="세트">세트</option>
+        </select>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">가격(원)</label>
         <input type="number" name="price" id="editServicePrice" class="modern-input" min="0" step="100" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">소요시간(분)</label>
         <input type="number" name="durationMinutes" id="editServiceDuration" class="modern-input" min="0" step="5">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">설명</label>
         <textarea name="description" id="editServiceDescription" class="modern-input" style="height:80px; resize:none;"></textarea>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">추천 고민 (선택)</label>
+        <input type="text" name="concern" id="editServiceConcern" class="modern-input" placeholder="예: 곱슬머리, 손상모, 볼륨 다운">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">저장하기</button>
       </form>
     </div>
@@ -148,9 +175,11 @@
       btn.addEventListener('click', function () {
         document.getElementById('editModalServiceName').textContent = btn.dataset.serviceName;
         document.getElementById('editServiceName').value = btn.dataset.serviceName;
+        document.getElementById('editServiceCategory').value = btn.dataset.serviceCategory || '';
         document.getElementById('editServicePrice').value = btn.dataset.servicePrice;
         document.getElementById('editServiceDuration').value = btn.dataset.serviceDuration;
         document.getElementById('editServiceDescription').value = btn.dataset.serviceDescription;
+        document.getElementById('editServiceConcern').value = btn.dataset.serviceConcern || '';
         editServiceForm.action = ctx + '/owner/store/service/' + btn.dataset.serviceId + '/update';
         editServiceModal.classList.add('active');
       });
