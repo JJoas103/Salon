@@ -107,6 +107,9 @@ public class OwnerController {
             } catch (IllegalArgumentException e) {
                 // 세션의 selectedSalonId가 본인 소유가 아니면 빈 폼으로 둔다
             }
+            model.addAttribute("notices", salonNoticeService.getBySalonId(salonId));
+        } else {
+            model.addAttribute("notices", List.of());
         }
         return "owner/store";
     }
@@ -305,20 +308,9 @@ public class OwnerController {
         return "redirect:/owner/reservations";
     }
 
-    @GetMapping("/events")
-    public String events(Authentication authentication, HttpSession session, Model model) {
-        fillCommonModel(authentication, model);
-
-        Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
-        model.addAttribute("notices", selectedSalonId == null
-                ? List.of()
-                : salonNoticeService.getBySalonId(selectedSalonId));
-        return "owner/events";
-    }
-
     /** 공지사항 작성. 세션에 선택된 매장(selectedSalonId)이 실제로 이 점주 소유인지 확인한 뒤에만 저장한다. */
-    @PostMapping("/events")
-    public String createEvent(Authentication authentication, HttpSession session,
+    @PostMapping("/store/notices")
+    public String createNotice(Authentication authentication, HttpSession session,
             @RequestParam String title,
             @RequestParam String content,
             @RequestParam(required = false) MultipartFile imageFile,
@@ -326,7 +318,7 @@ public class OwnerController {
         Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
         if (selectedSalonId == null) {
             redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/events";
+            return "redirect:/owner/store";
         }
 
         UserVO user = userService.getUser(authentication.getName());
@@ -342,16 +334,16 @@ public class OwnerController {
         } catch (IllegalArgumentException | IOException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/events";
+        return "redirect:/owner/store";
     }
 
-    @PostMapping("/events/{noticeId}/delete")
-    public String deleteEvent(@PathVariable int noticeId, Authentication authentication, HttpSession session,
+    @PostMapping("/store/notices/{noticeId}/delete")
+    public String deleteNotice(@PathVariable int noticeId, Authentication authentication, HttpSession session,
             RedirectAttributes redirectAttributes) {
         Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
         if (selectedSalonId == null) {
             redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/events";
+            return "redirect:/owner/store";
         }
 
         UserVO user = userService.getUser(authentication.getName());
@@ -362,7 +354,7 @@ public class OwnerController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/events";
+        return "redirect:/owner/store";
     }
 
     /** 매장 추가 등록 요청 — 사이드바 매장 선택 모달의 "+ 매장 추가" 카드에서 들어온다 */
