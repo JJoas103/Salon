@@ -243,4 +243,13 @@
         WHERE reservation_id = #{reservationId}
           AND status = 'pending'
     </update>
+
+    <update id="cancelReservation">
+    UPDATE Reservations
+    SET status = 'cancelled',
+        updated_at = NOW()
+    WHERE reservation_id = #{reservationId}
+      AND user_id = #{userId}
+      AND status = 'confirmed'
+</update>
 </mapper>
