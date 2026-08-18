@@ -1,6 +1,7 @@
 package com.soldesk.controller;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
@@ -10,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -45,6 +47,12 @@ public class OwnerController {
     // 예약현황판 날짜 라벨용 (DB day_of_week 와 같은 한글 표기)
     private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
 
+    // 매장 좌표가 들어올 수 있는 범위 (대한민국). 화면이 보내는 값이라 그대로 믿지 않고 여기서 한 번 거른다.
+    private static final BigDecimal LAT_MIN = new BigDecimal("33");
+    private static final BigDecimal LAT_MAX = new BigDecimal("39");
+    private static final BigDecimal LNG_MIN = new BigDecimal("124");
+    private static final BigDecimal LNG_MAX = new BigDecimal("132");
+
     @Autowired
     private UserService userService;
 
@@ -66,6 +74,10 @@ public class OwnerController {
     @Autowired
     private OwnerRequestService ownerRequestService;
 
+    // 매장정보 관리의 주소 검색 지도에 쓴다. 고객용 지도(CommonController.salonMap)와 같은 키다.
+    @Value("${kakaoMapApiKey}")
+    private String kakaoMapApiKey;
+
     // 점주 전용 홈 대시보드는 아직 없어서, 로그인 직후 착지할 곳으로 매장정보 관리를 사용
     @GetMapping("/home")
     public String home() {
@@ -85,6 +97,7 @@ public class OwnerController {
     @GetMapping("/store")
     public String store(Authentication authentication, HttpSession session, Model model) {
         fillCommonModel(authentication, model);
+        model.addAttribute("kakaoMapApiKey", kakaoMapApiKey);
         Integer salonId = (Integer) session.getAttribute("selectedSalonId");
         if (salonId != null) {
             UserVO user = userService.getUser(authentication.getName());
@@ -163,12 +176,18 @@ public class OwnerController {
         return "redirect:/owner/store";
     }
 
+    /**
+     * 좌표는 화면의 주소 검색이 채워 보내는 hidden 값이라 String 으로 받는다.
+     * BigDecimal 로 직접 받으면 좌표가 아직 없는 매장이 보내는 빈 문자열에 400 이 난다.
+     */
     @PostMapping("/store/update")
     public String updateSalonInfo(Authentication authentication, HttpSession session,
             @RequestParam String salonName,
             @RequestParam(required = false) String address,
             @RequestParam(required = false) String phoneNumber,
             @RequestParam(required = false) String description,
+            @RequestParam(required = false) String latitude,
+            @RequestParam(required = false) String longitude,
             RedirectAttributes redirectAttributes) {
         Integer salonId = (Integer) session.getAttribute("selectedSalonId");
         if (salonId == null) {
@@ -182,6 +201,8 @@ public class OwnerController {
         salon.setAddress(address);
         salon.setPhoneNumber(phoneNumber);
         salon.setDescription(description);
+        salon.setLatitude(toCoordinate(latitude, LAT_MIN, LAT_MAX));
+        salon.setLongitude(toCoordinate(longitude, LNG_MIN, LNG_MAX));
         try {
             salonService.updateSalonInfo(user.getUserId(), salon);
             redirectAttributes.addFlashAttribute("success", "매장 정보가 저장되었습니다.");
@@ -189,6 +210,24 @@ public class OwnerController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/owner/store";
+    }
+
+    /**
+     * 화면이 보낸 좌표 문자열을 컬럼에 넣을 값으로 바꾼다.
+     *
+     * 비었거나(주소를 아직 검색하지 않은 매장), 숫자가 아니거나, 대한민국 밖이면 null 을 준다.
+     * 값을 버려도 주소는 그대로 저장된다 — 좌표가 없으면 고객 지도에서 마커만 빠진다.
+     */
+    private BigDecimal toCoordinate(String raw, BigDecimal min, BigDecimal max) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            BigDecimal value = new BigDecimal(raw.trim());
+            return (value.compareTo(min) < 0 || value.compareTo(max) > 0) ? null : value;
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     // 예약현황판 + 하단 전체목록 화면
