@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 elasticsearch>=8.15,<9
+requests
 sentence-transformers
 langchain
 langchain-ollama

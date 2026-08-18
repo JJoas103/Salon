@@ -1,16 +1,16 @@
 # Elasticsearch 실질적인 기능을 담당
 
-import csv
 import os
-from pathlib import Path
 from typing import Any
 
+import requests
 from elasticsearch import Elasticsearch, helpers
 from sentence_transformers import SentenceTransformer
 
 # ── 상수 ──────────────────────────────────────────
-# CSV 경로: search/ 가 아니라 ai-service/ 루트에 CSV가 있으므로 parents[1]
-CSV_PATH = Path(__file__).resolve().parents[1] / 'salon_services.csv'
+# Spring 이 내려주는 시술 카탈로그(salon_id/salon_name 포함, 폐업 매장 제외).
+# SalonService 가 시술 등록/수정/삭제 직후 /api/reindex 를 호출해 항상 최신으로 맞춘다.
+SPRING_SERVICES_URL = os.getenv('SPRING_SERVICES_URL', 'http://localhost:8080/api/services')
 INDEX_NAME = 'salon-services-agent'
 EMBEDDING_MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 
@@ -35,43 +35,116 @@ def ensure_elasticsearch() -> None:
     if not client.ping():
         raise ConnectionError('엘라스틱서치 연결에 실패했습니다.')
 
-# ── CSV 로드 (시술 카탈로그) ──────────────────────
+# ── 카탈로그 로드 (Spring /api/services) ───────────
 def load_products() -> list[dict[str, Any]]:
+    response = requests.get(SPRING_SERVICES_URL, timeout=10)
+    response.raise_for_status()
+
     products = []
-    with CSV_PATH.open(encoding='utf-8', newline='') as file:
-        for row in csv.DictReader(file):
-            price = int(row['가격'])
-            cycle_weeks = int(row['유지주기'])
-            duration_min = int(row['소요시간'])
-            content = (
-                f"시술명: {row['시술명']}\n"
-                f"카테고리: {row['카테고리']}\n"
-                f"가격: {price}원\n"
-                f"소요시간: {duration_min}분\n"
-                f"유지주기: {cycle_weeks}주\n"
-                f"추천고민: {row['추천고민']}\n"
-                f"설명: {row['설명']}"
-            )
-            products.append({
-                "service_id": row['시술ID'],
-                "name": row['시술명'],
-                "category": row['카테고리'],
-                "price": price,
-                "duration_min": duration_min,
-                "cycle_weeks": cycle_weeks,
-                "concerns": row['추천고민'],
-                "description": row['설명'],
-                "content": content,
-            })
+    for row in response.json():
+        price = int(row['price'])
+        duration_min = row.get('durationMinutes') or 0
+        concern = row.get('concern') or ''
+        salon_name = row.get('salonName') or ''
+        category = row.get('category') or ''
+        description = row.get('description') or ''
+        content = (
+            f"매장: {salon_name}\n"
+            f"시술명: {row['serviceName']}\n"
+            f"카테고리: {category}\n"
+            f"가격: {price}원\n"
+            f"소요시간: {duration_min}분\n"
+            f"추천고민: {concern}\n"
+            f"설명: {description}"
+        )
+        products.append({
+            "service_id": str(row['serviceId']),
+            "salon_id": row['salonId'],
+            "salon_name": salon_name,
+            "name": row['serviceName'],
+            "category": category,
+            "price": price,
+            "duration_min": duration_min,
+            "concerns": concern,
+            "description": description,
+            "content": content,
+        })
     return products
 
-# ── 인덱스 준비 ──────────────────────────────────
+def _index_mappings(embedding_dims: int) -> dict[str, Any]:
+    return {
+        'properties': {
+            'service_id':   {'type': 'keyword'},
+            'salon_id':     {'type': 'keyword'},
+            'salon_name':   {'type': 'text', 'analyzer': 'nori'},
+            'name':         {'type': 'text', 'analyzer': 'nori'},
+            'category':     {'type': 'keyword'},
+            'price':        {'type': 'integer'},
+            'duration_min': {'type': 'integer'},
+            'concerns':     {'type': 'text', 'analyzer': 'nori'},
+            'description':  {'type': 'text', 'analyzer': 'nori'},
+            'content':      {'type': 'text', 'analyzer': 'nori'},
+            'embedding': {
+                'type': 'dense_vector',
+                'dims': embedding_dims,
+                'index': True,
+                'similarity': 'cosine'
+            },
+        }
+    }
+
+# ── 인덱스 새로고침 (무조건 재생성) ─────────────────
+# 시술이 등록/수정/삭제될 때마다 Spring 이 호출한다(/api/reindex). 카탈로그 규모가
+# 작아 매번 통째로 다시 만드는 편이 "일부만 갱신"하다 누락되는 것보다 안전하다.
+def rebuild_index() -> dict[str, Any]:
+    ensure_elasticsearch()
+
+    products = load_products()
+
+    model = get_embedding_model()
+    vectors = (
+        model.encode(
+            [product['content'] for product in products],
+            normalize_embeddings=True,
+        ).tolist()
+        if products else []
+    )
+
+    embedding_dims = len(vectors[0]) if vectors else model.get_sentence_embedding_dimension()
+    client.indices.delete(index=INDEX_NAME, ignore_unavailable=True)
+    client.indices.create(
+        index=INDEX_NAME,
+        mappings=_index_mappings(embedding_dims),
+    )
+
+    if products:
+        helpers.bulk(
+            client,
+            (
+                {
+                    '_index': INDEX_NAME,
+                    '_id': product['service_id'],
+                    '_source': {**product, 'embedding': vector},
+                } for product, vector in zip(products, vectors)
+            ),
+        )
+    client.indices.refresh(index=INDEX_NAME)
+
+    return {
+        'created': True,
+        'index': INDEX_NAME,
+        'document_count': len(products),
+        'message': '시술 인덱스를 새로 고쳤습니다.'
+    }
+
+# ── 인덱스 준비 (없을 때만 새로고침) ────────────────
+# MCP 툴(prepare_service_index)이 상담 중 호출하는 진입점 — 이미 색인돼 있으면 그대로 쓴다.
+# 실제 최신화는 rebuild_index 가 시술 CRUD 이벤트로 담당하므로, 여기서는 "완전히 비어있는
+# 최초 상태"만 채워주면 된다.
 def prepare_index() -> dict[str, Any]:
     ensure_elasticsearch()
 
-    exists = bool(client.indices.exists(index=INDEX_NAME))
-
-    if exists:
+    if client.indices.exists(index=INDEX_NAME):
         stored_count = client.count(index=INDEX_NAME)['count']
         if stored_count > 0:
             return {
@@ -81,56 +154,7 @@ def prepare_index() -> dict[str, Any]:
                 'message': '기존 시술 인덱스를 사용합니다.'
             }
 
-    products = load_products()
-
-    model = get_embedding_model()
-    vectors = model.encode(
-        [product['content'] for product in products],
-        normalize_embeddings=True,
-    ).tolist()
-
-    if not exists:
-        client.indices.create(
-            index=INDEX_NAME,
-            mappings={
-                'properties': {
-                    'service_id':   {'type': 'keyword'},
-                    'name':         {'type': 'text', 'analyzer': 'nori'},
-                    'category':     {'type': 'keyword'},
-                    'price':        {'type': 'integer'},
-                    'duration_min': {'type': 'integer'},
-                    'cycle_weeks':  {'type': 'integer'},
-                    'concerns':     {'type': 'text', 'analyzer': 'nori'},
-                    'description':  {'type': 'text', 'analyzer': 'nori'},
-                    'content':      {'type': 'text', 'analyzer': 'nori'},
-                    'embedding': {
-                        'type': 'dense_vector',
-                        'dims': len(vectors[0]),
-                        'index': True,
-                        'similarity': 'cosine'
-                    },
-                }
-            },
-        )
-
-    helpers.bulk(
-        client,
-        (
-            {
-                '_index': INDEX_NAME,
-                '_id': product['service_id'],
-                '_source': {**product, 'embedding': vector},
-            } for product, vector in zip(products, vectors)
-        ),
-    )
-    client.indices.refresh(index=INDEX_NAME)
-
-    return {
-        'created': True,
-        'index': INDEX_NAME,
-        'document_count': len(products),
-        'message': '시술 인덱스와 임베딩을 준비했습니다.'
-    }
+    return rebuild_index()
 
 # ── 하이브리드 검색 ──────────────────────────────
 def hybrid_search(

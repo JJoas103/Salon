@@ -44,7 +44,9 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/user/check-email"),
                     new AntPathRequestMatcher("/resources/**"),
                     new AntPathRequestMatcher("/upload/**"),
-                    new AntPathRequestMatcher("/common/community/suspended")
+                    new AntPathRequestMatcher("/common/community/suspended"),
+                    // ai-service(FastAPI)가 서버 간 호출로 시술 카탈로그를 가져가는 내부 API
+                    new AntPathRequestMatcher("/api/services")
                 ).permitAll()
                 .requestMatchers(
                     new AntPathRequestMatcher("/common/community/write"),

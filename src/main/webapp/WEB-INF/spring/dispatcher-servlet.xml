@@ -52,4 +52,17 @@
          용량 제한은 web.xml의 <multipart-config>를 따른다. -->
     <bean id="multipartResolver"
           class="org.springframework.web.multipart.support.StandardServletMultipartResolver" />
+
+    <!-- ai-service(FastAPI) 호출용 RestTemplate.
+         타임아웃을 반드시 건다 — 기본값은 무한대기라 FastAPI가 멈추면 Tomcat 스레드가 잠긴다.
+         readTimeout이 긴 이유는 로컬 LLM(Ollama) 응답이 수십 초까지 걸릴 수 있어서다.
+         AiChatController는 웹 컨텍스트(여기)에서만 스캔되므로 이 빈도 여기 있어야 주입된다. -->
+    <bean id="fastApiRequestFactory"
+          class="org.springframework.http.client.SimpleClientHttpRequestFactory">
+        <property name="connectTimeout" value="3000" />
+        <property name="readTimeout" value="120000" />
+    </bean>
+    <bean class="org.springframework.web.client.RestTemplate">
+        <constructor-arg ref="fastApiRequestFactory" />
+    </bean>
 </beans>
