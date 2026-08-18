@@ -602,4 +602,13 @@ public class ReservationService {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
         }
     }
+
+    /** 사용자가 자신의 확정 예약을 취소 */
+    @Transactional
+    public void cancelReservation(int reservationId, int userId) {
+        int result = resvMapper.cancelReservation(reservationId, userId);
+        if (result == 0) {
+            throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
+        }
+    }
 }

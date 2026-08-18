@@ -66,6 +66,10 @@ public interface ResvMapper {
     int updateStatus(@Param("reservationId") int reservationId,
                      @Param("status") String status);
 
+    /** 사용자가 자신의 확정 예약을 취소 */
+    int cancelReservation(@Param("reservationId") int reservationId,
+                          @Param("userId") int userId);
+
     // 점주 예약현황관리: 이 매장의 전체 예약 목록 한 페이지 (고객명/연락처/디자이너명 포함, 최신순)
     List<ReservationVO> findBySalonId(@Param("salonId") int salonId,
                                        @Param("offset") int offset,
