@@ -14,7 +14,7 @@
   <div class="auth-card error-card">
     <div class="error-icon"><i class="fas fa-map-signs"></i></div>
     <div class="error-code">404</div>
-    <p class="error-message">페이지를 찾을 수 없습니다.<br>주소가 바뀌었거나 삭제된 페이지일 수 있어요.</p>
+    <p class="error-message">페이지를 찾을 수 없습니다.<br>주소가 바뀌었거나 삭제된 페이지일 수 있습니다.</p>
     <a href="${pageContext.request.contextPath}/" class="btn-modern btn-primary" style="width: 100%; text-decoration: none;">메인으로 돌아가기</a>
   </div>
 </body>

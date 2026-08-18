@@ -14,7 +14,7 @@
   <div class="auth-card error-card">
     <div class="error-icon"><i class="fas fa-lock"></i></div>
     <div class="error-code">403</div>
-    <p class="error-message">접근 권한이 없습니다.<br>이 페이지를 볼 수 있는 권한이 없어요.</p>
+    <p class="error-message">접근 권한이 없습니다.<br>이 페이지를 볼 수 있는 권한이 없습니다.</p>
     <a href="${pageContext.request.contextPath}/" class="btn-modern btn-primary" style="width: 100%; text-decoration: none;">메인으로 돌아가기</a>
   </div>
 </body>
