@@ -13,15 +13,14 @@ public interface PaymentMapper {
 
     /** ready 응답으로 받은 tid 를 붙여둔다. 승인 단계에서 이 값이 필요하다. */
     void updateTransactionId(@Param("reservationId") int reservationId,
-                             @Param("transactionId") String transactionId);
+            @Param("transactionId") String transactionId);
 
     /** 승인 성공 — 결제수단(카드/머니)은 승인 응답을 보고서야 알 수 있다 */
     int markCompleted(@Param("reservationId") int reservationId,
-                       @Param("paymentMethod") String paymentMethod);
+            @Param("paymentMethod") String paymentMethod);
 
     int markFailed(int reservationId);
-    
-    /** 점주 거절로 인한 환불 처리 — 완료된 결제만 환불 대상이다 */
+
     /** 환불 완료 — completed 일 때만 옮긴다. 반환값으로 적립금·쿠폰 원복 여부를 가른다. */
     int markRefunded(int reservationId);
 }

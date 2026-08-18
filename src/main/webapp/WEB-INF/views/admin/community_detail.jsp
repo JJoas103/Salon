@@ -13,22 +13,10 @@
   <link rel="stylesheet" href="/resources/css/admin.css">
 </head>
 <body>
-  <aside class="sidebar">
-    <div class="sidebar-brand"><i class="fas fa-shield-alt"></i> ADMIN PANEL</div>
-    <ul class="sidebar-menu">
-      <li class="sidebar-item"><a href="/admin/salons"><i class="fas fa-store"></i> 미용실관리</a></li>
-      <li class="sidebar-item active"><a href="/admin/community"><i class="fas fa-user-shield"></i> 커뮤니티 제재</a></li>
-      <li class="sidebar-item"><a href="/admin/members"><i class="fas fa-users"></i> 회원관리</a></li>
-      <li class="sidebar-item"><a href="/admin/banners"><i class="fas fa-ad"></i> 광고와 배너관리</a></li>
-    </ul>
-  </aside>
+  <jsp:include page="../includes/sidebar_admin.jsp"><jsp:param name="menu" value="community" /></jsp:include>
   <div class="app-container">
     <header class="app-header">
-      <div style="font-weight: 700; font-size: 18px;">커뮤니티 제재</div>
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 14px; font-weight: 600;">최고관리자</span>
-        <div style="width: 32px; height: 32px; border-radius: 50%; background: #333; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px;">A</div>
-      </div>
+      <div style="font-weight: 700; font-size: 18px;">신고 게시글 상세</div>
     </header>
     <main class="app-content">
       <a href="${ctx}/admin/community" style="display:inline-block; margin-bottom:16px; color:var(--text-sub); text-decoration:none;">
@@ -139,5 +127,9 @@
       return true;
     }
   </script>
+
+  <jsp:include page="../includes/profile_modal.jsp">
+      <jsp:param name="roleLabel" value="관리자" />
+  </jsp:include>
 </body>
 </html>

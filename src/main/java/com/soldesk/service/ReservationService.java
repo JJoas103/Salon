@@ -27,6 +27,7 @@ import com.soldesk.vo.OwnerScheduleSlotVO;
 import com.soldesk.vo.PaymentVO;
 import com.soldesk.vo.PriceQuoteVO;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonGradeVO;
 import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ScheduleBoardVO;
@@ -39,7 +40,6 @@ import com.soldesk.vo.TimeSlotVO;
 @Service
 public class ReservationService {
 
-    
     /** 예약 단위. 시술 소요시간과 무관하게 30분 간격으로만 시작할 수 있다. */
     private static final int SLOT_MINUTES = 30;
 
@@ -49,9 +49,9 @@ public class ReservationService {
 
     /** DB 의 day_of_week 는 ENUM('월','화',...) 한글이라 java 의 DayOfWeek 를 그대로 못 쓴다. */
     private static final String[] DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
-    
+
     private static final DateTimeFormatter HHMM = DateTimeFormatter.ofPattern("HH:mm");
-    
+
     @Autowired
     private PointService pointService;
 
@@ -83,20 +83,102 @@ public class ReservationService {
     private CouponService couponService;
 
     @Transactional
-    public List<ReservationVO> getRevList(int userId){
+    public List<ReservationVO> getRevList(int userId) {
         List<ReservationVO> list = resvMapper.getRevList(userId);
+        list.forEach(this::fillPaymentLabel);
         return list;
     }
 
+    /**
+     * 화면에 보여줄 결제수단 문구를 만든다.
+     *
+     * 두 컬럼의 성격이 다르다. pg_provider 는 어느 결제사를 거쳤는지(금액 계산 때 정해져 항상 값이 있고),
+     * payment_method 는 그 결제사 안에서 실제로 뭘 썼는지(승인 응답에서 오므로 승인 전에는 비어 있다).
+     * 그래서 결제사를 주 표시로 삼고 수단은 있을 때만 괄호로 덧붙인다.
+     * payment_method 만 쓰면 취소·실패 건이 통째로 빈칸이 된다.
+     *
+     * 카카오가 주는 원문(CARD/MONEY)을 사람 말로 바꾸는 것도 여기 한 곳에서 한다.
+     * 화면마다 <c:choose> 로 흩어놓으면 문구가 서로 갈린다.
+     *
+     * 두 컬럼을 실어오는 조회(getRevList / findById)에서만 부른다. 점주 쪽 ownerColumns 에는
+     * 아직 결제 컬럼이 없어서, 거기서 부르면 전부 "결제 정보 없음" 이 된다.
+     */
+    private void fillPaymentLabel(ReservationVO reservation) {
+        String provider = reservation.getPgProvider();
+
+        // LEFT JOIN Payments 라 결제까지 못 간 예약은 결제행 자체가 없다
+        if (provider == null) {
+            reservation.setDisplayPayment("결제 정보 없음");
+            return;
+        }
+        if ("ZERO".equals(provider)) {
+            // 쿠폰·적립금이 정가를 전부 덮어 외부 결제사를 거치지 않은 건 (ZeroAmountGateway)
+            reservation.setDisplayPayment("적립금·쿠폰으로 전액 결제");
+            return;
+        }
+
+        String method = methodLabelOf(reservation.getPaymentMethod());
+        String providerLabel = "KAKAOPAY".equals(provider) ? "카카오페이" : provider;
+        reservation.setDisplayPayment(
+                method == null ? providerLabel : providerLabel + " (" + method + ")");
+    }
+
+    /**
+     * payments.payment_method 원문 → 사람이 읽는 말.
+     *
+     * 카카오페이 단건결제 승인 응답의 payment_method_type 은 CARD 아니면 MONEY 다.
+     * 그 밖의 값은 원문 그대로 내보낸다 — 카카오가 수단을 늘렸을 때 말없이 빈칸이 되는 것보다,
+     * 모르는 값이라도 보이는 편이 무엇을 추가해야 하는지 바로 드러난다.
+     */
+    private String methodLabelOf(String method) {
+        if (method == null || method.isBlank()) {
+            return null; // 아직 승인 전이거나 취소된 건
+        }
+        switch (method) {
+            case "CARD":
+                return "카드";
+            case "MONEY":
+                return "카카오페이머니";
+            default:
+                return method;
+        }
+    }
+
     @Transactional
-    public int countCompleted(int userId){
+    public int countCompleted(int userId) {
         return resvMapper.countCompleted(userId);
+    }
+
+    /**
+     * 매장별 등급. 매장마다 점주가 서로 다른 별개 사업자라, 한 매장에서 쌓은 단골 이력이
+     * 다른 매장 등급에 영향을 주면 안 된다 — 그래서 전체 합산이 아니라 매장별로 따로 계산한다.
+     * (마이페이지 상단의 "누적 이용 건수"는 이 계산과 별개로 전체 활동량 참고용으로 남겨둔다)
+     */
+    @Transactional(readOnly = true)
+    public List<SalonGradeVO> getSalonGrades(int userId) {
+        List<SalonGradeVO> grades = resvMapper.findCompletedCountsBySalon(userId);
+        for (SalonGradeVO g : grades) {
+            g.setGrade(gradeOf(g.getCompletedCount()));
+        }
+        return grades;
+    }
+
+    /**
+     * 완료 예약 건수 기준 등급 매핑. 기준 횟수(0~2 / 3~9 / 10+)는 실제 방문 분포를
+     * 분석해 정한 게 아니라 상식적으로 잡은 임시값 — 서비스가 자리 잡으면 다시 조정해야 한다.
+     */
+    public String gradeOf(int completedCount) {
+        if (completedCount >= 10)
+            return "VIP";
+        if (completedCount >= 3)
+            return "단골";
+        return "새싹";
     }
 
     /**
      * 한 디자이너의 특정 날짜에 고를 수 있는 시간대를 만든다.
      *
-     *   매장 영업시간 ∩ 디자이너 근무시간  →  30분 간격으로 자름  →  이미 찬 시각 / 지난 시각 표시
+     * 매장 영업시간 ∩ 디자이너 근무시간 → 30분 간격으로 자름 → 이미 찬 시각 / 지난 시각 표시
      *
      * 시술 소요시간은 여기에 관여하지 않는다. 10:30(1시간)과 11:00(30분)이 겹쳐도
      * 디자이너가 감당할 수 있으면 문제없다는 것이 이 서비스의 규칙이고,
@@ -170,8 +252,10 @@ public class ReservationService {
             }
             LocalTime scheduleStart = LocalTime.parse(schedule.getStartTime());
             LocalTime scheduleEnd = LocalTime.parse(schedule.getEndTime());
-            if (scheduleStart.isAfter(windowStart)) windowStart = scheduleStart;
-            if (scheduleEnd.isBefore(windowEnd)) windowEnd = scheduleEnd;
+            if (scheduleStart.isAfter(windowStart))
+                windowStart = scheduleStart;
+            if (scheduleEnd.isBefore(windowEnd))
+                windowEnd = scheduleEnd;
         }
 
         return windowStart.isBefore(windowEnd) ? new LocalTime[] { windowStart, windowEnd } : null;
@@ -191,7 +275,7 @@ public class ReservationService {
             int serviceId, String reservationTime, Integer userCouponId, int pointToUse) {
 
         // 1) 넘어온 조합이 실제로 그 매장 것인지 확인한다.
-        //    폼 값만 믿으면 다른 매장의 싼 시술 가격으로 예약을 만들 수 있다.
+        // 폼 값만 믿으면 다른 매장의 싼 시술 가격으로 예약을 만들 수 있다.
         ServiceVO service = validateCombination(salonId, stylistId, serviceId);
         // 2) 그 시각이 애초에 고를 수 있는 자리였는지 (영업시간/근무시간 밖이 아닌지)
         String date = reservationTime.substring(0, 10);
@@ -214,19 +298,19 @@ public class ReservationService {
         }
 
         // 4) 금액을 다시 계산한다. 화면이 보낸 금액은 쓰지 않고, 확인 화면이 보여줄 때
-        //    썼던 것과 똑같은 CheckoutService.quote() 를 부른다. 두 벌로 계산하면
-        //    화면 금액과 청구 금액이 어긋난다.
+        // 썼던 것과 똑같은 CheckoutService.quote() 를 부른다. 두 벌로 계산하면
+        // 화면 금액과 청구 금액이 어긋난다.
         PriceQuoteVO quote = checkoutService.quote(userId, serviceId, userCouponId, pointToUse);
 
         // 5) 적립금 차감. 잔액이 모자라면 예외가 나고 이 트랜잭션이 통째로 롤백되므로,
-        //    방금 만든 예약도 함께 사라진다. 되돌릴 것이 없다.
+        // 방금 만든 예약도 함께 사라진다. 되돌릴 것이 없다.
         pointService.use(userId, reservation.getReservationId(), quote.getPointUsed());
 
         // 6) 쿠폰 점유. 예외가 나면 위와 마찬가지로 통째로 롤백된다.
         //
-        //    할인이 실제로 붙었을 때만 묶는다. 사용자가 쿠폰을 골랐어도 quote() 가
-        //    "사용 불가" 로 판정했으면 할인은 0인데, 그때 묶어버리면 할인은 못 받고
-        //    쿠폰만 없어진다.
+        // 할인이 실제로 붙었을 때만 묶는다. 사용자가 쿠폰을 골랐어도 quote() 가
+        // "사용 불가" 로 판정했으면 할인은 0인데, 그때 묶어버리면 할인은 못 받고
+        // 쿠폰만 없어진다.
         boolean couponApplied = userCouponId != null && quote.getCouponDiscount() > 0;
         if (couponApplied) {
             couponService.reserve(userCouponId, userId, reservation.getReservationId());
@@ -251,15 +335,15 @@ public class ReservationService {
     }
 
     @Transactional
-    public ServiceVO validateCombination(int salonId, int stylistId, int serviceId){
+    public ServiceVO validateCombination(int salonId, int stylistId, int serviceId) {
         StylistVO stylist = stylistMapper.findById(stylistId);
-        if(stylist == null || stylist.getSalonId() != salonId){
+        if (stylist == null || stylist.getSalonId() != salonId) {
             throw new IllegalArgumentException("선택한 디자이너가 이 매장 소속이 아닙니다.");
         }
         return salonMapper.findServicesBySalonId(salonId).stream()
-                    .filter(s -> s.getServiceId() == serviceId)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("선택한 시술이 이 매장 메뉴가 아닙니다."));
+                .filter(s -> s.getServiceId() == serviceId)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("선택한 시술이 이 매장 메뉴가 아닙니다."));
     }
 
     /** ready 응답으로 받은 tid 보관 */
@@ -284,7 +368,7 @@ public class ReservationService {
             // 여기까지 왔다면 금액이 중간에 조작된 것이다. 확정하지 않는다.
             throw new IllegalStateException("결제 금액이 예약 금액과 일치하지 않습니다.");
         }
-        if(paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
+        if (paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
             resvMapper.updateStatus(reservationId, "confirmed");
             couponService.confirm(reservationId);
         }
@@ -324,7 +408,7 @@ public class ReservationService {
      */
     @Transactional
     public void failPayment(int reservationId) {
-        if(paymentMapper.markFailed(reservationId) == 1){
+        if (paymentMapper.markFailed(reservationId) == 1) {
             resvMapper.updateStatus(reservationId, "cancelled");
             pointService.restore(reservationId);
             couponService.release(reservationId);
@@ -333,7 +417,11 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public ReservationVO getReservation(int reservationId) {
-        return resvMapper.findById(reservationId);
+        ReservationVO reservation = resvMapper.findById(reservationId);
+        if (reservation != null) {
+            fillPaymentLabel(reservation);
+        }
+        return reservation;
     }
 
     @Transactional(readOnly = true)
@@ -398,7 +486,8 @@ public class ReservationService {
         // (TreeSet)중복 제거, 시각순 정렬이 한 번에
         Set<LocalTime> times = new TreeSet<>();
         for (LocalTime[] window : windows.values()) {
-            if (window == null) continue;
+            if (window == null)
+                continue;
             for (LocalTime t = window[0]; t.isBefore(window[1]); t = t.plusMinutes(SLOT_MINUTES)) {
                 times.add(t);
             }
@@ -509,8 +598,8 @@ public class ReservationService {
 
     // 점주가 확정 예약을 정리. 두 갈래로 나눈 건 돈을 돌려줘야 하는지가 갈리기 때문
     //
-    //   rejected : 매장 사정으로 취소 > 결제 완료건이면 카카오페이 환불까지
-    //   no_show  : 손님이 안 옴 > 선불 금액은 매장이 가짐 (환불 없음)
+    // rejected : 매장 사정으로 취소 > 결제 완료건이면 카카오페이 환불까지
+    // no_show : 손님이 안 옴 > 선불 금액은 매장이 가짐 (환불 없음)
     //
     // 아래 검증은 순서가 곧 방어 순서 - 값 > 예약 존재 > 소유 > 상태 > 시점
     @Transactional
@@ -571,6 +660,15 @@ public class ReservationService {
         String cancelType = noShow ? "no_show" : "rejected";
         if (resvMapper.rejectReservation(reservationId, reason.trim(), cancelType) == 0) {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
+        }
+    }
+
+    /** 사용자가 자신의 확정 예약을 취소 */
+    @Transactional
+    public void cancelReservation(int reservationId, int userId) {
+        int result = resvMapper.cancelReservation(reservationId, userId);
+        if (result == 0) {
+            throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
         }
     }
 }

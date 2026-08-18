@@ -55,6 +55,7 @@
     <select id="findById" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
+               s.latitude, s.longitude,
                MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
@@ -62,6 +63,7 @@
         WHERE s.salon_id = #{salonId}
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
+                 s.latitude, s.longitude,
                  s.created_at, s.updated_at, s.closed_at
     </select>
 
@@ -128,7 +130,7 @@
     <!-- 점주 기준 매장 조회 (점주 1명당 매장 1개라고 가정, 다중 매장은 추후 목록 조회로 확장) -->
     <select id="findAllByOwnerId" parameterType="int" resultMap="salonResultMap">
         SELECT salon_id, owner_id, salon_name, address, phone_number, description,
-               average_rating, image_url, created_at, updated_at
+               average_rating, image_url, latitude, longitude, created_at, updated_at
         FROM Salons
         WHERE owner_id = #{ownerId}
         ORDER BY salon_id
@@ -232,17 +234,40 @@
 
     <!-- 점주 승격 승인 시 매장 신규 생성. 주소 등 세부정보는 아직 없어 빈 값으로 두고,
          이후 점주가 매장정보 관리 화면에서 직접 채워넣는다 (updateSalonInfo). -->
-    <insert id="insertSalon" parameterType="com.soldesk.vo.SalonVO">
+    <insert id="insertSalon" parameterType="com.soldesk.vo.SalonVO"
+            useGeneratedKeys="true" keyProperty="salonId">
         insert into Salons (owner_id, salon_name, address, phone_number, description)
         values (#{ownerId}, #{salonName}, #{address}, #{phoneNumber}, #{description})
     </insert>
 
+    <!--
+        새 매장 기본 영업시간 — 월~토 동일 시간, 일요일은 휴무로 비워둔다.
+        (기존 매장들도 seed_operating_hours.sql 로 이 요일 패턴을 맞춰뒀다)
+        findOperatingHour 가 이 행이 없으면 휴무로 보기 때문에, 이걸 안 넣으면
+        점주가 직원/스케줄을 다 등록해도 예약 가능한 시간대가 하나도 안 뜬다.
+    -->
+    <insert id="insertDefaultOperatingHours">
+        INSERT INTO Salon_Operating_Hours (salon_id, day_of_week, open_time, close_time)
+        SELECT #{salonId}, d.dow, #{openTime}, #{closeTime}
+        FROM (
+            SELECT '월' AS dow UNION ALL SELECT '화' UNION ALL SELECT '수'
+            UNION ALL SELECT '목' UNION ALL SELECT '금' UNION ALL SELECT '토'
+        ) AS d
+    </insert>
+
+    <!--
+        좌표는 화면의 주소 검색(카카오 Geocoder)이 채워 보낸다. 주소를 바꾸지 않고 저장한
+        경우에도 화면이 기존 좌표를 hidden 으로 그대로 돌려보내므로 덮어써도 값이 유지된다.
+        NULL 이면 고객 지도에서 마커를 그리지 않는다 (salonmap.jsp 의 renderSalons).
+    -->
     <update id="updateSalonInfo" parameterType="com.soldesk.vo.SalonVO">
         update Salons
         set salon_name = #{salonName},
             address = #{address},
             phone_number = #{phoneNumber},
-            description = #{description}
+            description = #{description},
+            latitude = #{latitude},
+            longitude = #{longitude}
         where salon_id = #{salonId}
     </update>
 </mapper>

@@ -3,12 +3,15 @@
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:context="http://www.springframework.org/schema/context"
        xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xmlns:tx="http://www.springframework.org/schema/tx"
        xsi:schemaLocation="http://www.springframework.org/schema/beans
                            http://www.springframework.org/schema/beans/spring-beans.xsd
                            http://www.springframework.org/schema/context
                            http://www.springframework.org/schema/context/spring-context.xsd
                            http://www.springframework.org/schema/mvc
-                           http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+                           http://www.springframework.org/schema/mvc/spring-mvc.xsd
+                           http://www.springframework.org/schema/tx
+                           http://www.springframework.org/schema/tx/spring-tx.xsd">
 
     <!-- @Controller, @RequestMapping 등 활성화 -->
     <mvc:annotation-driven />
@@ -33,6 +36,17 @@
                                             com.soldesk.validation,
                                             com.soldesk.handler,
                                             com.soldesk.ws" />
+
+    <!-- @Transactional 활성화.
+         applicationContext.xml 에도 같은 선언이 있지만 그것은 루트 컨텍스트에만 적용된다.
+         트랜잭션 프록시는 선언한 컨텍스트의 빈만 감싸는데, com.soldesk.service 는 위에서
+         보듯 이 웹 컨텍스트가 스캔한다. 그래서 이 줄이 없으면 모든 서비스의 @Transactional
+         이 조용히 무시되고, 예약 생성처럼 여러 테이블을 잇달아 쓰는 로직이 중간에 실패해도
+         앞 단계가 롤백되지 않는다 (예약행·적립금 차감만 남는 정합성 깨짐).
+
+         transactionManager 빈은 루트 컨텍스트에 있지만, 이름으로 참조하면 자식 컨텍스트가
+         부모까지 거슬러 찾으므로 그대로 쓸 수 있다. -->
+    <tx:annotation-driven transaction-manager="transactionManager" />
 
     <!-- ViewResolver : "home" -> /WEB-INF/views/home.jsp -->
     <bean class="org.springframework.web.servlet.view.InternalResourceViewResolver">

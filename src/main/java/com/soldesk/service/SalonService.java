@@ -126,6 +126,9 @@ public class SalonService {
             throw new IllegalArgumentException("본인 소유의 매장만 수정할 수 있습니다.");
         }
         salonMapper.updateSalonInfo(salon);
+        // 검색은 엘라스틱서치가 답한다. 여기서 색인을 같이 갱신하지 않으면 점주가 주소를 고쳐도
+        // 재기동 전까지 검색 결과에 옛 주소·좌표가 그대로 나온다.
+        salonSearchService.indexSalon(salon.getSalonId());
     }// 점주가 매장정보 관리 화면에서 직접 수정 (소유 검증)
 
     @Transactional(readOnly = true)

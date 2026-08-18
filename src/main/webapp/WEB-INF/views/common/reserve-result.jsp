@@ -64,7 +64,7 @@
             </div>
             <div class="reserve-result-row">
               <dt>결제수단</dt>
-              <dd><c:out value="${reservation.pgProvider}"/></dd>
+              <dd><c:out value="${reservation.displayPayment}"/></dd>
             </div>
             <div class="reserve-result-row">
               <dt>결제금액</dt>

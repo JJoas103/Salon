@@ -19,7 +19,7 @@
   </jsp:include>
 
   <div class="app-container">
-
+    <header class="app-header"></header>
     <main class="app-content">
       <!-- 검색 바 -->
       <form class="map-search-bar" onsubmit="return false;">

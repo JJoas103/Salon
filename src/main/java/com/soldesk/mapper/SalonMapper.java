@@ -16,9 +16,6 @@ public interface SalonMapper {
 
     List<ServiceVO> findServicesBySalonId(int salonId);
 
-    /** 시술 1건. 금액 계산은 화면이 보낸 값이 아니라 이 결과의 price 를 쓴다. */
-    ServiceVO findServiceById(int serviceId);
-
     /** 매장 구분 없는 전체 시술 카탈로그. AI 시술 추천 챗봇(ai-service)의 /api/services 호출용 */
     List<ServiceVO> findAllServices();
 
@@ -31,6 +28,8 @@ public interface SalonMapper {
     /** 점주 시술 메뉴 삭제 */
     void deleteService(int serviceId);
 
+    /** 시술 1건. 금액 계산은 화면이 보낸 값이 아니라 이 결과의 price 를 쓴다. */
+    ServiceVO findServiceById(int serviceId);
 
     /**
      * 특정 요일의 영업시간. 예약 가능 시간대를 만드는 바깥 테두리가 된다.
@@ -38,18 +37,19 @@ public interface SalonMapper {
      * 그 요일 행이 없으면 휴무로 보고 null 을 돌려준다.
      */
     SalonOperatingHourVO findOperatingHour(@Param("salonId") int salonId,
-                                            @Param("dayOfWeek") String dayOfWeek);
+            @Param("dayOfWeek") String dayOfWeek);
 
     /** 점주(user_id) 기준 매장 조회 */
     List<SalonVO> findAllByOwnerId(int ownerId);
-    //키워드로 검색하기. XML 에서 #{keyword} 를 두 번 쓰므로 @Param 으로 이름을 고정한다
+
+    // 키워드로 검색하기. XML 에서 #{keyword} 를 두 번 쓰므로 @Param 으로 이름을 고정한다
     List<SalonVO> searchByKeyword(@Param("keyword") String keyword);
 
     /** 관리자 매장목록: 매장명/주소/점주명 검색 + 운영상태 필터 + 페이지네이션 */
     List<SalonVO> findSalonsForAdmin(@Param("keyword") String keyword,
-                                      @Param("status") String status,
-                                      @Param("offset") int offset,
-                                      @Param("size") int size);
+            @Param("status") String status,
+            @Param("offset") int offset,
+            @Param("size") int size);
 
     /** findSalonsForAdmin과 동일 조건의 총 건수 */
     int countSalonsForAdmin(@Param("keyword") String keyword, @Param("status") String status);
@@ -69,8 +69,14 @@ public interface SalonMapper {
     /** 매장 폐업 취소(재개) — 운영중인 매장 재처리 방지는 WHERE절에서 방어 */
     void reopenSalon(int salonId);
 
-    /** 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력) */
+    /**
+     * 점주 승격 승인 시 매장 신규 생성 (매장명/연락처만 채우고 나머지는 점주가 직접 입력). salonId 는 생성된 키로 채워져 돌아온다
+     */
     void insertSalon(SalonVO salon);
+
+    /** 신규 매장 기본 영업시간(월~토) 생성. 일요일은 휴무로 비워둠 — insertSalon 직후 salon_id 를 가지고 호출한다 */
+    void insertDefaultOperatingHours(@Param("salonId") int salonId,
+            @Param("openTime") String openTime, @Param("closeTime") String closeTime);
 
     /** 점주가 매장정보 관리 화면에서 직접 수정 */
     void updateSalonInfo(SalonVO salon);

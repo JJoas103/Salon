@@ -1,6 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 <%-- 현재 페이지가 넘겨준 메뉴 키. 예) <jsp:param name="menu" value="reservations"/>
      포함하는 컨트롤러는 ${salons} 모델(점주 소유 매장 목록)을 채워줘야 매장 선택 모달이 뜬다. --%>
 <c:set var="menu" value="${param.menu}" />
@@ -33,6 +34,9 @@
     <li class="sidebar-item ${menu == 'chat' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/chat'/>"><i class="fas fa-comments"></i> 1:1 면담<span id="navUnread" class="nav-unread" data-count="0"></span></a>
     </li>
+    <li class="sidebar-item ${menu == 'salonRequest' ? 'active' : ''}">
+      <a href="<c:url value='/owner/salon-request'/>"><i class="fas fa-plus"></i> 매장 추가 요청</a>
+    </li>
   </ul>
 
   <%-- 채팅 소켓은 사이드바에서 연다. 채팅 페이지에서만 열면 다른 화면(예약현황 등)에 있을 때
@@ -54,6 +58,13 @@
   <div class="sidebar-salon-notice" id="salonNotice">매장을 선택해주세요</div>
 
   <div class="sidebar-footer">
+    <div class="sidebar-user-card" id="openProfileModalBtn">
+      <div class="sidebar-user-avatar">${fn:substring(user.userName,0,1)}</div>
+      <div class="sidebar-user-info">
+        <div class="sidebar-user-name">${user.userName} 점주님</div>
+        <div class="sidebar-user-hint">클릭해서 정보 수정</div>
+      </div>
+    </div>
     <a href="<c:url value='/user/logout'/>" class="sidebar-item-logout"><i class="fas fa-sign-out-alt"></i> 로그아웃</a>
   </div>
 </aside>

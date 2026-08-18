@@ -19,10 +19,6 @@
   <div class="app-container">
     <header class="app-header">
       <div style="font-weight: 700; font-size: 18px;">회원관리</div>
-      <div class="user-badge" id="openProfileModalBtn" style="cursor: pointer;">
-        <span>${user.userName} 관리자님</span>
-        <div class="user-avatar-sm">${fn:substring(user.userName,0,1)}</div>
-      </div>
     </header>
     <main class="app-content">
       <c:if test="${not empty error}">
@@ -132,6 +128,7 @@
                             <button type="button" class="tag owner-request-detail-btn"
                                     style="background: var(--accent-soft); color: var(--accent); border: none; cursor: pointer; margin-bottom: 6px; display: block;"
                                     data-request-id="${member.pendingRequestId}"
+                                    data-request-type="${member.pendingRequestType}"
                                     data-applicant-name="<c:out value="${member.userName}"/>"
                                     data-applicant-email="<c:out value="${member.email}"/>"
                                     data-salon-name="<c:out value="${member.pendingSalonName}"/>"
@@ -144,6 +141,27 @@
                           <form action="${ctx}/admin/members/${member.userId}/withdraw" method="post"
                                 onsubmit="return confirm('이 회원을 탈퇴 처리하시겠습니까?')" style="display: inline;">
                             <button type="submit" class="btn-modern btn-danger">탈퇴처리</button>
+                          </form>
+                        </c:when>
+                        <c:when test="${member.userType == 'owner'}">
+                          <c:if test="${not empty member.pendingRequestId}">
+                            <button type="button" class="tag owner-request-detail-btn"
+                                    style="background: var(--accent-soft); color: var(--accent); border: none; cursor: pointer; margin-bottom: 6px; display: block;"
+                                    data-request-id="${member.pendingRequestId}"
+                                    data-request-type="${member.pendingRequestType}"
+                                    data-applicant-name="<c:out value="${member.userName}"/>"
+                                    data-applicant-email="<c:out value="${member.email}"/>"
+                                    data-salon-name="<c:out value="${member.pendingSalonName}"/>"
+                                    data-salon-phone="<c:out value="${member.pendingSalonPhone}"/>"
+                                    data-message="<c:out value="${member.pendingMessage}"/>"
+                                    data-requested-at="<c:out value="${fn:substring(member.pendingRequestedAt, 0, 16)}"/>">
+                              매장 추가 요청 대기
+                            </button>
+                          </c:if>
+                          <form action="${ctx}/admin/members/${member.userId}/demote" method="post"
+                                onsubmit="return confirm('일반회원으로 전환하시겠습니까? 전환 후에 탈퇴 처리가 가능합니다.')"
+                                style="display: inline;">
+                            <button type="submit" class="btn-modern btn-outline">일반회원으로 전환</button>
                           </form>
                         </c:when>
                         <c:otherwise>
@@ -190,7 +208,7 @@
   <div class="modal-overlay" id="ownerRequestDetailModal">
     <div class="modal-box" style="max-width: 480px;">
       <div class="modal-header">
-        <h3 style="font-size: 18px;"><i class="fas fa-store" style="margin-right:8px; color:var(--accent);"></i>점주 승격 요청 상세</h3>
+        <h3 style="font-size: 18px;"><i class="fas fa-store" style="margin-right:8px; color:var(--accent);"></i><span id="ownerRequestDetailTitle">점주 승격 요청 상세</span></h3>
         <button type="button" class="modal-close" id="closeOwnerRequestDetailModalBtn"><i class="fas fa-times"></i></button>
       </div>
       <div style="display: flex; flex-direction: column; gap: 12px; font-size: 14px;">
@@ -204,12 +222,10 @@
         </div>
       </div>
       <div style="display: flex; gap: 8px; margin-top: 20px;">
-        <form id="ownerRequestApproveForm" method="post" style="flex: 1;"
-              onsubmit="return confirm('이 회원의 점주 승격 요청을 승인하시겠습니까?')">
+        <form id="ownerRequestApproveForm" method="post" style="flex: 1;">
           <button type="submit" class="btn-modern btn-primary" style="width: 100%;">승인</button>
         </form>
-        <form id="ownerRequestRejectForm" method="post" style="flex: 1;"
-              onsubmit="return confirm('이 회원의 점주 승격 요청을 반려하시겠습니까?')">
+        <form id="ownerRequestRejectForm" method="post" style="flex: 1;">
           <button type="submit" class="btn-modern btn-outline" style="width: 100%;">반려</button>
         </form>
       </div>
@@ -224,12 +240,25 @@
       var rejectForm = document.getElementById('ownerRequestRejectForm');
       document.querySelectorAll('.owner-request-detail-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
+          var isAdditional = this.dataset.requestType === 'additional_salon';
+          document.getElementById('ownerRequestDetailTitle').textContent =
+            isAdditional ? '매장 추가 요청 상세' : '점주 승격 요청 상세';
           document.getElementById('ownerRequestDetailApplicant').textContent =
             this.dataset.applicantName + ' (' + this.dataset.applicantEmail + ')';
           document.getElementById('ownerRequestDetailSalonName').textContent = this.dataset.salonName;
           document.getElementById('ownerRequestDetailSalonPhone').textContent = this.dataset.salonPhone;
           document.getElementById('ownerRequestDetailRequestedAt').textContent = this.dataset.requestedAt;
           document.getElementById('ownerRequestDetailMessage').textContent = this.dataset.message;
+          approveForm.onsubmit = function () {
+            return confirm(isAdditional
+              ? '이 점주에게 매장을 하나 더 등록해 주시겠습니까?'
+              : '이 회원의 점주 승격 요청을 승인하시겠습니까?');
+          };
+          rejectForm.onsubmit = function () {
+            return confirm(isAdditional
+              ? '이 매장 추가 요청을 반려하시겠습니까?'
+              : '이 회원의 점주 승격 요청을 반려하시겠습니까?');
+          };
           approveForm.action = ctx + '/admin/owner-requests/' + this.dataset.requestId + '/approve';
           rejectForm.action = ctx + '/admin/owner-requests/' + this.dataset.requestId + '/reject';
           modal.classList.add('active');

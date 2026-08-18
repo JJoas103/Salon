@@ -72,6 +72,32 @@ public class SalonSearchService implements InitializingBean{
             log.info("ElasticSearch reindex 완료: {}건", salons.size());
     }
 
+    /**
+     * 매장 한 건만 색인을 다시 쓴다. 매장정보가 바뀔 때마다 불러야 검색 결과가 DB 를 따라간다
+     * (reindexAll 은 기동 시 한 번뿐이라, 이게 없으면 재기동 전까지 옛 주소·좌표가 검색에 남는다).
+     *
+     * 넘겨받은 VO 를 쓰지 않고 salonId 로 다시 읽는 이유: 점주 수정 폼은 이름/주소/연락처/소개만
+     * 담은 VO 를 만들어 오므로, 그대로 색인하면 평점·최저가·이미지가 문서에서 사라진다.
+     *
+     * 색인 실패가 매장 저장 자체를 되돌리면 안 되므로 예외는 여기서 삼키고 로그만 남긴다
+     * (afterPropertiesSet 이 ES 장애를 "검색 기능 제한" 으로 넘기는 것과 같은 취급).
+     */
+    public void indexSalon(int salonId) {
+        try {
+            SalonVO salon = salonMapper.findById(salonId);
+            if (salon == null) {
+                return;
+            }
+            elasticsearchClient.index(index -> index
+                .index(indexName)
+                .id(String.valueOf(salonId))
+                .document(SalonsDocument.from(salon)));
+            log.debug("ElasticSearch 색인 갱신: salonId={}", salonId);
+        } catch (Exception e) {
+            log.warn("ElasticSearch 색인 갱신 실패 - 검색 결과가 최신이 아닐 수 있습니다: salonId={}", salonId, e);
+        }
+    }
+
     @Override
     public void afterPropertiesSet() throws Exception {
         try {

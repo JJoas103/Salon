@@ -19,6 +19,7 @@
         <result column="pending_salon_phone" property="pendingSalonPhone" />
         <result column="pending_message" property="pendingMessage" />
         <result column="pending_requested_at" property="pendingRequestedAt" />
+        <result column="pending_request_type" property="pendingRequestType" />
         <result column="status"          property="status" />
         <result column="suspended_until" property="suspendedUntil" />
     </resultMap>
@@ -70,7 +71,7 @@
             u.created_at, u.updated_at, u.deleted_at,
             r.request_id AS pending_request_id, r.salon_name AS pending_salon_name,
             r.salon_phone AS pending_salon_phone, r.message AS pending_message,
-            r.requested_at AS pending_requested_at
+            r.requested_at AS pending_requested_at, r.request_type AS pending_request_type
         FROM Users u
         LEFT JOIN OwnerRequests r
             ON r.user_id = u.user_id AND r.status = 'pending'

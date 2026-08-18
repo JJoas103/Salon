@@ -28,6 +28,13 @@ body {
 .sidebar-item-logout { display: flex; align-items: center; gap: 13px; color: rgba(255, 255, 255, 0.5); text-decoration: none; padding: 11px 14px; border-radius: 10px; font-weight: 500; font-size: 14.5px; transition: background 0.15s ease, color 0.15s ease; }
 .sidebar-item-logout:hover { background: rgba(255, 255, 255, 0.045); color: rgba(255, 255, 255, 0.85); }
 
+.sidebar-user-card { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s ease; }
+.sidebar-user-card:hover { background: rgba(255, 255, 255, 0.1); }
+.sidebar-user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #6C5CE7; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--white); flex-shrink: 0; }
+.sidebar-user-info { min-width: 0; flex: 1; }
+.sidebar-user-name { font-size: 12.5px; font-weight: 700; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-user-hint { font-size: 10px; color: rgba(255, 255, 255, 0.42); margin-top: 1px; }
+
 /* ---- App shell ---- */
 .app-container { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .app-header { height: 70px; background: var(--white); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
