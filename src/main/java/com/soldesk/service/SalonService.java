@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.soldesk.mapper.SalonMapper;
+import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.ServiceVO;
 // import com.soldesk.vo.StylistVO;
@@ -106,6 +107,14 @@ public class SalonService {
         if (existing == null || existing.getOwnerId() != ownerId) {
             throw new IllegalArgumentException("본인 소유의 매장만 수정할 수 있습니다.");
         }
+        if (salon.getSalonName() == null || salon.getSalonName().trim().isEmpty()) {
+            throw new IllegalArgumentException("매장명을 입력해주세요.");
+        }
+        // 화면(pattern="[0-9-]{9,13}")과 같은 규칙 — 폼 검증을 우회해 바로 요청을 보내는 경우까지 막는다
+        if (salon.getPhoneNumber() == null || !salon.getPhoneNumber().matches("[0-9-]{9,13}")) {
+            throw new IllegalArgumentException("연락처는 숫자와 하이픈(-)만 사용해 입력해주세요.");
+        }
+        salon.setSalonName(salon.getSalonName().trim());
         salonMapper.updateSalonInfo(salon);
     }// 점주가 매장정보 관리 화면에서 직접 수정 (소유 검증)
 
@@ -152,4 +161,39 @@ public class SalonService {
         assertOwnsSalon(existing.getSalonId(), ownerId);
         salonMapper.deleteService(serviceId);
     }// 점주 시술 메뉴 삭제 (소유 검증)
+
+    @Transactional(readOnly = true)
+    public List<SalonOperatingHourVO> getOperatingHours(int salonId) {
+        return salonMapper.findAllOperatingHours(salonId);
+    }// 매장정보 관리 화면의 영업시간 표 채우기용
+
+    /**
+     * 영업시간 전체를 지우고 다시 넣는다. 요일별로 열려있는지/시간이 뭔지는 화면에서
+     * 이미 걸러서 보내주므로(휴무면 그 요일은 hours 에 아예 없음), 여기서는 소유 검증만 하고 그대로 반영한다.
+     */
+    @Transactional
+    public void updateOperatingHours(int ownerId, int salonId, List<SalonOperatingHourVO> hours) {
+        assertOwnsSalon(salonId, ownerId);
+        salonMapper.deleteOperatingHours(salonId);
+        for (SalonOperatingHourVO hour : hours) {
+            hour.setSalonId(salonId);
+            salonMapper.insertOperatingHour(hour);
+        }
+    }// 점주가 매장정보 관리에서 직접 저장하는 영업시간 (소유 검증)
+
+    @Transactional(readOnly = true)
+    public List<SalonVO> getPreparingSalons() {
+        return salonMapper.findPreparingSalons();
+    }// 관리자 "심사 대기" 큐 (2차 승인 전)
+
+    @Transactional
+    public void activateSalon(int salonId) {
+        SalonVO salon = salonMapper.findById(salonId);
+        if (salon == null) {
+            throw new IllegalArgumentException("존재하지 않는 매장입니다.");
+        }
+        if (salonMapper.activateSalon(salonId) == 0) {
+            throw new IllegalArgumentException("이미 활성화되었거나 승인 대기 상태가 아닙니다.");
+        }
+    }// 관리자 2차 승인 — 손님에게 정상 노출
 }

@@ -23,22 +23,24 @@
 
   <div class="app-container">
     <main class="app-content">
-      <c:if test="${param.passwordChanged == 'true'}">
-        <p class="success-text" style="margin-bottom:20px; font-size:14px;">비밀번호가 변경되었습니다.</p>
-      </c:if>
       <div class="profile-hero">
-        <div class="profile-avatar-lg">${fn:substring(user.userName,0,1)}</div>
+        <div class="profile-avatar-lg" id="profileHeroAvatar" style="${not empty user.profileImageUrl ? 'background-image:url(\''.concat(user.profileImageUrl).concat('\'); background-size:cover; background-position:center;') : ''}">
+          <c:if test="${empty user.profileImageUrl}">${fn:substring(user.userName,0,1)}</c:if>
+        </div>
         <div>
-          <h2 style="margin-bottom: 6px; font-size: 24px; display:flex; align-items:center; gap:12px;">
-            ${user.userName}
-            <button type="button" id="openGradeModalBtn" style="display:inline-flex; align-items:center; gap:7px; font:inherit; font-size:12.5px; font-weight:700; color:var(--accent); background:var(--accent-soft); border:1px solid transparent; padding:6px 13px 6px 10px; border-radius:var(--radius-full); cursor:pointer;">
-              <span style="width:7px; height:7px; border-radius:50%; background:var(--accent);"></span>내 등급 보기 <i class="fas fa-chevron-right" style="font-size:9px; opacity:.7;"></i>
-            </button>
-          </h2>
-          <p style="font-size: 14px; color: var(--text-sub);">등록 이메일: ${user.email} | 가입일: ${user.createdAt}</p>
+          <h2 style="margin-bottom: 8px; font-size: 24px;">${user.userName}</h2>
+          <p style="font-size: 14px; color: var(--text-sub); margin-bottom:12px;">등록 이메일: ${user.email} | 가입일: ${user.createdAt}</p>
+          <button type="button" id="openGradeModalBtn" class="achievement-badge-btn">
+            <span class="achievement-badge-icon"><i class="fas fa-medal"></i></span>
+            <span class="achievement-badge-text">
+              <strong>나의 이용내역</strong>
+              <small>매장별 등급 확인하기</small>
+            </span>
+            <i class="fas fa-chevron-right" style="font-size:11px; opacity:.5;"></i>
+          </button>
         </div>
       </div>
-      <div class="stat-grid stat-grid-four">
+      <div class="stat-grid stat-grid-five">
         <div class="stat-card"><span style="font-size: 13px; color: var(--text-sub); display:block; margin-bottom:8px;">누적 이용 건수</span><strong style="font-size: 26px;">${reservationCount} 회</strong></div>
         <a class="stat-card stat-card-link" href="<c:url value='/common/coupons'/>">
           <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">보유 활성 쿠폰</span>
@@ -55,23 +57,14 @@
           <strong style="font-size:26px;">${wishlistCount}개</strong>
           <small>저장한 헤어샵 보기 <i class="fas fa-chevron-right"></i></small>
         </a>
-      </div>
-      <div class="menu-group">
-        <a href="<c:url value='/common/my-reviews'/>" class="menu-item-modern">
-          <span><i class="fas fa-star" style="margin-right:12px;"></i> 작성한 리뷰</span>
-          <span><strong>${reviewCount}</strong>개 <i class="fas fa-chevron-right" style="margin-left:8px;"></i></span>
+        <a class="stat-card stat-card-link" href="<c:url value='/common/my-reviews'/>">
+          <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">작성한 리뷰</span>
+          <strong style="font-size:26px;">${reviewCount}개</strong>
+          <small>내가 작성한 리뷰 보기 <i class="fas fa-chevron-right"></i></small>
         </a>
-        <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-credit-card" style="margin-right:12px;"></i> 결제 수단 및 카드 관리</span><span class="tag">준비중</span></a>
-        <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-bell" style="margin-right:12px;"></i> 알림 설정</span><span class="tag">준비중</span></a>
-        <a href="#" id="openPasswordModalBtn" class="menu-item-modern"><span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span><i class="fas fa-chevron-right"></i></a>
       </div>
     </main>
   </div>
-
-  <!-- 비밀번호 변경 모달 (역할 공용) -->
-  <jsp:include page="../includes/password_modal.jsp">
-      <jsp:param name="mypageUrl" value="/common/mypage" />
-  </jsp:include>
 
   <!-- 매장별 등급 모달 — 등급은 매장마다 점주가 다른 별개 사업자라 매장별로 따로 보여준다 -->
   <div class="modal-overlay" id="gradeModal">

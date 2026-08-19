@@ -33,16 +33,20 @@
       <c:if test="${param.submitted == 'true'}">
         <p class="success-text" style="margin-bottom:14px;">신청이 접수되었습니다. 관리자 검토 후 점주 권한으로 전환됩니다.</p>
       </c:if>
+      <c:if test="${not empty error}">
+        <p class="error-text" style="margin-bottom:14px;"><c:out value="${error}" /></p>
+      </c:if>
 
       <div class="modern-card" style="max-width: 620px;">
         <form id="ownerRequestForm" action="<c:url value='/common/owner-request'/>" method="post">
           <div style="margin-bottom:22px;">
             <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">매장명 (가칭)</label>
-            <input type="text" name="salonName" class="modern-input" placeholder="예: 라움헤어 강남점">
+            <input type="text" name="salonName" class="modern-input" placeholder="예: 라움헤어 강남점" required>
           </div>
           <div style="margin-bottom:22px;">
             <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">매장 연락처</label>
-            <input type="text" name="salonPhone" class="modern-input" placeholder="02-1234-5678">
+            <input type="text" name="salonPhone" class="modern-input" placeholder="02-1234-5678"
+                   pattern="[0-9-]{9,13}" title="숫자와 하이픈(-)만 입력해주세요. 예: 02-1234-5678" required>
           </div>
           <div style="margin-bottom:22px;">
             <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">신청 사유 / 매장 소개</label>

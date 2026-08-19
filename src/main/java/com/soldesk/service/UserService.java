@@ -1,5 +1,6 @@
 package com.soldesk.service;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.soldesk.mapper.UserMapper;
 import com.soldesk.mapper.UserSanctionMapper;
@@ -27,6 +29,9 @@ public class UserService {
 
     @Autowired
     private CouponService couponService;
+
+    @Autowired
+    private FileService fileService;
 
     @Transactional
     public boolean isEmailAvailable(String userEmail){
@@ -61,6 +66,52 @@ public class UserService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateUser(user);
     }//비밀번호 변경
+
+    /**
+     * 마이페이지 "내 정보 변경". 이메일은 로그인 ID라 여기서 안 받는다 — 바꾸고 싶으면 관리자에게
+     * 문의해야 하는 정책(화면 안내 문구로 노출). updateUser 가 password 도 같이 SET 하므로
+     * 기존 비밀번호 그대로 들고 있는 user 객체에 이름/전화/사진만 바꿔서 넘긴다.
+     *
+     * @param profileImage 새로 고를 때만 전달됨(선택). null/빈 파일이면 기존 사진 유지.
+     */
+    @Transactional
+    public void updateProfile(String email, String userName, String phoneNumber, MultipartFile profileImage)
+            throws IOException {
+        if (userName == null || userName.trim().isEmpty()) {
+            throw new IllegalArgumentException("이름을 입력해주세요.");
+        }
+        // U+FFFD(대체 문자)는 정상적으로 입력될 일이 없고, 클라이언트가 잘못된 인코딩으로 텍스트를 보냈을 때만
+        // 나타난다 — 이걸 그대로 저장하면 이름이 깨진 채로 DB에 남아 사이드바/모달 어디서 봐도 깨져 보인다.
+        if (userName.indexOf('�') >= 0) {
+            throw new IllegalArgumentException("이름에 읽을 수 없는 문자가 포함되어 있습니다. 다시 입력해주세요.");
+        }
+        if (phoneNumber == null || !phoneNumber.matches("[0-9-]{9,13}")) {
+            throw new IllegalArgumentException("연락처는 숫자와 하이픈(-)만 사용해 입력해주세요.");
+        }
+        UserVO user = userMapper.findByEmail(email);
+        user.setUserName(userName.trim());
+        user.setPhoneNumber(phoneNumber);
+        String saved = fileService.saveFile(profileImage);
+        if (saved != null) {
+            fileService.deleteFile(stripUploadPrefix(user.getProfileImageUrl()));
+            user.setProfileImageUrl("/upload/" + saved);
+        }
+        userMapper.updateUser(user);
+    }//이름·전화번호·프로필사진 변경 (이메일은 정책상 불변)
+
+    private String stripUploadPrefix(String imageUrl) {
+        if (imageUrl != null && imageUrl.startsWith("/upload/")) {
+            return imageUrl.substring("/upload/".length());
+        }
+        return null;
+    }
+
+    @Transactional
+    public boolean toggleNotifications(String email){
+        UserVO user = userMapper.findByEmail(email);
+        userMapper.toggleNotifications(user.getUserId());
+        return !user.isNotificationsEnabled();
+    }//알림 설정 on/off — 바뀐 뒤의 값을 돌려줘서 화면이 바로 반영할 수 있게 한다
 
     @Transactional
     public List<UserVO> getMembers(String keyword, String userType, String status, int page, int size){

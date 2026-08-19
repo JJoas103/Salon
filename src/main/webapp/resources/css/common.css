@@ -378,4 +378,18 @@
 .lightbox-overlay.is-open { opacity: 1; visibility: visible; }
 .lightbox-image { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: var(--shadow); }
 .lightbox-close { position: absolute; top: 24px; right: 32px; width: 40px; height: 40px; border-radius: 50%; border: none; background: rgba(255, 255, 255, 0.15); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+/* ---- on/off 토글 스위치 (마이페이지 알림 설정 등) ---- */
+.switch-toggle { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.switch-toggle input { opacity: 0; width: 0; height: 0; }
+.switch-toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: var(--radius-full); cursor: pointer; transition: background-color .15s ease; }
+.switch-toggle-slider::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--white); border-radius: 50%; transition: transform .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.15); }
+.switch-toggle input:checked + .switch-toggle-slider { background: var(--accent); }
+.switch-toggle input:checked + .switch-toggle-slider::before { transform: translateX(18px); }
+
+/* ---- 사이드바 우측상단 알림 벨 (커뮤니티/면담/예약 통합 배지) ---- */
+.sidebar-notif-bell { position: absolute; top: 50%; right: 4px; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: none; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.75); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.sidebar-notif-bell:hover { background: rgba(255,255,255,0.14); }
+.sidebar-notif-badge { position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: var(--radius-full); background: var(--danger); color: var(--white); font-size: 10px; font-weight: 800; line-height: 16px; text-align: center; }
+.sidebar-notif-badge[data-count="0"] { display: none; }
 .lightbox-close:hover { background: rgba(255, 255, 255, 0.3); }

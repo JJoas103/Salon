@@ -49,10 +49,10 @@
                 <div>
                   <h4 style="margin-bottom: 4px; font-size:17px;"><c:out value="${stylist.stylistName}" /></h4>
                   <div style="display: flex; align-items: center; gap: 8px;">
-                    <p class="tag">${empty stylist.description ? '휴무일 미등록' : stylist.description}</p>
+                    <p class="tag">${empty stylist.description ? '휴무일 미등록' : fn:escapeXml(stylist.description)}</p>
                     <button type="button" class="edit-stylist-btn" style="border:none; background:none; padding:0; font-size:12px; color:var(--accent); font-weight:600; cursor:pointer;"
-                            data-stylist-id="${stylist.stylistId}" data-stylist-name="${stylist.stylistName}"
-                            data-stylist-phone="${stylist.phoneNumber}" data-stylist-description="${stylist.description}">정보 변경</button>
+                            data-stylist-id="${stylist.stylistId}" data-stylist-name="${fn:escapeXml(stylist.stylistName)}"
+                            data-stylist-phone="${fn:escapeXml(stylist.phoneNumber)}" data-stylist-description="${fn:escapeXml(stylist.description)}">정보 변경</button>
                   </div>
                 </div>
               </div>
@@ -100,13 +100,27 @@
         <h3 style="font-size: 18px;">디자이너 등록</h3>
         <button type="button" class="modal-close" id="closeRegisterStylistBtn"><i class="fas fa-times"></i></button>
       </div>
-      <form action="${ctx}/owner/staff/register" method="post" enctype="multipart/form-data">
+      <form id="registerStylistForm" action="${ctx}/owner/staff/register" method="post" enctype="multipart/form-data">
+        <p id="registerFormError" class="error-text" style="display:none; margin-bottom:12px;"></p>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">이름</label>
         <input type="text" name="stylistName" class="modern-input" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">연락처</label>
-        <input type="text" name="phoneNumber" class="modern-input" placeholder="010-1234-5678">
+        <input type="text" name="phoneNumber" class="modern-input" placeholder="010-1234-5678"
+               pattern="[0-9-]{9,13}" title="숫자와 하이픈(-)만 입력해주세요. 예: 010-1234-5678" required>
+        <p id="registerPhoneError" class="error-text" style="display:none; margin-top:6px;"></p>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">휴무일</label>
-        <input type="text" name="description" class="modern-input" placeholder="예: 매주 월요일 휴무">
+        <div class="dayoff-picker" id="registerDayOffPicker">
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="월">월</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="화">화</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="수">수</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="목">목</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="금">금</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="토">토</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="일">일</label>
+        </div>
+        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택한 요일은 스케줄에도 휴무로 반영됩니다. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
+        <input type="hidden" name="description" id="registerDescriptionInput">
+        <input type="hidden" name="dayOffDays" id="registerDayOffDaysInput">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">프로필 사진</label>
         <input type="file" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp" class="modern-input">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">등록하기</button>
@@ -122,12 +136,25 @@
         <button type="button" class="modal-close" id="closeEditStylistBtn"><i class="fas fa-times"></i></button>
       </div>
       <form id="editStylistForm" method="post" enctype="multipart/form-data">
+        <p id="editFormError" class="error-text" style="display:none; margin-bottom:12px;"></p>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">이름</label>
         <input type="text" name="stylistName" id="editStylistName" class="modern-input" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">연락처</label>
-        <input type="text" name="phoneNumber" id="editStylistPhone" class="modern-input" placeholder="010-1234-5678">
+        <input type="text" name="phoneNumber" id="editStylistPhone" class="modern-input" placeholder="010-1234-5678"
+               pattern="[0-9-]{9,13}" title="숫자와 하이픈(-)만 입력해주세요. 예: 010-1234-5678" required>
+        <p id="editPhoneError" class="error-text" style="display:none; margin-top:6px;"></p>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">휴무일</label>
-        <input type="text" name="description" id="editStylistDescription" class="modern-input" placeholder="예: 매주 월요일 휴무">
+        <div class="dayoff-picker" id="editDayOffPicker">
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="월">월</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="화">화</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="수">수</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="목">목</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="금">금</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="토">토</label>
+          <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="일">일</label>
+        </div>
+        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
+        <input type="hidden" name="description" id="editDescriptionInput">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">프로필 사진 (변경 시에만 선택)</label>
         <input type="file" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp" class="modern-input">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">저장하기</button>
@@ -175,6 +202,7 @@
       </div>
 
       <form id="scheduleForm" method="post" style="margin-top:16px; flex-shrink: 0;">
+        <p id="scheduleFormError" class="error-text" style="display:none; margin-bottom:8px;"></p>
         <input type="hidden" name="scheduleData" id="scheduleDataInput">
         <button type="submit" class="btn-modern btn-primary" style="width:100%;">저장</button>
       </form>
@@ -188,8 +216,89 @@
   <script>
     var ctx = '${ctx}';
 
+    // ---- 휴무일 요일 선택 (자유 텍스트 대신 체크박스) ----
+    function getCheckedDayOffValues(container) {
+      return Array.prototype.filter.call(container.querySelectorAll('.dayoff-check'), function (cb) {
+        return cb.checked;
+      }).map(function (cb) { return cb.value; });
+    }
+
+    // 저장 형식: "매주 월요일, 수요일 휴무" — "요일" 뒤에 이어지므로 편집 시 역으로 파싱하기도 쉽다.
+    function buildDayOffDescription(container) {
+      var checked = getCheckedDayOffValues(container);
+      if (checked.length === 0) return '';
+      return '매주 ' + checked.map(function (d) { return d + '요일'; }).join(', ') + ' 휴무';
+    }
+
+    // 기존 문구에서 "OO요일"이 포함되어 있으면 그 요일 체크박스를 켠다.
+    // 이 화면에서 새로 저장한 문구는 항상 이 규칙과 일치하고, "예: 매주 월요일 휴무" 형태로 안내했던
+    // 과거 자유 텍스트도 대부분 매칭된다.
+    function applyDayOffDescription(container, description) {
+      var text = description || '';
+      container.querySelectorAll('.dayoff-check').forEach(function (cb) {
+        setDayOffChecked(cb, text.indexOf(cb.value + '요일') !== -1);
+      });
+    }
+
+    function setDayOffChecked(cb, checked) {
+      cb.checked = checked;
+      var chip = cb.closest('.dayoff-chip');
+      if (chip) chip.classList.toggle('is-checked', checked);
+    }
+
+    function bindDayOffChips(container) {
+      container.querySelectorAll('.dayoff-check').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+          var chip = cb.closest('.dayoff-chip');
+          if (chip) chip.classList.toggle('is-checked', cb.checked);
+        });
+      });
+    }
+
+    var registerDayOffPicker = document.getElementById('registerDayOffPicker');
+    var editDayOffPicker = document.getElementById('editDayOffPicker');
+    bindDayOffChips(registerDayOffPicker);
+    bindDayOffChips(editDayOffPicker);
+
+    // 등록 실패(특히 연락처 형식 오류)를 모달을 닫고 페이지 상단에 보여주는 대신, 모달을 연 채로
+    // 연락처 칸 바로 아래에 보여준다 — fetch로 보내고 서버는 리다이렉트 대신 JSON으로 응답한다.
+    var registerForm = document.getElementById('registerStylistForm');
+    var registerFormError = document.getElementById('registerFormError');
+    var registerPhoneError = document.getElementById('registerPhoneError');
+    registerForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('registerDescriptionInput').value = buildDayOffDescription(registerDayOffPicker);
+      document.getElementById('registerDayOffDaysInput').value = getCheckedDayOffValues(registerDayOffPicker).join(',');
+      registerFormError.style.display = 'none';
+      registerPhoneError.style.display = 'none';
+      fetch(registerForm.action, { method: 'POST', body: new FormData(registerForm) })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.success) {
+            window.location.reload();
+            return;
+          }
+          var msg = data.message || '등록에 실패했습니다.';
+          if (msg.indexOf('연락처') !== -1) {
+            registerPhoneError.textContent = msg;
+            registerPhoneError.style.display = 'block';
+          } else {
+            registerFormError.textContent = msg;
+            registerFormError.style.display = 'block';
+          }
+        }).catch(function () {
+          registerFormError.textContent = '등록 중 오류가 발생했습니다.';
+          registerFormError.style.display = 'block';
+        });
+    });
+
     var registerModal = document.getElementById('registerStylistModal');
     document.getElementById('openRegisterStylistBtn').addEventListener('click', function () {
+      // 이전에 열었다가 취소한 흔적이 남지 않도록 매번 새로 연다
+      registerForm.reset();
+      applyDayOffDescription(registerDayOffPicker, '');
+      registerFormError.style.display = 'none';
+      registerPhoneError.style.display = 'none';
       registerModal.classList.add('active');
     });
     document.getElementById('closeRegisterStylistBtn').addEventListener('click', function () {
@@ -404,10 +513,12 @@
       renderCalendar();
     });
 
+    var scheduleFormError = document.getElementById('scheduleFormError');
     scheduleForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      scheduleFormError.style.display = 'none';
       var dates = Object.keys(scheduleEntries);
       if (dates.length === 0) {
-        e.preventDefault();
         alert('날짜를 하나 이상 선택해주세요.');
         return;
       }
@@ -416,6 +527,20 @@
         return { date: d, startTime: entry.startTime, endTime: entry.endTime, isAvailable: entry.isAvailable };
       });
       document.getElementById('scheduleDataInput').value = JSON.stringify(payload);
+      fetch(scheduleForm.action, { method: 'POST', body: new FormData(scheduleForm) })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.success) {
+            if (data.message) { alert(data.message); }
+            window.location.reload();
+            return;
+          }
+          scheduleFormError.textContent = data.message || '스케줄 저장에 실패했습니다.';
+          scheduleFormError.style.display = 'block';
+        }).catch(function () {
+          scheduleFormError.textContent = '스케줄 저장 중 오류가 발생했습니다.';
+          scheduleFormError.style.display = 'block';
+        });
     });
 
     document.querySelectorAll('.schedule-btn').forEach(function (btn) {
@@ -423,6 +548,7 @@
         var stylistId = btn.dataset.stylistId;
         document.getElementById('scheduleModalStylistName').textContent = btn.dataset.stylistName;
         scheduleForm.action = ctx + '/owner/staff/' + stylistId + '/schedule';
+        scheduleFormError.style.display = 'none';
         // 모달은 디자이너 공용이라 이전 선택 상태를 초기화한다 (기본 모드: 범위 선택)
         var today = new Date();
         calendarState.year = today.getFullYear();
@@ -437,16 +563,58 @@
 
     var editModal = document.getElementById('editStylistModal');
     var editForm = document.getElementById('editStylistForm');
+    var editFormError = document.getElementById('editFormError');
+    var editPhoneError = document.getElementById('editPhoneError');
+
+    // 체크박스를 하나라도 건드리기 전까지는 "더 이상 요일 형태로 안 보이는" 과거 자유 텍스트를
+    // 원문 그대로 유지한다 — 아무것도 안 눌렀는데 저장 시 빈 값으로 덮어써 지워지는 것을 막기 위함.
+    editDayOffPicker.querySelectorAll('.dayoff-check').forEach(function (cb) {
+      cb.addEventListener('change', function () { editForm.dataset.dayoffDirty = 'true'; });
+    });
+
     document.querySelectorAll('.edit-stylist-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var stylistId = btn.dataset.stylistId;
+        var rawDescription = btn.dataset.stylistDescription || '';
         document.getElementById('editModalStylistName').textContent = btn.dataset.stylistName;
         document.getElementById('editStylistName').value = btn.dataset.stylistName;
         document.getElementById('editStylistPhone').value = btn.dataset.stylistPhone;
-        document.getElementById('editStylistDescription').value = btn.dataset.stylistDescription;
+        applyDayOffDescription(editDayOffPicker, rawDescription);
+        editForm.dataset.originalDescription = rawDescription;
+        editForm.dataset.dayoffDirty = 'false';
         editForm.action = ctx + '/owner/staff/' + stylistId + '/update';
+        editFormError.style.display = 'none';
+        editPhoneError.style.display = 'none';
         editModal.classList.add('active');
       });
+    });
+    // 실패해도 모달이 닫히지 않도록 fetch로 보내고, 서버는 리다이렉트 대신 JSON으로 응답한다.
+    editForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      document.getElementById('editDescriptionInput').value = editForm.dataset.dayoffDirty === 'true'
+        ? buildDayOffDescription(editDayOffPicker)
+        : editForm.dataset.originalDescription;
+      editFormError.style.display = 'none';
+      editPhoneError.style.display = 'none';
+      fetch(editForm.action, { method: 'POST', body: new FormData(editForm) })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data.success) {
+            window.location.reload();
+            return;
+          }
+          var msg = data.message || '저장에 실패했습니다.';
+          if (msg.indexOf('연락처') !== -1) {
+            editPhoneError.textContent = msg;
+            editPhoneError.style.display = 'block';
+          } else {
+            editFormError.textContent = msg;
+            editFormError.style.display = 'block';
+          }
+        }).catch(function () {
+          editFormError.textContent = '저장 중 오류가 발생했습니다.';
+          editFormError.style.display = 'block';
+        });
     });
     document.getElementById('closeEditStylistBtn').addEventListener('click', function () {
       editModal.classList.remove('active');

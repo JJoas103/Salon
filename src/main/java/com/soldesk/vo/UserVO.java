@@ -10,6 +10,7 @@ public class UserVO {
     private String password; // 비밀번호
     private String userName; // 이름
     private String phoneNumber; // 전화번호 (phone_number)
+    private String profileImageUrl; // 프로필 사진 (profile_image_url)
     private String userType; // 사용자 유형: customer/owner/admin (user_type)
     private String createdAt; // 생성일시 (created_at)
     private String updatedAt; // 수정일시 (updated_at)
@@ -23,6 +24,7 @@ public class UserVO {
     private String pendingRequestType; // 대기중 요청 종류: promotion(승격) / additional_salon(매장 추가)
     private String status; // 커뮤니티 이용 제한 상태: active/suspended/banned (status)
     private java.time.LocalDateTime suspendedUntil; // 정지 만료 시각, 영구정지면 null (suspended_until)
+    private boolean notificationsEnabled; // 마이페이지 알림 설정 on/off (notifications_enabled)
 
     public int getUserId() { return userId; }
     public void setUserId(int userId) { this.userId = userId; }
@@ -34,6 +36,8 @@ public class UserVO {
     public void setUserName(String userName) { this.userName = userName; }
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    public String getProfileImageUrl() { return profileImageUrl; }
+    public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
     public String getUserType() { return userType; }
     public void setUserType(String userType) { this.userType = userType; }
     public String getCreatedAt() { return createdAt; }
@@ -60,4 +64,6 @@ public class UserVO {
     public void setStatus(String status) { this.status = status; }
     public java.time.LocalDateTime getSuspendedUntil() { return suspendedUntil; }
     public void setSuspendedUntil(java.time.LocalDateTime suspendedUntil) { this.suspendedUntil = suspendedUntil; }
+    public boolean isNotificationsEnabled() { return notificationsEnabled; }
+    public void setNotificationsEnabled(boolean notificationsEnabled) { this.notificationsEnabled = notificationsEnabled; }
 }

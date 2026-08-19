@@ -1,5 +1,6 @@
 package com.soldesk.controller;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -185,6 +188,44 @@ public class CommonController {
         return Map.of("success", true);
     }
 
+    /** 사이드바 "내 정보" 모달이 열릴 때 AJAX로 부르는 현재 회원 정보. 페이지마다 user 모델을 안 채워도 되게 하려고 분리함 */
+    @GetMapping("/mypage/whoami")
+    @ResponseBody
+    public Map<String, Object> whoami(Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("userName", user.getUserName());
+        result.put("phoneNumber", user.getPhoneNumber());
+        result.put("email", user.getEmail());
+        result.put("createdAt", user.getCreatedAt());
+        result.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        result.put("notificationsEnabled", user.isNotificationsEnabled());
+        return result;
+    }
+
+    /** 알림 설정 on/off 토글 — 마이페이지에서 AJAX로 호출, 바뀐 뒤 값을 돌려준다 */
+    @PostMapping("/mypage/notifications")
+    @ResponseBody
+    public Map<String, Object> toggleNotifications(Authentication authentication) {
+        boolean enabled = userService.toggleNotifications(authentication.getName());
+        return Map.of("enabled", enabled);
+    }
+
+    /** 내 정보(이름·전화번호·프로필사진) 변경 — 마이페이지 모달에서 AJAX로 호출. 이메일은 정책상 여기서 안 받음 */
+    @PostMapping("/mypage/info")
+    @ResponseBody
+    public Map<String, Object> infoSubmit(Authentication authentication,
+            @RequestParam String userName, @RequestParam String phoneNumber,
+            @RequestParam(required = false) MultipartFile profileImage) {
+        try {
+            userService.updateProfile(authentication.getName(), userName, phoneNumber, profileImage);
+        } catch (IllegalArgumentException | IOException e) {
+            return Map.of("success", false, "message", e.getMessage());
+        }
+        UserVO updated = userService.getUser(authentication.getName());
+        return Map.of("success", true, "profileImageUrl", updated.getProfileImageUrl() == null ? "" : updated.getProfileImageUrl());
+    }
+
     // 점주 승격 요청 페이지 — 신청 제출/처리 백엔드는 아직 없음(다음 단계 작업)
     @GetMapping("/owner-request")
     public String ownerRequestForm(Authentication authentication, Model model) {
@@ -260,9 +301,14 @@ public class CommonController {
             @RequestParam String salonName,
             @RequestParam String salonPhone,
             @RequestParam String message,
-            Model model) {
+            RedirectAttributes redirectAttributes) {
         UserVO user = userService.getUser(authentication.getName());
-        ownerRequestService.submit(user.getUserId(), salonName, salonPhone, message);
+        try {
+            ownerRequestService.submit(user.getUserId(), salonName, salonPhone, message);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/common/owner-request";
+        }
         return "redirect:/common/owner-request?submitted=true";
     }
 

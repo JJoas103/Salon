@@ -21,6 +21,9 @@ public interface UserMapper {
     // 이메일 기준 업데이트
     void updateUser(UserVO userVO);
 
+    /** 마이페이지 "알림 설정" on/off 토글 (현재 값 반전) */
+    void toggleNotifications(int userId);
+
     // 회원 제재(정지) 상태 갱신, user_id 기준
     void updateSuspension(@Param("userId") int userId, @Param("status") String status,
                           @Param("suspendedUntil") LocalDateTime suspendedUntil);

@@ -75,6 +75,21 @@ public interface SalonMapper {
     void insertDefaultOperatingHours(@Param("salonId") int salonId,
             @Param("openTime") String openTime, @Param("closeTime") String closeTime);
 
+    /** 점주가 매장정보 관리에서 직접 조정하는 영업시간 전체 조회 (요일 없는 행 = 휴무) */
+    List<SalonOperatingHourVO> findAllOperatingHours(int salonId);
+
+    /** 영업시간 저장은 전체를 지우고 다시 넣는 방식 — 휴무로 바뀐 요일은 그냥 행이 없으면 됨 */
+    void deleteOperatingHours(int salonId);
+
+    /** deleteOperatingHours 다음에 요일별로 한 번씩 호출한다 (휴무인 요일은 호출하지 않음) */
+    void insertOperatingHour(SalonOperatingHourVO hour);
+
     /** 점주가 매장정보 관리 화면에서 직접 수정 */
     void updateSalonInfo(SalonVO salon);
+
+    /** 관리자 2차 승인 — 손님에게 정상 노출. 이미 active면 0행 (중복 승인 방지) */
+    int activateSalon(int salonId);
+
+    /** 관리자 "심사 대기" 큐 — 2차 승인을 기다리는 매장 전체 */
+    List<SalonVO> findPreparingSalons();
 }

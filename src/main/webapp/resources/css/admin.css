@@ -49,7 +49,7 @@ body {
 .menu-item-modern:last-child { border-bottom: none; }
 .menu-item-modern:hover { background: var(--bg-sub); }
 
-/* ---- 비밀번호 변경 모달 (역할 공용 password_modal.jsp가 사용) ---- */
+/* ---- 모달 공통 (역할 전체 공용, jsp가 각자 내용을 채워 씀) ---- */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(45, 52, 54, 0.5); align-items: center; justify-content: center; z-index: 1000; }
 .modal-overlay.active { display: flex; }
 .modal-box { background: var(--white); border-radius: var(--radius-lg); padding: 35px; width: 100%; max-width: 420px; box-shadow: var(--shadow-lg); }

@@ -5,8 +5,10 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -64,6 +66,13 @@ public class StaffService {
         }
     }
 
+    // 화면(pattern="[0-9-]{9,13}")과 같은 규칙 — 폼 검증을 우회해 바로 요청을 보내는 경우까지 막는다
+    private void assertValidPhone(String phoneNumber) {
+        if (phoneNumber == null || !phoneNumber.matches("[0-9-]{9,13}")) {
+            throw new IllegalArgumentException("연락처는 숫자와 하이픈(-)만 사용해 입력해주세요.");
+        }
+    }
+
     @Transactional
     public List<StylistVO> getStylists(int salonId, int ownerId) {
         assertOwnsSalon(salonId, ownerId);
@@ -71,10 +80,11 @@ public class StaffService {
     }
 
     @Transactional
-    public void registerStylist(int salonId, int ownerId, StylistVO stylist, MultipartFile imageFile)
+    public void registerStylist(int salonId, int ownerId, StylistVO stylist, String dayOffDays, MultipartFile imageFile)
             throws IOException {
         assertOwnsSalon(salonId, ownerId);
         assertValidName(salonId, stylist.getStylistName(), -1);
+        assertValidPhone(stylist.getPhoneNumber());
         stylist.setStylistName(stylist.getStylistName().trim());
         stylist.setSalonId(salonId);
         String saved = fileService.saveFile(imageFile);
@@ -82,12 +92,60 @@ public class StaffService {
             stylist.setImageUrl("/upload/" + saved);
         }
         stylistMapper.insertStylist(stylist);
+        generateDayOffSchedules(stylist.getStylistId(), dayOffDays);
+    }
+
+    // 등록 시 선택한 휴무 요일을 실제 예약 가능 여부에도 반영한다 — 스케줄에 아무 행도 없으면
+    // "매장 영업시간 내내 근무"로 간주되므로(ReservationService.workWindowOf), 휴무 요일은
+    // isAvailable=false 행을 직접 만들어줘야 진짜로 예약이 막힌다.
+    // 요일이 "영원히" 반복되는 개념은 스키마에 없어 앞으로 DAYOFF_AUTO_SCHEDULE_WEEKS 주치 실제 날짜만
+    // 만들어두고, 그 이후는 점주가 스케줄 설정에서 직접 갱신해야 한다.
+    private static final int DAYOFF_AUTO_SCHEDULE_WEEKS = 12;
+
+    private void generateDayOffSchedules(int stylistId, String dayOffDays) {
+        if (dayOffDays == null || dayOffDays.trim().isEmpty()) {
+            return;
+        }
+        Set<DayOfWeek> days = new HashSet<>();
+        for (String token : dayOffDays.split(",")) {
+            DayOfWeek dow = parseKoreanDayOfWeek(token.trim());
+            if (dow != null) {
+                days.add(dow);
+            }
+        }
+        if (days.isEmpty()) {
+            return;
+        }
+        LocalDate cursor = LocalDate.now();
+        LocalDate end = cursor.plusWeeks(DAYOFF_AUTO_SCHEDULE_WEEKS);
+        while (!cursor.isAfter(end)) {
+            if (days.contains(cursor.getDayOfWeek())) {
+                StylistScheduleVO schedule = new StylistScheduleVO();
+                schedule.setStylistId(stylistId);
+                schedule.setDate(cursor.toString());
+                schedule.setStartTime("00:00");
+                schedule.setEndTime("23:59");
+                schedule.setIsAvailable(false);
+                scheduleMapper.insertSchedule(schedule);
+            }
+            cursor = cursor.plusDays(1);
+        }
+    }
+
+    private DayOfWeek parseKoreanDayOfWeek(String label) {
+        for (int i = 0; i < WEEKDAY_NAMES.length; i++) {
+            if (WEEKDAY_NAMES[i].equals(label)) {
+                return DayOfWeek.of(i + 1);
+            }
+        }
+        return null;
     }
 
     @Transactional
     public void updateStylist(int ownerId, StylistVO stylist, MultipartFile imageFile) throws IOException {
         StylistVO current = assertOwnsStylist(stylist.getStylistId(), ownerId);
         assertValidName(current.getSalonId(), stylist.getStylistName(), stylist.getStylistId());
+        assertValidPhone(stylist.getPhoneNumber());
         stylist.setStylistName(stylist.getStylistName().trim());
         String saved = fileService.saveFile(imageFile);
         if (saved != null) {
