@@ -185,6 +185,19 @@
           AND CURDATE() BETWEEN valid_from AND valid_until
     </select>
 
+    <!-- 코드 입력형 쿠폰 조회.
+         coupon_code 가 NULL 인 정책(가입 자동발급 등)은 코드로 찾을 수 없다 — 원래 그래야 한다.
+         테이블이 utf8mb4_unicode_ci 라 대소문자를 가리지 않고 일치한다(welcome = WELCOME).
+         발급 가능 여부(기간·중지·1인1매)는 여기서 보지 않는다. issueCoupon 이 판정한다. -->
+    <select id="findByCouponCode" resultMap="couponResultMap" parameterType="string">
+        SELECT coupon_id, promotion_id, salon_id, service_id, coupon_name, coupon_code,
+               discount_type, discount_value, max_discount, min_order_amount,
+               valid_from, valid_until, issue_type, once_per_user, is_active,
+               created_at, updated_at
+        FROM Coupons
+        WHERE coupon_code = #{couponCode}
+    </select>
+
     <!-- 관리자 목록. "몇 장 나갔고 몇 장 쓰였나" 를 못 보면 관리 화면의 의미가 없어
          집계를 함께 가져온다. 쿠폰 종류가 수백 개가 될 화면이 아니라 서브쿼리로 충분하다. -->
     <select id="findAllCoupons" resultMap="couponResultMap">

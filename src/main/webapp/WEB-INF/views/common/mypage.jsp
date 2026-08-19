@@ -30,14 +30,29 @@
         <div>
           <h2 style="margin-bottom: 8px; font-size: 24px;">${user.userName}</h2>
           <p style="font-size: 14px; color: var(--text-sub); margin-bottom:12px;">등록 이메일: ${user.email} | 가입일: ${user.createdAt}</p>
-          <button type="button" id="openGradeModalBtn" class="achievement-badge-btn">
-            <span class="achievement-badge-icon"><i class="fas fa-medal"></i></span>
-            <span class="achievement-badge-text">
-              <strong>나의 이용내역</strong>
-              <small>매장별 등급 확인하기</small>
-            </span>
-            <i class="fas fa-chevron-right" style="font-size:11px; opacity:.5;"></i>
-          </button>
+          <div class="profile-hero-actions">
+            <button type="button" id="openGradeModalBtn" class="achievement-badge-btn">
+              <span class="achievement-badge-icon"><i class="fas fa-medal"></i></span>
+              <span class="achievement-badge-text">
+                <strong>나의 이용내역</strong>
+                <small>매장별 등급 확인하기</small>
+              </span>
+              <i class="fas fa-chevron-right" style="font-size:11px; opacity:.5;"></i>
+            </button>
+            <form class="coupon-code-form" method="post" action="<c:url value='/common/coupons/redeem'/>">
+              <i class="fas fa-ticket"></i>
+              <input type="text" name="couponCode" maxlength="50" required
+                     placeholder="쿠폰 코드 입력" aria-label="쿠폰 코드">
+              <button type="submit">등록</button>
+            </form>
+          </div>
+
+          <c:if test="${not empty couponRedeemSuccess}">
+            <p class="success-text coupon-redeem-msg"><c:out value="${couponRedeemSuccess}"/></p>
+          </c:if>
+          <c:if test="${not empty couponRedeemError}">
+            <p class="error-text coupon-redeem-msg"><c:out value="${couponRedeemError}"/></p>
+          </c:if>
         </div>
       </div>
       <div class="stat-grid stat-grid-five">

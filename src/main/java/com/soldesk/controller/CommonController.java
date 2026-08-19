@@ -188,6 +188,30 @@ public class CommonController {
         return "common/coupons";
     }
 
+    /**
+     * 쿠폰 코드 등록 — 마이페이지의 코드 입력 폼에서 들어온다.
+     *
+     * 성공/실패 모두 마이페이지로 돌려보낸다. 폼이 그 화면에 있으므로 결과도 같은 자리에서 보여야
+     * 하고, 성공 시 "보유 활성 쿠폰" 카드 숫자가 바로 올라간 것이 함께 보인다.
+     */
+    @PostMapping("/coupons/redeem")
+    public String redeemCoupon(Authentication authentication,
+            @RequestParam(required = false) String couponCode,
+            RedirectAttributes redirectAttributes) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        try {
+            String couponName = couponService.redeemByCode(user.getUserId(), couponCode);
+            redirectAttributes.addFlashAttribute("couponRedeemSuccess",
+                    "'" + couponName + "' 쿠폰이 발급되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("couponRedeemError", e.getMessage());
+        }
+
+        return "redirect:/common/mypage";
+    }
+
     /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */
     @GetMapping("/points")
     public String points(Authentication authentication, Model model) {

@@ -149,6 +149,31 @@ public class CouponService {
         return null; //사용 가능
     }
 
+    /**
+     * 사용자가 입력한 코드로 쿠폰을 받는다 (마이페이지 코드 입력 폼).
+     *
+     * 발급 가능 여부 판정과 실패 사유 분기는 issueTo 가 이미 하고 있으므로 그대로 쓴다.
+     * 여기서 가르는 것은 "코드 자체가 없는 경우" 하나뿐이다.
+     *
+     * @return 발급된 쿠폰 이름 (성공 메시지에 쓴다)
+     * @throws IllegalArgumentException 코드가 비었거나, 없는 코드거나, 발급할 수 없을 때
+     */
+    @Transactional
+    public String redeemByCode(int userId, String rawCode){
+        String code = (rawCode == null) ? "" : rawCode.trim();
+        if (code.isEmpty()) {
+            throw new IllegalArgumentException("쿠폰 코드를 입력해주세요.");
+        }
+
+        CouponVO coupon = couponMapper.findByCouponCode(code);
+        if (coupon == null) {
+            throw new IllegalArgumentException("존재하지 않는 쿠폰 코드입니다.");
+        }
+
+        issueTo(userId, coupon.getCouponId());
+        return coupon.getCouponName();
+    }
+
     @Transactional
     public void issueByType(int userId, String issueType){
         for(CouponVO coupon : couponMapper.findByIssueType(issueType)){
