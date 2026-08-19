@@ -233,13 +233,17 @@
       <button type="button" class="modal-close" id="closeAiChatBtn"><i class="fas fa-times"></i></button>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
-      <div class="ai-chat-msg bot">안녕하세요! 최근 완료하신 시술 이력(최근 5건)을 참고해서 추천해드려요. 원하시는 시술이나 고민을 말씀해주세요. (예: "저번에 받은 거랑 어울리는 다른 스타일 추천해줘")</div>
+      <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다. 고민이나 궁금한 점을 말씀해주세요.</div>
     </div>
     <div class="ai-chat-suggestions" id="aiChatSuggestions">
+      <%-- 버튼 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
+           service_search / catalog_list / salon_find / salon_menu 순서이고
+           마지막은 예약이력 기반 개인화라 로그인 사용자에게만 의미가 있음 --%>
       <button type="button" class="ai-chat-suggestion-chip">손상모 케어 시술 추천해줘</button>
-      <button type="button" class="ai-chat-suggestion-chip">5만원 이하 펌 보여줘</button>
+      <button type="button" class="ai-chat-suggestion-chip">제일 저렴한 시술이 뭐야?</button>
+      <button type="button" class="ai-chat-suggestion-chip">평점 좋은 매장 추천해줘</button>
+      <button type="button" class="ai-chat-suggestion-chip">내가 갔던 매장에 뭐가 있어?</button>
       <button type="button" class="ai-chat-suggestion-chip">저번에 받은 시술이랑 어울리는 스타일 추천해줘</button>
-      <button type="button" class="ai-chat-suggestion-chip">컷 가격 알려줘</button>
     </div>
     <form id="aiChatForm" class="ai-chat-input-row">
       <input type="text" id="aiChatInput" class="modern-input" placeholder="예: 저번 시술 참고해서 손상모 케어 추천해줘" maxlength="500" autocomplete="off">
