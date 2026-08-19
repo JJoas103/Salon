@@ -240,3 +240,31 @@ def hybrid_search(
         results.append(item)
 
     return results
+
+
+# ── 카탈로그 목록 조회 (검색이 아니라 정렬/전량) ─────────────────
+# hybrid_search 는 관련도 top-k 라서 "제일 저렴한", "10만원 넘는 것 전부" 같은
+# 정렬·집계형 질문에 구조적으로 못 맞춤. 그런 질문은 이 함수로 받음
+def list_services(
+    category: str | None = None,
+    sort_by: str = 'price',
+    order: str = 'asc',
+    count: int = 20,
+) -> list[dict[str, Any]]:
+    ensure_elasticsearch()
+
+    query: dict[str, Any] = {'match_all': {}}
+    if category:
+        query = {'bool': {'filter': [{'term': {'category': category}}]}}
+
+    sort_field = sort_by if sort_by in ('price', 'duration_min') else 'price'
+    sort_order = 'desc' if order == 'desc' else 'asc'
+
+    response = client.search(
+        index=INDEX_NAME,
+        size=max(1, min(count, 100)),
+        query=query,
+        sort=[{sort_field: {'order': sort_order}}],
+        source_excludes=['embedding'],
+    )
+    return [hit['_source'] for hit in response['hits']['hits']]
