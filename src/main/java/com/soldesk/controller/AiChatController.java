@@ -1,5 +1,6 @@
 package com.soldesk.controller;
 
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -99,10 +100,7 @@ public class AiChatController {
             if (!"completed".equals(r.getStatus())) {
                 continue;
             }
-            String label = (r.getCategory() != null && !r.getCategory().isBlank())
-                    ? r.getServiceName() + "(" + r.getCategory() + ")"
-                    : r.getServiceName();
-            summarized.add(label);
+            summarized.add(formatHistoryItem(r));
             if (summarized.size() >= MAX_HISTORY_ITEMS) {
                 break;
             }
@@ -112,5 +110,21 @@ public class AiChatController {
             return null;
         }
         return summarized.stream().collect(Collectors.joining(", "));
+    }
+
+    /** 예약 이력 한 건을 "여성컷(컷, 라움헤어)" 형태로 조립함
+     *  매장명까지 넘기지 않으면 LLM 이 어느 매장이었는지 추측해서 답함
+     *  salon_name 은 getRevList 가 이미 조인해오므로 추가 조회는 없음 */
+    private String formatHistoryItem(ReservationVO r) {
+        List<String> detail = new ArrayList<>();
+        if (r.getCategory() != null && !r.getCategory().isBlank()) {
+            detail.add(r.getCategory());
+        }
+        if (r.getSalonName() != null && !r.getSalonName().isBlank()) {
+            detail.add(r.getSalonName());
+        }
+        return detail.isEmpty()
+                ? r.getServiceName()
+                : r.getServiceName() + "(" + String.join(", ", detail) + ")";
     }
 }
