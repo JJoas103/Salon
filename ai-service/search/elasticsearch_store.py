@@ -247,24 +247,43 @@ def hybrid_search(
 # 정렬·집계형 질문에 구조적으로 못 맞춤. 그런 질문은 이 함수로 받음
 def list_services(
     category: str | None = None,
+    salon: str | None = None,
     sort_by: str = 'price',
     order: str = 'asc',
     count: int = 20,
 ) -> list[dict[str, Any]]:
     ensure_elasticsearch()
 
-    query: dict[str, Any] = {'match_all': {}}
+    conditions: list[dict[str, Any]] = []
     if category:
-        query = {'bool': {'filter': [{'term': {'category': category}}]}}
+        conditions.append({'term': {'category': category}})
+
+    query: dict[str, Any] = (
+        {'bool': {'filter': conditions}} if conditions else {'match_all': {}}
+    )
 
     sort_field = sort_by if sort_by in ('price', 'duration_min') else 'price'
     sort_order = 'desc' if order == 'desc' else 'asc'
 
+    # 매장 필터는 ES 에 안 맡김 — salon_name 이 nori 분석 text 라
+    # '라움헤어' 로 match 하면 '헤어' 토큰이 겹치는 위드헤어/블랑쉬헤어까지 딸려옴
+    # keyword 서브필드가 매핑에 없으므로 후보를 넉넉히 받아 여기서 정확히 거름
+    fetch_size = 100 if salon else max(1, min(count, 100))
     response = client.search(
         index=INDEX_NAME,
-        size=max(1, min(count, 100)),
+        size=fetch_size,
         query=query,
         sort=[{sort_field: {'order': sort_order}}],
         source_excludes=['embedding'],
     )
-    return [hit['_source'] for hit in response['hits']['hits']]
+    items = [hit['_source'] for hit in response['hits']['hits']]
+
+    if salon:
+        key = salon.replace(' ', '')
+        items = [
+            i for i in items
+            if key in (i.get('salon_name') or '').replace(' ', '')
+        ]
+        items = items[:max(1, count)]
+
+    return items

@@ -8,6 +8,7 @@ from typing import Any
 from contextlib import AsyncExitStack
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
+from chat.intent import Intent, classify, out_of_scope_answer
 from time import monotonic
 
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -103,6 +104,13 @@ class McpChatService:
                         "Tool 호출 여부와 인자는 현재 질문과 대화 기록을 바탕으로 판단하세요."
                         "대화 기록에 [사용자 예약 이력]이 있으면 참고해 그 취향/고민에 맞는 시술을 우선 추천하되,"
                         "이력에 없는 내용을 추천 근거로 지어내지 마세요. 이력이 없으면 일반 상담으로 답하세요."
+                        # 이력의 매장명을 쓰라고 명시하지 않으면 단골과 무관한 매장을 그냥 던짐
+                        "예약 이력에 매장명이 있으면, 추천할 시술이 그 매장에도 있는지 Tool 결과에서 먼저 확인하세요."
+                        "그 매장에 없으면 '자주 가시는 OO에는 없어서' 라고 밝히고 다른 매장을 안내하세요."
+                        # 되묻기를 먼저 시키면 추천 자체를 건너뛰어서, 검색 결과를 낸 뒤에만 되묻게 함
+                        "추천 요청에는 반드시 Tool 로 찾은 시술을 먼저 제시하세요. 되묻기만 하고 끝내지 마세요."
+                        "제시한 뒤에 더 좁힐 여지가 있으면 마지막에 질문을 하나만 덧붙이세요."
+                        "시술명 없이 증상만 말한 경우(예: '머리 상했어요')에만 검색 전에 한 가지를 되물어도 됩니다."
                     )
                 )
 
@@ -119,8 +127,65 @@ class McpChatService:
                 await exit_stack.aclose()
                 raise
 
+    # "여성컷(컷, 라움헤어)" 형태의 이력 문자열에서 매장명만 뽑음
+    # 마지막 괄호 안 항목이 AiChatController.formatHistoryItem 이 붙인 매장명임
+    @staticmethod
+    def _salons_from_context(user_context: str) -> list[str]:
+        salons: list[str] = []
+        for inner in re.findall(r'\(([^)]*)\)', user_context):
+            parts = [p.strip() for p in inner.split(',')]
+            if len(parts) >= 2 and parts[-1] and parts[-1] not in salons:
+                salons.append(parts[-1])
+        return salons
+
+    # 이력 매장이 실제로 뭘 취급하는지 미리 붙여줌
+    # LLM 에게 "매번 매장을 확인해라" 라고 지시만 하면 첫 턴에서 건너뛰는 일이 잦아,
+    # 판단을 맡기는 대신 데이터를 먼저 쥐여주는 방식으로 바꿈
+    @staticmethod
+    def _salon_catalog_hint(user_context: str) -> str | None:
+        try:
+            from search.elasticsearch_store import list_services
+        except Exception:
+            return None
+
+        lines: list[str] = []
+        for salon in McpChatService._salons_from_context(user_context):
+            try:
+                items = list_services(salon=salon, count=20)
+            except Exception:
+                continue
+            if not items:
+                continue
+            listed = ", ".join(
+                f"{i['name']}({i['category']}/{i['price']}원)" for i in items
+            )
+            lines.append(f"- {salon}: {listed}")
+
+        if not lines:
+            return None
+        return (
+            "[이력 매장이 취급하는 시술 전체]\n"
+            + "\n".join(lines)
+            + "\n이 목록에 없는 시술은 해당 매장에서 받을 수 없습니다."
+        )
+
+    @staticmethod
+    def _salon_find_hint(question: str) -> str | None:
+        try:
+            from search.salon_store import salon_find_hint
+            return salon_find_hint(question)
+        except Exception:
+            return None
+
     # 에이전트를 통해 LLM에 질문하고, 세션별 대화기록을 갱신
     async def ask(self, session_id: str, question: str, user_context: str | None = None)-> str:
+        # 카탈로그에 없는 정보를 묻는 질문은 LLM 까지 보내지 않음
+        # 없는 걸 답하려면 지어낼 수밖에 없어서, 모델이 바뀌어도 흔들리지 않게 코드에서 끊음
+        # 대화기록에도 안 남김 — 차단된 질문이 이후 턴의 맥락을 오염시키지 않도록
+        intent, blocked_reason = classify(question)
+        if intent is Intent.OUT_OF_SCOPE:
+            return out_of_scope_answer(blocked_reason or "요청하신 정보")
+
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
         await self.start()
 
@@ -142,6 +207,16 @@ class McpChatService:
                 request_messages.append(HumanMessage(
                     content=f"[사용자 예약 이력] 완료한 시술: {user_context}"
                 ))
+                hint = self._salon_catalog_hint(user_context)
+                if hint:
+                    request_messages.append(HumanMessage(content=hint))
+
+            # 매장을 고르려는 질문은 시술 인덱스로 답할 수 없어 salons 인덱스를 미리 붙임
+            # 매 턴 넣으면 컨텍스트가 빨리 차므로 해당 인텐트일 때만
+            if intent is Intent.SALON_FIND:
+                salon_hint = self._salon_find_hint(question)
+                if salon_hint:
+                    request_messages.append(HumanMessage(content=salon_hint))
             request_messages.append(HumanMessage(content=question))
 
             # 현재 시작 인덱스 계산
@@ -191,9 +266,11 @@ class McpChatService:
             for index, message in enumerate(messages)
             if isinstance(message, HumanMessage) 
         ]
-        if len(human_message_indexes) <= 10:
+        # 10턴을 들고 있으면 뒤로 갈수록 답변이 느려지고 같은 말을 반복함
+        # 시술 상담은 3~4턴이면 결론이 나므로 6턴이면 충분함
+        if len(human_message_indexes) <= 6:
             return messages
-        return messages[human_message_indexes[-10]:]
+        return messages[human_message_indexes[-6]:]
 
     # FastAPI 종료 시 MCP 세션과 하위 프로세스를 정리
     async def close(self) -> None:

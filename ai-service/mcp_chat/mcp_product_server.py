@@ -22,6 +22,8 @@ SEARCH_GUIDE = """
 - `제일 저렴한`, `가장 비싼`, `10만원 넘는 것 전부`, `무슨 종류가 있어` 처럼 순위나 전체 목록을
   묻는 질문은 search_service 가 아니라 list_catalog 를 씁니다. search_service 는 관련도 상위
   몇 건만 돌려주므로 최저가/최고가를 물으면 틀린 답이 나옵니다.
+- 예약 이력에 있는 매장이 그 시술을 취급하는지 확인할 때는 list_catalog 에 salon='매장명' 을 넣습니다.
+  0건이면 그 매장에는 없는 것이므로 추측하지 말고 없다고 답합니다.
 - 시술명, 가격, 소요시간, 매장명, 추천고민은 Tool 결과에 있는 값만 답변에 사용합니다.
 - 유지주기/관리주기 같은 값은 카탈로그에 없습니다. 물어보면 매장 데이터가 아니라 일반 정보임을 밝히고 답합니다.
 """.strip()
@@ -93,6 +95,7 @@ def search_service(
 @mcp.tool()
 def list_catalog(
     category: str | None = None,
+    salon: str | None = None,
     sort_by: str = 'price',
     order: str = 'asc',
     count: int = 20,
@@ -102,13 +105,18 @@ def list_catalog(
     최저가·최고가·전체 목록을 묻는 질문에 쓴다.
     sort_by 는 price 또는 duration_min, order 는 asc 또는 desc 이다.
     category 를 주면 그 카테고리만, 안 주면 전체를 본다.
+    salon 에 매장명을 주면 그 매장이 취급하는 시술만 본다.
+    사용자 예약 이력에 있는 매장에 그 시술이 있는지 확인할 때 salon 을 쓴다.
     카테고리 값: 컷, 펌, 염색, 클리닉, 세트
     """
     if category is not None and not str(category).strip():
         category = None
+    if salon is not None and not str(salon).strip():
+        salon = None
     try:
         items = list_services(
             category=category,
+            salon=salon,
             sort_by=sort_by,
             order=order,
             count=count,
