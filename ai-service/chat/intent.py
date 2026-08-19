@@ -90,6 +90,21 @@ def classify(question: str) -> tuple[Intent, str | None]:
     return Intent.SERVICE_SEARCH, None
 
 
+# 예약 이력을 봐야만 답할 수 있는 질문 — "라움헤어에 뭐가 있어" 처럼 매장을 직접 댄 질문과 구분함
+# SALON_MENU 안에서도 이 쪽만 이력이 없으면 답이 나올 수 없음
+HISTORY_REQUIRED_RE = re.compile(
+    r"(내가|제가|나|저)\s*(갔던|다녔던|이용한|방문한|받았던|받은)"
+    r"|(자주|주로)\s*(가는|가던|다니는)"
+    r"|단골"
+    r"|(저번|지난번|예전)\s*에?\s*(받은|간|갔던|방문한)"
+)
+
+
+def needs_history(question: str) -> bool:
+    """예약 이력 없이는 답할 수 없는 질문인지"""
+    return bool(HISTORY_REQUIRED_RE.search(re.sub(r"\s+", " ", question or "")))
+
+
 def _subject_josa(word: str) -> str:
     """받침 유무로 은/는 을 고름 — "영업시간는" 처럼 어색하게 나가지 않도록"""
     if not word:
@@ -98,6 +113,19 @@ def _subject_josa(word: str) -> str:
     if "가" <= last <= "힣":
         return "은" if (ord(last) - 0xAC00) % 28 else "는"
     return "는"
+
+
+def no_history_answer() -> str:
+    """예약 이력이 필요한 질문인데 이력이 없을 때 돌려줄 문구
+
+    이력이 없으면 LLM 은 근거가 없어 "대화 내용에 없습니다" 같은 엉뚱한 답을 내놓음
+    답이 나올 수 없는 질문이므로 차단과 같이 취급해 40초를 쓰지 않고 즉시 안내함
+    """
+    return (
+        "아직 완료된 시술 이력이 없어서 다녀오신 매장을 확인할 수 없습니다.\n\n"
+        "대신 어떤 시술이 필요하신지 말씀해 주시면 매장과 함께 찾아드리겠습니다. "
+        "예를 들어 '손상모 케어 시술 추천해줘' 나 '평점 좋은 매장 추천해줘' 처럼 물어보세요."
+    )
 
 
 def out_of_scope_answer(reason: str) -> str:

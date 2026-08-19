@@ -8,7 +8,8 @@ from typing import Any
 from contextlib import AsyncExitStack
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
-from chat.intent import Intent, classify, out_of_scope_answer
+from chat.intent import (Intent, classify, needs_history,
+                         no_history_answer, out_of_scope_answer)
 from time import monotonic
 
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -185,6 +186,11 @@ class McpChatService:
         intent, blocked_reason = classify(question)
         if intent is Intent.OUT_OF_SCOPE:
             return out_of_scope_answer(blocked_reason or "요청하신 정보")
+
+        # 이력을 봐야만 답할 수 있는데 이력이 없으면 근거가 없어 엉뚱한 답이 나감
+        # 매장을 직접 댄 질문("라움헤어에 뭐 있어")은 이력이 필요 없으므로 걸리지 않음
+        if not user_context and needs_history(question):
+            return no_history_answer()
 
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
         await self.start()
