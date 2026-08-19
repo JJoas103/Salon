@@ -19,14 +19,7 @@
   <jsp:include page="../includes/salon_gate_overlay.jsp" />
   <div class="app-container">
     <header class="app-header">
-      <div style="font-size: 18px; font-weight: 700; display:flex; align-items:center; gap:10px;">
-        매장정보 관리
-        <c:if test="${salon.activationStatus == 'preparing'}">
-          <button type="button" id="openPrepChecklistBtn" style="flex-shrink:0; background:#6b6b6b; color:#fff; font-size:11px; font-weight:800; padding:5px 12px; border-radius:var(--radius-full); border:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
-            준비중 <i class="fas fa-circle-question" style="font-size:10px; opacity:.8;"></i>
-          </button>
-        </c:if>
-      </div>
+      <div style="font-size: 18px; font-weight: 700;">매장정보 관리</div>
     </header>
     <main class="app-content">
       <c:if test="${not empty error}">
@@ -271,44 +264,6 @@
   <jsp:include page="../includes/profile_modal.jsp">
       <jsp:param name="roleLabel" value="점주" />
   </jsp:include>
-
-  <c:if test="${salon.activationStatus == 'preparing'}">
-    <!-- 준비중 진행상황 자가 확인 모달 — 관리자 심사대기 체크리스트와 같은 3항목 -->
-    <div class="modal-overlay" id="prepChecklistModal">
-      <div class="modal-box" style="max-width:420px;">
-        <div class="modal-header">
-          <div>
-            <h3 style="font-size: 17px; margin-bottom:5px;">활성화까지 남은 항목</h3>
-            <p style="font-size:12.3px; color:var(--text-sub); margin:0;">셋 다 채우면 관리자 승인 후 손님에게 노출됩니다.</p>
-          </div>
-          <button type="button" class="modal-close" id="closePrepChecklistBtn"><i class="fas fa-times"></i></button>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:14px;">
-          <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
-            <input type="checkbox" disabled ${not empty salon.address ? 'checked' : ''} style="width:18px; height:18px;"> 주소 입력 — "기본정보" 탭
-          </label>
-          <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
-            <input type="checkbox" disabled ${not empty operatingHours ? 'checked' : ''} style="width:18px; height:18px;"> 영업시간 등록 — "영업시간" 탭
-          </label>
-          <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
-            <input type="checkbox" disabled ${not empty services ? 'checked' : ''} style="width:18px; height:18px;"> 시술 메뉴 1개 이상 — "시술메뉴" 탭
-          </label>
-        </div>
-      </div>
-    </div>
-    <script>
-      (function () {
-        var modal = document.getElementById('prepChecklistModal');
-        document.getElementById('openPrepChecklistBtn').addEventListener('click', function () {
-          modal.classList.add('active');
-        });
-        document.getElementById('closePrepChecklistBtn').addEventListener('click', function () {
-          modal.classList.remove('active');
-        });
-        modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('active'); });
-      })();
-    </script>
-  </c:if>
 
   <!-- 다음 우편번호 서비스(주소 검증) + 카카오맵 SDK(좌표 변환·마커).
        libraries=services 가 있어야 Geocoder 를 쓸 수 있다 — salonmap.jsp 와 같은 방식으로 로드한다. -->

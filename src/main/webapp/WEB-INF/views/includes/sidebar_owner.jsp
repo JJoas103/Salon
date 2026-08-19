@@ -27,6 +27,16 @@
     <i class="fas fa-chevron-down salon-select-chev"></i>
   </div>
 
+  <%-- 준비중 매장 필수정보 체크리스트 — 매장이 preparing 상태일 때만 JS가 채워서 보여준다 (owner/store.jsp#prep-status) --%>
+  <div class="attn-card" id="prepAttnCard" style="display:none;">
+    <i class="fas fa-triangle-exclamation attn-icon"></i>
+    <div class="attn-text">
+      <div class="attn-title" id="prepAttnTitle"></div>
+      <div class="attn-sub" id="prepAttnSub"></div>
+    </div>
+    <i class="fas fa-chevron-right attn-chev"></i>
+  </div>
+
   <ul class="sidebar-menu">
     <li class="sidebar-item ${menu == 'store' ? 'active' : ''}" data-needs-salon="true">
       <a href="<c:url value='/owner/store'/>"><i class="fas fa-store"></i> 매장정보 관리</a>
@@ -111,6 +121,34 @@
   </div>
 </div>
 
+<%-- 준비중 매장 자가 확인 모달 — 관리자 심사대기 체크리스트와 같은 4항목.
+     사이드바는 모든 점주 화면에 있으므로 값은 JS가 /owner/store/prep-status 로 직접 받아와 채운다. --%>
+<div class="modal-overlay" id="prepChecklistModal">
+  <div class="modal-box" style="max-width:420px;">
+    <div class="modal-header">
+      <div>
+        <h3 style="font-size: 17px; margin-bottom:5px;">활성화까지 남은 항목</h3>
+        <p style="font-size:12.3px; color:var(--text-sub); margin:0;">넷 다 채우면 관리자 승인 후 손님에게 노출됩니다.</p>
+      </div>
+      <button type="button" class="modal-close" id="closePrepChecklistBtn"><i class="fas fa-times"></i></button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:14px;">
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+        <input type="checkbox" id="prepCheckAddr" disabled style="width:18px; height:18px;"> 주소 입력 — "기본정보" 탭
+      </label>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+        <input type="checkbox" id="prepCheckHours" disabled style="width:18px; height:18px;"> 영업시간 등록 — "영업시간" 탭
+      </label>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+        <input type="checkbox" id="prepCheckMenu" disabled style="width:18px; height:18px;"> 시술 메뉴 1개 이상 — "시술메뉴" 탭
+      </label>
+      <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+        <input type="checkbox" id="prepCheckStylist" disabled style="width:18px; height:18px;"> 디자이너 1명 이상 등록 — "직원관리"
+      </label>
+    </div>
+  </div>
+</div>
+
 <script>
   (function () {
     var salonSelected = ${not empty sessionScope.selectedSalonId ? 'true' : 'false'};
@@ -163,5 +201,51 @@
         }
       });
     });
+
+    // ---- 준비중 매장 체크리스트 ----
+    // 사이드바는 모든 점주 화면에 있어서(직원관리 등 salon 모델이 없는 페이지 포함) 서버 모델 대신
+    // 이 화면 자체가 /owner/store/prep-status 를 불러서 채운다.
+    var prepCard = document.getElementById('prepAttnCard');
+    var prepModal = document.getElementById('prepChecklistModal');
+    if (salonSelected && prepCard) {
+      fetch('<c:url value="/owner/store/prep-status"/>')
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (!data.isPreparing) return;
+
+          document.getElementById('prepAttnTitle').textContent =
+            '준비중 · ' + data.doneCount + '/' + data.totalCount + ' 완료';
+          document.getElementById('prepAttnSub').textContent = buildPrepText(data.missingLabels);
+          prepCard.style.display = 'flex';
+
+          document.getElementById('prepCheckAddr').checked = data.addrOk;
+          document.getElementById('prepCheckHours').checked = data.hoursOk;
+          document.getElementById('prepCheckMenu').checked = data.menuOk;
+          document.getElementById('prepCheckStylist').checked = data.stylistOk;
+        }).catch(function () {});
+    }
+
+    // 미충족 순서(주소→영업시간→시술메뉴→디자이너)대로 최대 2개까지만 이름을 보여주고,
+    // 나머지는 "외 N건"으로 묶는다 — 다 나열하면 사이드바 폭(260px)에서 문구가 잘리기 쉽다.
+    function buildPrepText(missingLabels) {
+      if (!missingLabels || missingLabels.length === 0) return '';
+      var shown = missingLabels.slice(0, 2);
+      var rest = missingLabels.length - shown.length;
+      var text = shown.join('·');
+      if (rest > 0) text += ' 외 ' + rest + '건';
+      return text + ' 등록이 필요해요';
+    }
+
+    if (prepCard && prepModal) {
+      prepCard.addEventListener('click', function () {
+        prepModal.classList.add('active');
+      });
+      document.getElementById('closePrepChecklistBtn').addEventListener('click', function () {
+        prepModal.classList.remove('active');
+      });
+      prepModal.addEventListener('click', function (e) {
+        if (e.target === prepModal) prepModal.classList.remove('active');
+      });
+    }
   })();
 </script>

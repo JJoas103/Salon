@@ -105,7 +105,8 @@
                       <c:set var="addrOk" value="${hasAddress[salon.salonId]}" />
                       <c:set var="hoursOk" value="${hoursCount[salon.salonId] > 0}" />
                       <c:set var="menuOk" value="${serviceCount[salon.salonId] > 0}" />
-                      <c:set var="allOk" value="${addrOk and hoursOk and menuOk}" />
+                      <c:set var="stylistOk" value="${stylistCount[salon.salonId] > 0}" />
+                      <c:set var="allOk" value="${addrOk and hoursOk and menuOk and stylistOk}" />
                       <tr>
                         <td>#${salon.salonId}</td>
                         <td><c:out value="${salon.salonName}" /></td>
@@ -113,7 +114,7 @@
                         <td>
                           <button type="button" class="btn-modern btn-outline checklist-btn"
                                   data-salon-name="<c:out value='${salon.salonName}'/>"
-                                  data-addr-ok="${addrOk}" data-hours-ok="${hoursOk}" data-menu-ok="${menuOk}">
+                                  data-addr-ok="${addrOk}" data-hours-ok="${hoursOk}" data-menu-ok="${menuOk}" data-stylist-ok="${stylistOk}">
                             <i class="fas fa-list-check" style="margin-right:6px;"></i>체크리스트 ${allOk ? '(완료)' : ''}
                           </button>
                         </td>
@@ -270,6 +271,9 @@
         <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
           <input type="checkbox" id="checklistMenu" disabled style="width:18px; height:18px;"> 시술 메뉴 1개 이상
         </label>
+        <label style="display:flex; align-items:center; gap:10px; font-size:14px;">
+          <input type="checkbox" id="checklistStylist" disabled style="width:18px; height:18px;"> 디자이너 1명 이상 등록
+        </label>
       </div>
     </div>
   </div>
@@ -292,6 +296,7 @@
       var addrBox = document.getElementById('checklistAddr');
       var hoursBox = document.getElementById('checklistHours');
       var menuBox = document.getElementById('checklistMenu');
+      var stylistBox = document.getElementById('checklistStylist');
 
       document.querySelectorAll('.checklist-btn').forEach(function (btn) {
         btn.addEventListener('click', function () {
@@ -299,6 +304,7 @@
           addrBox.checked = btn.dataset.addrOk === 'true';
           hoursBox.checked = btn.dataset.hoursOk === 'true';
           menuBox.checked = btn.dataset.menuOk === 'true';
+          stylistBox.checked = btn.dataset.stylistOk === 'true';
           modal.classList.add('active');
         });
       });

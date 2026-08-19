@@ -40,6 +40,16 @@ body {
 .salon-select-card.needs-attention { background: rgba(225, 112, 85, 0.22); border-color: rgba(225, 112, 85, 0.3); }
 .salon-select-card.needs-attention:hover { background: rgba(225, 112, 85, 0.32); }
 
+/* 준비중 매장 체크리스트 카드 — salon-select-card.needs-attention과 같은 계열의 "주의" 색을 쓴다 */
+.attn-card { display: flex; align-items: flex-start; gap: 8px; background: rgba(225, 112, 85, 0.22); border: 1px solid rgba(225, 112, 85, 0.35); border-radius: 10px; padding: 10px 11px; margin-bottom: 16px; cursor: pointer; transition: background 0.15s ease; }
+.attn-card:hover { background: rgba(225, 112, 85, 0.32); }
+.attn-icon { font-size: 14px; color: #E17055; flex-shrink: 0; margin-top: 1px; }
+.attn-text { min-width: 0; flex: 1; }
+.attn-title { font-size: 12.5px; font-weight: 800; color: var(--white); }
+/* 미충족 항목 이름을 최대 2개 + "외 N건"까지만 보여줘도 혹시 길어지면 2줄까지만 자동 줄바꿈하고 그 이상은 잘라서, 사이드바 폭에서 레이아웃이 깨지지 않게 한다 */
+.attn-sub { font-size: 11px; color: rgba(255, 255, 255, 0.72); margin-top: 3px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.attn-chev { font-size: 10px; color: rgba(255, 255, 255, 0.6); flex-shrink: 0; margin-top: 2px; }
+
 .sidebar-user-card { display: flex; align-items: center; gap: 10px; background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; padding: 9px 10px; margin-bottom: 8px; cursor: pointer; transition: background 0.15s ease; }
 .sidebar-user-card:hover { background: rgba(255, 255, 255, 0.1); }
 .sidebar-user-avatar { width: 30px; height: 30px; border-radius: 50%; background: #E17055; display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; color: var(--white); flex-shrink: 0; }
