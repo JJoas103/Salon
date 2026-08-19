@@ -20,6 +20,15 @@ PYTHON_SERVICE_DIR = Path(__file__).parent/".." #python-service 디렉토리 경
 MCP_SERVER_MODULE = "mcp_chat.mcp_product_server"   #MCP 서버 모듈 경로
 RESOURCE_URI = "catalog://salon/search-guide"      #리소스 경로
 
+# 상담 한 건이 붙잡을 수 있는 시간의 상한
+#
+# 상담은 _invoke_lock 으로 한 번에 하나씩 처리하는데, 상한이 없으면 요청 하나가 멈췄을 때
+# 락이 영원히 안 풀려 이후 모든 사용자가 무한정 대기함(재기동 외에 복구 수단이 없음)
+# 실제로 클라이언트가 중간에 끊긴 뒤 서비스 전체가 잠긴 적이 있음
+# 둘을 더한 값이 Spring 의 readTimeout(120초)보다 작아야 Spring 이 먼저 끊지 않음
+LOCK_WAIT_SECONDS = 25      # 앞 사람 답변을 기다려주는 시간
+AGENT_TIMEOUT_SECONDS = 90  # 한 건이 LLM·도구에 쓸 수 있는 시간
+
 # system_prompt로 마크다운 금지를 지시해도 모델이 종종 무시해서, 응답 문자열에서 강제로 벗겨냄
 _MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _MD_HEADING_RE = re.compile(r"^#{1,6}\s*", re.MULTILINE)
@@ -178,6 +187,29 @@ class McpChatService:
         except Exception:
             return None
 
+    # 에이전트가 돌려준 메시지 더미에서 실제 답변 문장을 꺼냄
+    #
+    # 마지막 메시지를 그냥 쓰면 빈 답변이 나감 — recursion_limit 에 걸려 멈추면
+    # 끝 메시지가 "도구를 부르려던 중"인 AIMessage 라서 content 가 비어 있음
+    # 카탈로그가 커질수록 도구 호출이 늘어 이 경우가 잦아짐
+    @staticmethod
+    def _final_answer(messages: list[BaseMessage]) -> str:
+        for message in reversed(messages):
+            if not isinstance(message, AIMessage):
+                continue
+            content = message.content
+            # 일부 모델은 content 를 블록 리스트로 돌려줌 — 텍스트 블록만 이어붙임
+            if isinstance(content, list):
+                content = "".join(
+                    block.get("text", "")
+                    for block in content
+                    if isinstance(block, dict) and block.get("type") == "text"
+                )
+            text = str(content).strip()
+            if text:
+                return text
+        return ""
+
     # 에이전트를 통해 LLM에 질문하고, 세션별 대화기록을 갱신
     async def ask(self, session_id: str, question: str, user_context: str | None = None)-> str:
         # 카탈로그에 없는 정보를 묻는 질문은 LLM 까지 보내지 않음
@@ -195,8 +227,14 @@ class McpChatService:
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
         await self.start()
 
-        # 동시접근 방지(에이전트 객체가 생성 중 다른 에이전트 생성 요청이 들어오면 리턴)
-        async with self._invoke_lock:
+        # 상담은 한 번에 하나씩 — 앞 사람이 끝나기를 기다리되 무한정 매달리지는 않음
+        try:
+            await asyncio.wait_for(self._invoke_lock.acquire(), LOCK_WAIT_SECONDS)
+        except (asyncio.TimeoutError, TimeoutError):
+            return ("지금 다른 상담을 처리하고 있어 답변이 늦어지고 있습니다. "
+                    "잠시 후 다시 여쭤봐 주세요.")
+
+        try:
             now = monotonic()   # 시간측정
             self._remove_expired_sessions(now)       # (수정) 오탈자: _remove_expired_session -> _remove_expired_sessions
             self._make_session_space(session_id)     # 세션 공간 생성
@@ -229,10 +267,24 @@ class McpChatService:
             current_turn_start = len(self._base_messages) + len(history)
 
             # 에이전트 호출
-            result = await self._agent.ainvoke(
-                {"messages" : request_messages},
-                config = {"recursion_limit" : 12}
-            )
+            try:
+                result = await asyncio.wait_for(
+                    self._agent.ainvoke(
+                        {"messages" : request_messages},
+                        # 시술이 늘면서 도구 호출이 한 번 더 붙는 질문이 생겨 12 로는 중간에 끊겼음
+                        config = {"recursion_limit" : 20}
+                    ),
+                    AGENT_TIMEOUT_SECONDS,
+                )
+            except (asyncio.TimeoutError, TimeoutError):
+                # 여기서 멈췄다면 MCP 세션이 어긋났을 수 있음 — 다음 요청이 새로 연결하도록 버림
+                # 버리지 않으면 이후 요청도 전부 같은 자리에서 90초씩 까먹음
+                self._agent = None
+                self._client = None
+                self._exit_stack = None
+                self._base_messages = []
+                return ("답변이 너무 오래 걸려 중단했습니다. "
+                        "질문을 조금 더 짧고 구체적으로 적어 주시면 다시 찾아보겠습니다.")
             # 에이전트 결과 처리
             result_messages = list(result["messages"])
 
@@ -240,7 +292,15 @@ class McpChatService:
             history = result_messages[len(self._base_messages):]
             self._messages_by_session[session_id] = self._trim_history(history)
             self._last_access_by_session[session_id] = now # 세션별 마지막 접근 시간 갱신
-            return _strip_markdown(str(result_messages[-1].content)) # LLM의 답변을 전달
+            answer = _strip_markdown(self._final_answer(result_messages))
+            if not answer:
+                # 여기까지 왔는데 비었으면 답을 만들지 못한 것 — 빈 말풍선을 띄우지 않음
+                return ("답변을 정리하지 못했습니다. "
+                        "질문을 조금 더 구체적으로 적어 주시면 다시 찾아보겠습니다.")
+            return answer
+        finally:
+            # 어떤 경로로 빠져나가든 락은 반드시 돌려놓음
+            self._invoke_lock.release()
 
     # 만료된 세션 제거
     def _remove_expired_sessions(self, now: float)-> None:  # (수정) 오탈자: _remove_expried_sessions -> _remove_expired_sessions

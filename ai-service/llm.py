@@ -41,6 +41,11 @@ def _ollama_llm() -> ChatOllama:
         base_url=os.getenv("OLLAMA_BASE_URL", DEFAULT_BASE_URL),
         temperature=TEMPERATURE,
         num_ctx=int(os.getenv("OLLAMA_NUM_CTX", DEFAULT_NUM_CTX)),
+        # 사고 과정을 끔
+        # qwen3.5 는 사고형 모델이라 생각을 thinking 으로 따로 내보내는데, 그 턴을 생각으로만
+        # 채우고 본문을 비워 보내는 일이 있어 빈 답변이 나갔음
+        # 시술 상담은 검색 결과를 정리해 보여주는 일이라 긴 추론이 필요하지 않고, 끄면 그만큼 빨라짐
+        reasoning=False,
     )
 
 
