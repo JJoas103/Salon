@@ -18,7 +18,7 @@
          ignore-resource-not-found 로 없어도 뜨게 하고, 값이 비었을 때는
          KakaoPayService 가 결제 시점에 안내 메시지로 막는다. -->
     <context:property-placeholder
-        location="classpath:properties/db.properties,classpath:properties/app.properties,classpath:properties/payment.properties"
+        location="classpath:properties/db.properties,classpath:properties/app.properties,classpath:properties/payment.properties,classpath:properties/oauth2.properties"
         ignore-resource-not-found="true" />
 
 

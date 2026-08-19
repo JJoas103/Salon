@@ -15,6 +15,13 @@ public interface UserMapper {
     /** 이메일로 회원 조회 (로그인 / 중복확인) */
     UserVO findByEmail(String email);
 
+    /** 소셜 로그인 최초 가입 (password는 항상 null) */
+    void insertOAuthUser(UserVO user);
+
+    /** 기존 로컬 계정에 소셜 로그인 수단 연동 (이메일 기준 자동 연동) */
+    void linkProvider(@Param("email") String email, @Param("provider") String provider,
+                      @Param("providerId") String providerId);
+
     // user_id로 조회
     UserVO findById(int userId);
 

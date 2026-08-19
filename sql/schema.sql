@@ -28,6 +28,8 @@
 --                  → Reservations 에 reject_reason / cancel_type (점주 예약 거절·노쇼 처리)
 --   8. 2026-08-11  migration_Point.sql
 --                  → Users 에 point_balance, Point_Transactions 테이블 신설
+--   9. 2026-08-18  migration_oauth_login.sql
+--                  → Users.password NULL 허용, provider / provider_id 추가 (구글/네이버 소셜 로그인)
 --
 --  기존 마이그레이션 파일은 진행 이력으로 sql/ 에 그대로 남겨둔다.
 --  앞으로 스키마를 바꿀 때도 같은 방식으로:
@@ -46,17 +48,20 @@ USE salu;
 CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,               -- 사용자 고유 식별자
     email VARCHAR(255) UNIQUE NOT NULL,                   -- 이메일 (로그인 ID)
-    password VARCHAR(255) NOT NULL,                       -- 비밀번호
+    password VARCHAR(255) NULL,                           -- 비밀번호 (소셜 전용 계정은 NULL)
     user_name VARCHAR(100),
     phone_number VARCHAR(20),
     user_type ENUM('customer', 'owner', 'admin') NOT NULL, -- 사용자 유형 (고객, 점주, 관리자)
+    provider ENUM('local', 'google', 'naver') NOT NULL DEFAULT 'local', -- 로그인 수단
+    provider_id VARCHAR(255) NULL,                        -- 소셜 로그인 제공자가 발급한 사용자 식별자
     status ENUM('active', 'suspended', 'banned') DEFAULT 'active', -- 커뮤니티 이용 제한 상태
     suspended_until DATETIME NULL,                          -- 정지 만료 시각 (영구정지면 NULL)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at DATETIME NULL DEFAULT NULL,                -- 탈퇴 일시 (NULL 이면 활성 회원. 행을 지우지 않는 soft delete)
     point_balance INT NOT NULL DEFAULT 0,                 -- 포인트 잔액
-    last_reply_check_at DATETIME NULL                     -- 마이페이지 "내 글에 달린 댓글" 탭 마지막 확인 시각 (안읽음 배지용)
+    last_reply_check_at DATETIME NULL,                    -- 마이페이지 "내 글에 달린 댓글" 탭 마지막 확인 시각 (안읽음 배지용)
+    UNIQUE KEY uq_users_provider_id (provider, provider_id) -- NULL끼리는 유니크 충돌로 안 보므로 로컬 계정끼리는 무관
 );
 
 -- ---------- Salons (미용실) ----------

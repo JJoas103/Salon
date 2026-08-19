@@ -35,6 +35,11 @@
         </div>
         <button class="btn-modern btn-primary" style="width: 100%; margin-top: 15px;">로그인</button>
     </form>
+    <div class="auth-divider">또는</div>
+    <div class="social-login-row">
+      <a href="${pageContext.request.contextPath}/oauth2/authorization/google" class="btn-social btn-google"><i class="fab fa-google"></i> Google</a>
+      <a href="${pageContext.request.contextPath}/oauth2/authorization/naver" class="btn-social btn-naver"><strong>N</strong> 네이버</a>
+    </div>
 <div class="auth-footer">
   아직 계정이 없으신가요?
   <a href="${pageContext.request.contextPath}/user/join" class="auth-link">회원가입</a>

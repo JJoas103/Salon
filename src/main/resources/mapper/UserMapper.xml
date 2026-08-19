@@ -11,6 +11,8 @@
         <result column="user_name"    property="userName" />
         <result column="phone_number" property="phoneNumber" />
         <result column="user_type"    property="userType" />
+        <result column="provider"     property="provider" />
+        <result column="provider_id"  property="providerId" />
         <result column="created_at"   property="createdAt" />
         <result column="updated_at"   property="updatedAt" />
         <result column="deleted_at"   property="deletedAt" />
@@ -32,11 +34,25 @@
 
     <!-- 이메일로 회원 조회 -->
     <select id="findByEmail" parameterType="string" resultMap="userResultMap">
-        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
-               status, suspended_until
+        select user_id, email, password, user_name, phone_number, user_type, provider, provider_id,
+               created_at, updated_at, status, suspended_until
         from Users
         where email = #{email}
     </select>
+
+    <!-- 소셜 로그인 최초 가입 -->
+    <insert id="insertOAuthUser" parameterType="com.soldesk.vo.UserVO"
+            useGeneratedKeys="true" keyProperty="userId">
+        insert into Users (email, password, user_name, phone_number, user_type, provider, provider_id)
+        values (#{email}, null, #{userName}, #{phoneNumber}, #{userType}, #{provider}, #{providerId})
+    </insert>
+
+    <!-- 기존 로컬 계정에 소셜 로그인 수단 연동 (이메일이 같으면 자동 연동) -->
+    <update id="linkProvider">
+        update Users
+        set provider = #{provider}, provider_id = #{providerId}
+        where email = #{email}
+    </update>
 
     <!-- user_id(PK)로 회원 조회 (탈퇴/강등 처리 전 최신 상태 재확인용) -->
     <select id="findById" parameterType="int" resultMap="userResultMap">

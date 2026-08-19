@@ -10,8 +10,13 @@
                            http://www.springframework.org/schema/tx
                            http://www.springframework.org/schema/tx/spring-tx.xsd">
 
-    <!-- 접속정보 파일 로딩 -->
-    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties" />
+    <!-- 접속정보 파일 로딩. oauth2.properties는 커밋되지 않는 로컬 파일이라 없을 수 있으므로
+         ignore-resource-not-found 로 없어도 뜨게 한다 (payment.properties와 동일한 이유).
+         반드시 하나의 property-placeholder에서 같이 로딩해야 한다 — 별도 placeholder로 나누면
+         먼저 처리되는 쪽이 "${...:기본값}" 플레이스홀더를 자기 프로퍼티에 없다는 이유로 기본값으로
+         먼저 확정시켜버려서, 나중 placeholder가 실제 값을 읽어도 이미 반영이 안 되는 문제가 있었다.
+         SecurityConfig가 root/web 두 컨텍스트 모두에서 스캔되므로 이 파일도 양쪽에 등록한다. -->
+    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties,classpath:properties/oauth2.properties" ignore-resource-not-found="true" />
 
 
     <!-- service / mapper 패키지 스캔 (controller 는 dispatcher 가 스캔) -->

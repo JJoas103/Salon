@@ -206,6 +206,13 @@ public class CommonController {
     public Map<String, Object> passwordSubmit(Authentication authentication,
             @Validated @ModelAttribute("changePassword") PasswordChangeVO changePassword,
             BindingResult result) {
+        // 소셜(구글/네이버) 계정은 로컬 비밀번호가 없다. 화면에서 버튼을 숨기는 것과 별개로,
+        // 요청을 직접 보내는 경우까지 막기 위해 서버에서도 한 번 더 확인한다.
+        UserVO currentUser = userService.getUser(authentication.getName());
+        if (!"local".equals(currentUser.getProvider())) {
+            result.rejectValue("currentPassword", "provider.notLocal", "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
+
         if (!result.hasErrors()) {
             try {
                 userService.changePassword(authentication.getName(), changePassword.getCurrentPassword(),

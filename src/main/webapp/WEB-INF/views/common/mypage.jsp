@@ -62,14 +62,26 @@
         </a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-credit-card" style="margin-right:12px;"></i> 결제 수단 및 카드 관리</span><span class="tag">준비중</span></a>
         <a href="#" class="menu-item-modern" style="opacity:0.5; pointer-events:none;"><span><i class="fas fa-bell" style="margin-right:12px;"></i> 알림 설정</span><span class="tag">준비중</span></a>
-        <a href="#" id="openPasswordModalBtn" class="menu-item-modern"><span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span><i class="fas fa-chevron-right"></i></a>
+        <c:choose>
+          <c:when test="${user.provider == 'local'}">
+            <a href="#" id="openPasswordModalBtn" class="menu-item-modern"><span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span><i class="fas fa-chevron-right"></i></a>
+          </c:when>
+          <c:otherwise>
+            <span class="menu-item-modern" style="opacity:0.5; pointer-events:none;">
+              <span><i class="fas fa-shield-alt" style="margin-right:12px;"></i> 보안 및 비밀번호 변경</span>
+              <span class="tag">${user.provider == 'google' ? 'Google' : '네이버'} 계정으로 로그인됨</span>
+            </span>
+          </c:otherwise>
+        </c:choose>
       </div>
     </main>
   </div>
 
-  <!-- 비밀번호 변경 모달 (역할 공용) -->
-  <jsp:include page="../includes/password_modal.jsp">
-      <jsp:param name="mypageUrl" value="/common/mypage" />
-  </jsp:include>
+  <!-- 비밀번호 변경 모달 (역할 공용). 소셜 계정은 트리거 버튼 자체가 없으므로 include하지 않는다. -->
+  <c:if test="${user.provider == 'local'}">
+    <jsp:include page="../includes/password_modal.jsp">
+        <jsp:param name="mypageUrl" value="/common/mypage" />
+    </jsp:include>
+  </c:if>
 </body>
 </html>
