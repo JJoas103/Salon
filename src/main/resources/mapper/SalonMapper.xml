@@ -54,6 +54,7 @@
     <select id="findById" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
+               s.latitude, s.longitude,
                MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at,
                s.activation_status
         FROM Salons s
@@ -62,6 +63,7 @@
         WHERE s.salon_id = #{salonId}
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
+                 s.latitude, s.longitude,
                  s.created_at, s.updated_at, s.closed_at, s.activation_status
     </select>
 
@@ -115,7 +117,7 @@
     <!-- 점주 기준 매장 조회 (점주 1명당 매장 1개라고 가정, 다중 매장은 추후 목록 조회로 확장) -->
     <select id="findAllByOwnerId" parameterType="int" resultMap="salonResultMap">
         SELECT salon_id, owner_id, salon_name, address, phone_number, description,
-               average_rating, image_url, created_at, updated_at
+               average_rating, image_url, latitude, longitude, created_at, updated_at
         FROM Salons
         WHERE owner_id = #{ownerId}
         ORDER BY salon_id
@@ -276,12 +278,19 @@
         VALUES (#{salonId}, #{dayOfWeek}, #{openTime}, #{closeTime})
     </insert>
 
+    <!--
+        좌표는 화면의 주소 검색(카카오 Geocoder)이 채워 보낸다. 주소를 바꾸지 않고 저장한
+        경우에도 화면이 기존 좌표를 hidden 으로 그대로 돌려보내므로 덮어써도 값이 유지된다.
+        NULL 이면 고객 지도에서 마커를 그리지 않는다 (salonmap.jsp 의 renderSalons).
+    -->
     <update id="updateSalonInfo" parameterType="com.soldesk.vo.SalonVO">
         update Salons
         set salon_name = #{salonName},
             address = #{address},
             phone_number = #{phoneNumber},
-            description = #{description}
+            description = #{description},
+            latitude = #{latitude},
+            longitude = #{longitude}
         where salon_id = #{salonId}
     </update>
 </mapper>

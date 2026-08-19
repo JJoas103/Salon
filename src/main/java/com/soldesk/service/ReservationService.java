@@ -85,7 +85,63 @@ public class ReservationService {
     @Transactional
     public List<ReservationVO> getRevList(int userId) {
         List<ReservationVO> list = resvMapper.getRevList(userId);
+        list.forEach(this::fillPaymentLabel);
         return list;
+    }
+
+    /**
+     * 화면에 보여줄 결제수단 문구를 만든다.
+     *
+     * 두 컬럼의 성격이 다르다. pg_provider 는 어느 결제사를 거쳤는지(금액 계산 때 정해져 항상 값이 있고),
+     * payment_method 는 그 결제사 안에서 실제로 뭘 썼는지(승인 응답에서 오므로 승인 전에는 비어 있다).
+     * 그래서 결제사를 주 표시로 삼고 수단은 있을 때만 괄호로 덧붙인다.
+     * payment_method 만 쓰면 취소·실패 건이 통째로 빈칸이 된다.
+     *
+     * 카카오가 주는 원문(CARD/MONEY)을 사람 말로 바꾸는 것도 여기 한 곳에서 한다.
+     * 화면마다 <c:choose> 로 흩어놓으면 문구가 서로 갈린다.
+     *
+     * 두 컬럼을 실어오는 조회(getRevList / findById)에서만 부른다. 점주 쪽 ownerColumns 에는
+     * 아직 결제 컬럼이 없어서, 거기서 부르면 전부 "결제 정보 없음" 이 된다.
+     */
+    private void fillPaymentLabel(ReservationVO reservation) {
+        String provider = reservation.getPgProvider();
+
+        // LEFT JOIN Payments 라 결제까지 못 간 예약은 결제행 자체가 없다
+        if (provider == null) {
+            reservation.setDisplayPayment("결제 정보 없음");
+            return;
+        }
+        if ("ZERO".equals(provider)) {
+            // 쿠폰·적립금이 정가를 전부 덮어 외부 결제사를 거치지 않은 건 (ZeroAmountGateway)
+            reservation.setDisplayPayment("적립금·쿠폰으로 전액 결제");
+            return;
+        }
+
+        String method = methodLabelOf(reservation.getPaymentMethod());
+        String providerLabel = "KAKAOPAY".equals(provider) ? "카카오페이" : provider;
+        reservation.setDisplayPayment(
+                method == null ? providerLabel : providerLabel + " (" + method + ")");
+    }
+
+    /**
+     * payments.payment_method 원문 → 사람이 읽는 말.
+     *
+     * 카카오페이 단건결제 승인 응답의 payment_method_type 은 CARD 아니면 MONEY 다.
+     * 그 밖의 값은 원문 그대로 내보낸다 — 카카오가 수단을 늘렸을 때 말없이 빈칸이 되는 것보다,
+     * 모르는 값이라도 보이는 편이 무엇을 추가해야 하는지 바로 드러난다.
+     */
+    private String methodLabelOf(String method) {
+        if (method == null || method.isBlank()) {
+            return null; // 아직 승인 전이거나 취소된 건
+        }
+        switch (method) {
+            case "CARD":
+                return "카드";
+            case "MONEY":
+                return "카카오페이머니";
+            default:
+                return method;
+        }
     }
 
     @Transactional
@@ -361,7 +417,11 @@ public class ReservationService {
 
     @Transactional(readOnly = true)
     public ReservationVO getReservation(int reservationId) {
-        return resvMapper.findById(reservationId);
+        ReservationVO reservation = resvMapper.findById(reservationId);
+        if (reservation != null) {
+            fillPaymentLabel(reservation);
+        }
+        return reservation;
     }
 
     @Transactional(readOnly = true)
@@ -600,6 +660,15 @@ public class ReservationService {
         String cancelType = noShow ? "no_show" : "rejected";
         if (resvMapper.rejectReservation(reservationId, reason.trim(), cancelType) == 0) {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
+        }
+    }
+
+    /** 사용자가 자신의 확정 예약을 취소 */
+    @Transactional
+    public void cancelReservation(int reservationId, int userId) {
+        int result = resvMapper.cancelReservation(reservationId, userId);
+        if (result == 0) {
+            throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
         }
     }
 }

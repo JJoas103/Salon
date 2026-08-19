@@ -56,9 +56,32 @@
               <textarea name="description" class="modern-input" style="height: 100px; resize: none;">${salon.description}</textarea>
             </div>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-              <div><label style="font-size: 13px; font-weight: 700;">주소</label><input type="text" name="address" class="modern-input" value="${salon.address}" placeholder="주소를 입력해주세요"></div>
+              <div>
+                <label style="font-size: 13px; font-weight: 700;">주소</label>
+                <%-- 직접 입력을 막고 우편번호 검색으로만 채운다. 검증된 도로명주소여야
+                     나중에 좌표 변환(카카오 Geocoder)이 실패하지 않는다. --%>
+                <div class="address-field">
+                  <input type="text" name="address" id="salonAddress" class="modern-input"
+                         value="<c:out value='${salon.address}'/>" placeholder="주소 검색을 눌러주세요" readonly>
+                  <button type="button" class="btn-modern btn-outline" id="searchAddressBtn">
+                    <i class="fas fa-magnifying-glass"></i> 주소 검색
+                  </button>
+                </div>
+              </div>
               <div><label style="font-size: 13px; font-weight: 700;">연락처</label><input type="text" name="phoneNumber" class="modern-input" value="${salon.phoneNumber}" placeholder="02-1234-5678" pattern="[0-9-]{9,13}" title="숫자와 하이픈(-)만 입력해주세요." required></div>
             </div>
+
+            <%-- 주소 검색이 채우는 좌표. 저장된 값으로 초기화해 두므로, 주소를 건드리지 않고
+                 저장해도 원래 좌표가 그대로 돌아간다 (updateSalonInfo 가 매번 덮어쓴다). --%>
+            <input type="hidden" name="latitude"  id="salonLatitude"  value="${salon.latitude}">
+            <input type="hidden" name="longitude" id="salonLongitude" value="${salon.longitude}">
+
+            <div>
+              <label style="font-size: 13px; font-weight: 700;">지도 위치</label>
+              <p class="address-map-hint" id="addressMapHint">주소를 검색하면 지도에 위치가 표시됩니다.</p>
+              <div class="address-map" id="salonAddressMap"></div>
+            </div>
+
             <button type="submit" class="btn-modern btn-primary">정보 저장</button>
           </form>
         </div>
@@ -154,7 +177,7 @@
             <h3>이벤트 및 공지사항 관리</h3>
             <button type="button" id="noticeWriteBtn" class="btn-modern btn-primary"><i class="fas fa-plus"></i> 글쓰기</button>
           </div>
-          <form id="noticeWriteForm" method="post" action="<c:url value='/owner/events'/>" enctype="multipart/form-data" style="display:none; flex-direction:column; gap:16px; margin-bottom: 20px;">
+          <form id="noticeWriteForm" method="post" action="<c:url value='/owner/store/notices'/>" enctype="multipart/form-data" style="display:none; flex-direction:column; gap:16px; margin-bottom: 20px;">
             <div>
               <label style="font-size: 13px; font-weight: 700; color: var(--text-sub);">제목</label>
               <input type="text" name="title" class="modern-input" maxlength="255" required>
@@ -188,7 +211,7 @@
                   <td>${notice.createdAt}</td>
                   <td><span class="status-badge status-confirmed">게시중</span></td>
                   <td>
-                    <form method="post" action="<c:url value='/owner/events/${notice.noticeId}/delete'/>"
+                    <form method="post" action="<c:url value='/owner/store/notices/${notice.noticeId}/delete'/>"
                           onsubmit="return confirm('이 공지사항을 삭제하시겠습니까?')" style="display:inline;">
                       <button type="submit" class="btn-modern btn-danger">삭제</button>
                     </form>
@@ -286,6 +309,93 @@
       })();
     </script>
   </c:if>
+
+  <!-- 다음 우편번호 서비스(주소 검증) + 카카오맵 SDK(좌표 변환·마커).
+       libraries=services 가 있어야 Geocoder 를 쓸 수 있다 — salonmap.jsp 와 같은 방식으로 로드한다. -->
+  <script src="https://t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+  <script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=${kakaoMapApiKey}&libraries=services&autoload=true"></script>
+  <script>
+    /* 주소 검색 → 좌표 변환 → 마커.
+       주소는 우편번호 API 가 검증한 도로명주소만 받고(Salons.address 한 컬럼),
+       그 주소를 그대로 Geocoder 에 넘겨 좌표를 얻는다. */
+    (function () {
+      var button       = document.getElementById('searchAddressBtn');
+      var addressInput = document.getElementById('salonAddress');
+      var mapBox       = document.getElementById('salonAddressMap');
+      if (!button || !mapBox) return;   // 매장 미선택 상태
+
+      var latInput = document.getElementById('salonLatitude');
+      var lngInput = document.getElementById('salonLongitude');
+      var hint     = document.getElementById('addressMapHint');
+
+      function setHint(text, isError) {
+        hint.textContent = text;
+        hint.classList.toggle('error-text', isError === true);
+        hint.style.display = '';
+      }
+
+      /* 지도는 카카오 SDK 가 떠야 쓸 수 있다. SDK 로드가 막히면(사내망·키 도메인 불일치 등)
+         지도만 포기하고 주소 검색은 그대로 살린다 — 주소를 못 고치는 쪽이 더 나쁘다. */
+      var mapReady = typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services;
+      var map = null, marker = null, geocoder = null;
+
+      if (mapReady) {
+        var SEOUL = new kakao.maps.LatLng(37.5665, 126.9780);   // 좌표가 없을 때 보여줄 기본 위치
+        var saved = (latInput.value && lngInput.value)
+            ? new kakao.maps.LatLng(parseFloat(latInput.value), parseFloat(lngInput.value))
+            : null;
+
+        map = new kakao.maps.Map(mapBox, { center: saved || SEOUL, level: saved ? 3 : 8 });
+        marker = new kakao.maps.Marker({ position: saved || SEOUL, map: saved ? map : null });
+        geocoder = new kakao.maps.services.Geocoder();
+
+        if (saved) {
+          hint.style.display = 'none';
+        }
+      } else {
+        mapBox.style.display = 'none';
+        setHint('지도를 불러오지 못했습니다. 주소는 검색해서 저장할 수 있습니다.', true);
+      }
+
+      button.addEventListener('click', function () {
+        new daum.Postcode({
+          oncomplete: function (data) {
+            // 도로명이 없는 옛 주소는 roadAddress 가 빈 문자열로 와서 선택한 주소로 되돌린다
+            var road = data.roadAddress || data.address;
+            addressInput.value = road;
+            if (!mapReady) return;
+
+            geocoder.addressSearch(road, function (result, status) {
+              if (status !== kakao.maps.services.Status.OK || !result.length) {
+                // 좌표를 못 찾아도 저장은 막지 않는다. 좌표가 비면 고객 지도에서
+                // 마커를 그리지 않을 뿐이다 (salonmap.jsp 의 renderSalons).
+                latInput.value = '';
+                lngInput.value = '';
+                marker.setMap(null);
+                setHint('이 주소의 좌표를 찾지 못했습니다. 주소는 저장되지만 지도에는 표시되지 않습니다.', true);
+                return;
+              }
+
+              // 카카오는 x = 경도, y = 위도 순서다. 뒤집으면 마커가 엉뚱한 곳에 찍힌다.
+              var latitude  = result[0].y;
+              var longitude = result[0].x;
+              latInput.value = latitude;
+              lngInput.value = longitude;
+
+              var position = new kakao.maps.LatLng(parseFloat(latitude), parseFloat(longitude));
+              marker.setPosition(position);
+              marker.setMap(map);
+              map.setLevel(3);
+              map.setCenter(position);
+
+              hint.style.display = 'none';
+              hint.classList.remove('error-text');
+            });
+          }
+        }).open();
+      });
+    })();
+  </script>
 
   <script>
     var ctx = '${ctx}';

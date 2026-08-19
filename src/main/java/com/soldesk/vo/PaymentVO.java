@@ -73,7 +73,8 @@ public class PaymentVO {
         return this.userCouponId;
     }
 
-    public void setUserCouponId(int userCouponId) {
+    // 쿠폰을 쓰지 않은 결제는 null 이 들어온다. int 로 받으면 언박싱 NPE 가 난다.
+    public void setUserCouponId(Integer userCouponId) {
         this.userCouponId = userCouponId;
     }
     
