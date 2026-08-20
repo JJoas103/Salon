@@ -82,6 +82,9 @@ public class ReservationService {
     @Autowired
     private CouponService couponService;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public List<ReservationVO> getRevList(int userId) {
         List<ReservationVO> list = resvMapper.getRevList(userId);
@@ -371,6 +374,12 @@ public class ReservationService {
         if (paymentMapper.markCompleted(reservationId, paymentMethod) == 1) {
             resvMapper.updateStatus(reservationId, "confirmed");
             couponService.confirm(reservationId);
+
+            ReservationVO reservation = resvMapper.findById(reservationId);
+            notificationService.create(
+                    reservation.getUserId(), "RESERVATION", "예약이 확정되었습니다",
+                    reservation.getSalonName() + " · " + reservation.getReservationTime() + " · " + reservation.getServiceName(),
+                    "/common/reservation?category=1", reservationId);
         }
     }
 
@@ -661,6 +670,12 @@ public class ReservationService {
         if (resvMapper.rejectReservation(reservationId, reason.trim(), cancelType) == 0) {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
         }
+
+        notificationService.create(
+                reservation.getUserId(), "RESERVATION",
+                noShow ? "노쇼로 처리되었습니다" : "예약이 거절되었습니다",
+                reservation.getSalonName() + " · " + reservation.getReservationTime() + " · " + reason.trim(),
+                "/common/reservation?category=1", reservationId);
     }
 
     /** 사용자가 자신의 확정 예약을 취소 */
@@ -670,5 +685,11 @@ public class ReservationService {
         if (result == 0) {
             throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
         }
+
+        ReservationVO reservation = resvMapper.findById(reservationId);
+        notificationService.create(
+                userId, "RESERVATION", "예약이 취소되었습니다",
+                reservation.getSalonName() + " · " + reservation.getReservationTime(),
+                "/common/reservation?category=1", reservationId);
     }
 }

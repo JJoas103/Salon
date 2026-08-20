@@ -42,6 +42,9 @@ public class ChatService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Autowired
+    private NotificationService notificationService;
+
 
     /**
      * 고객이 특정 매장에 문의를 시작한다. 이미 방이 있으면 그 방을 재사용한다.
@@ -149,6 +152,16 @@ public class ChatService {
         // 수신자에게. 접속 중이 아니면 그냥 버려지고, 나중에 이력 조회로 보게 된다.
         if (recipient != null) {
             messagingTemplate.convertAndSendToUser(recipient.getEmail(), "/queue/messages", event);
+
+            // 알림함은 지금 고객 사이드바에만 붙어 있다(1차 범위). 점주가 받는 메시지는
+            // 기존 방식(사이드바 벨의 채팅 안읽음 카운트)만 그대로 탄다.
+            if ("customer".equals(recipient.getUserType())) {
+                String preview = content.length() > 40 ? content.substring(0, 40) + "…" : content;
+                notificationService.create(
+                        recipient.getUserId(), "CHAT", "새 메시지가 도착했어요",
+                        sender.getUserName() + ": " + preview,
+                        "/common/chat?chatId=" + chatId, chatId);
+            }
         }
         // 발신자 본인에게도 되돌려준다. 그래야 여러 탭을 켜둬도 화면이 어긋나지 않고,
         // 저장에 성공한 메시지만 말풍선이 된다.
