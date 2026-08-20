@@ -348,6 +348,9 @@
       var link = document.createElement('a');
       link.className = 'ai-chat-link';
       link.href = reserveUrl + '?salonId=' + encodeURIComponent(salon.salonId);
+      // 예약은 새 탭으로 보내 상담을 남겨둠
+      link.target = '_blank';
+      link.rel = 'noopener';
       link.innerHTML = '<i class="fas fa-calendar-check"></i>';
       // 매장명은 마크업이 아니라 텍스트로 넣음
       link.appendChild(document.createTextNode(' ' + (salon.salonName || '이 매장') + ' 예약하기'));
