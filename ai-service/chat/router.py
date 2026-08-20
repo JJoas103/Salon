@@ -21,13 +21,13 @@ async def chat(
         answer = await chat_service.ask(session_id, question, payload.user_context)
         
     except Exception as error:
-        logger.exception("MCP 상풍 상담 요청에 실패했습니다")
+        # 예외 문자열에 ES 주소가 들어있어 브라우저로 내보내지 않음
+        logger.exception("MCP 상품 상담 요청에 실패했습니다")
         raise HTTPException(
             status_code= 503,
             detail=(
                 "MCP 상품 상담 서비스를 사용할 수 없습니다. "
                 "ElasticSearch와 LLM 설정을 확인하세요."
-                f"({type(error).__name__}: {error})"
             ),
         ) from error
     

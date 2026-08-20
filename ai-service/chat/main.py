@@ -40,6 +40,40 @@ def _strip_markdown(text: str) -> str:
     text = _MD_BULLET_RE.sub("", text)
     return text
 
+# 도구 이름이 답변에 그대로 나간 적이 있음
+# ("현재 제공된 도구(search_service, list_catalog, prepare_service_index)는 ...")
+_INTERNAL_RE = re.compile(
+    r"search_service|list_catalog|prepare_service_index"
+    r"|MCP|tool\b|툴\s*(호출|을|를|이|가)"
+    r"|(제공된|사용\s*가능한|현재|해당|이런|위의)\s*도구"
+    r"|도구\s*(목록|이름|를|가|는|로|에는)",
+    re.IGNORECASE,
+)
+
+# 예약은 이 서비스가 직접 처리하므로 외부 경로 안내는 전부 오답
+# "전화"는 매장 연락처라 제외
+_EXTERNAL_BOOKING_RE = re.compile(r"카카오|네이버|인스타|왓츠앱|\bDM\b", re.IGNORECASE)
+
+_DROP_SENTENCE_RES = (_INTERNAL_RE, _EXTERNAL_BOOKING_RE)
+
+# 줄바꿈은 문단 구분이라 살리고 같은 줄 안에서만 나눔
+_SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
+
+
+def _strip_internal(text: str) -> str:
+    """도구 이름이나 외부 예약 경로가 드러난 문장을 지움 — 프롬프트만 믿지 않고 한 번 더 거름"""
+    lines = []
+    for line in text.split("\n"):
+        kept = [
+            sentence for sentence in _SENTENCE_SPLIT_RE.split(line)
+            if sentence.strip()
+            and not any(rule.search(sentence) for rule in _DROP_SENTENCE_RES)
+        ]
+        lines.append(" ".join(kept))
+
+    # 문장이 날아간 자리에 빈 줄이 겹치지 않도록
+    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
+
 # MCP 연결 및 세션관리
 class McpChatService:
     def __init__(self) -> None:
@@ -121,6 +155,13 @@ class McpChatService:
                         "추천 요청에는 반드시 Tool 로 찾은 시술을 먼저 제시하세요. 되묻기만 하고 끝내지 마세요."
                         "제시한 뒤에 더 좁힐 여지가 있으면 마지막에 질문을 하나만 덧붙이세요."
                         "시술명 없이 증상만 말한 경우(예: '머리 상했어요')에만 검색 전에 한 가지를 되물어도 됩니다."
+                        # 도구 이름을 나열한 답이 화면에 나간 적 있음
+                        "search_service, list_catalog, prepare_service_index 같은 도구 이름과 "
+                        "Tool, MCP, 검색 과정은 내부 동작이므로 답변에 쓰지 마세요."
+                        "찾지 못했을 때도 도구를 핑계로 들지 말고 '등록된 시술 중에는 없습니다' 라고 답하세요."
+                        # 카카오톡·네이버예약·인스타 DM 을 안내한 적 있음
+                        "예약은 이 서비스의 예약 화면에서 진행됩니다."
+                        "전화, 카카오톡, 네이버 예약, 인스타그램 DM 같은 외부 예약 방법을 안내하지 마세요."
                     )
                 )
 
@@ -292,7 +333,7 @@ class McpChatService:
             history = result_messages[len(self._base_messages):]
             self._messages_by_session[session_id] = self._trim_history(history)
             self._last_access_by_session[session_id] = now # 세션별 마지막 접근 시간 갱신
-            answer = _strip_markdown(self._final_answer(result_messages))
+            answer = _strip_internal(_strip_markdown(self._final_answer(result_messages)))
             if not answer:
                 # 여기까지 왔는데 비었으면 답을 만들지 못한 것 — 빈 말풍선을 띄우지 않음
                 return ("답변을 정리하지 못했습니다. "
