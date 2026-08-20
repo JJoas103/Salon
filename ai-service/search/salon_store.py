@@ -90,3 +90,19 @@ def salon_find_hint(question: str, count: int = 5) -> str | None:
         + "\n".join(lines)
         + "\n이 목록에 없는 매장은 존재하지 않습니다. 평점과 가격은 이 값만 사용하세요."
     )
+
+
+def list_salon_names() -> list[dict[str, Any]]:
+    """등록된 매장의 id 와 이름 — chat/links.py 가 답변과 대조할 때 씀
+
+    매장 수가 두 자리라 통째로 받아도 부담 없고, 폐업 매장은 색인에서 이미 빠져 있음
+    """
+    ensure_elasticsearch()
+
+    response = client.search(
+        index=SALON_INDEX,
+        size=1000,
+        query={'match_all': {}},
+        source_includes=['salonId', 'salonName'],
+    )
+    return [hit['_source'] for hit in response['hits']['hits']]

@@ -233,7 +233,8 @@
       <button type="button" class="modal-close" id="closeAiChatBtn"><i class="fas fa-times"></i></button>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
-      <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다. 고민이나 궁금한 점을 말씀해주세요.</div>
+      <%-- pre-wrap 이라 줄바꿈이 그대로 보임. 한 줄로 유지 --%>
+      <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다.<c:if test="${not empty salon.salonId}"> 지금 보고 계신 <c:out value="${salon.salonName}"/> 시술을 먼저 찾아드립니다.</c:if> 고민이나 궁금한 점을 말씀해주세요.</div>
     </div>
     <div class="ai-chat-suggestions" id="aiChatSuggestions">
       <%-- 버튼 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
@@ -263,6 +264,12 @@
   var input = document.getElementById('aiChatInput');
   var sendBtn = document.getElementById('aiChatSendBtn');
 
+  // 매장 상세 화면이면 그 매장으로 후보를 좁힘. 서버가 영업 중인 매장인지 다시 확인함
+  var pageSalonId = ${empty salon.salonId ? 'null' : salon.salonId};
+
+  // ai-service 는 매장 id 와 이름만 주므로 주소는 여기서 조립함
+  var reserveUrl = '<c:url value="/common/reserve"/>';
+
   // 세션ID는 브라우저 탭(sessionStorage) 단위 — MCP 쪽이 이 값으로 대화 맥락을 이어간다
   var sessionId = sessionStorage.getItem('aiChatSessionId');
   if (!sessionId) {
@@ -286,6 +293,29 @@
     return el;
   }
 
+  // 답변에 등장한 매장을 예약 링크로 붙임
+  // LLM 이 문장 안에 링크를 쓰게 하면 없는 매장을 지어내므로 확인된 목록만 받아서 만듦
+  function appendLinks(salons) {
+    if (!salons || !salons.length) return;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-chat-links';
+    salons.forEach(function (salon) {
+      if (!salon || !salon.salonId) return;
+      var link = document.createElement('a');
+      link.className = 'ai-chat-link';
+      link.href = reserveUrl + '?salonId=' + encodeURIComponent(salon.salonId);
+      link.innerHTML = '<i class="fas fa-calendar-check"></i>';
+      // 매장명은 마크업이 아니라 텍스트로 넣음
+      link.appendChild(document.createTextNode(' ' + (salon.salonName || '이 매장') + ' 예약하기'));
+      wrap.appendChild(link);
+    });
+
+    if (!wrap.children.length) return;
+    messages.appendChild(wrap);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
   // 예시 질문 버튼과 직접 입력이 같은 전송 경로를 타도록 공용 함수로 뺀다
   function sendQuestion(question) {
     if (!question) return;
@@ -300,12 +330,13 @@
     fetch('<c:url value="/api/chat"/>', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: question, sessionId: sessionId })
+      body: JSON.stringify({ question: question, sessionId: sessionId, salonId: pageSalonId })
     }).then(function (res) {
       return res.json();
     }).then(function (data) {
       pending.remove();
       appendMessage(data.answer || '답변을 받지 못했습니다.', 'bot');
+      appendLinks(data.salons);
     }).catch(function () {
       pending.remove();
       appendMessage('상담 서버에 연결할 수 없습니다.', 'bot');

@@ -18,7 +18,9 @@ async def chat(
     try:
         # 세션ID와 질문을 Mcp 서버에 전달해 답변을 반환
         chat_service: McpChatService = request.app.state.chat_service
-        answer = await chat_service.ask(session_id, question, payload.user_context)
+        answer, salons = await chat_service.ask(
+            session_id, question, payload.user_context, payload.salon_id
+        )
         
     except Exception as error:
         # 예외 문자열에 ES 주소가 들어있어 브라우저로 내보내지 않음
@@ -36,4 +38,5 @@ async def chat(
         source = "mcp",
         question = question,
         sessionId = session_id,
+        salons = salons,
     )

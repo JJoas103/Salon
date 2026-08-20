@@ -792,6 +792,23 @@ body {
 }
 .ai-chat-suggestion-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
 
+/* 답변 아래에 붙는 예약 화면 링크. 예시 질문 칩과 같은 모양이되 이동이라 강조색 */
+.ai-chat-links { display: flex; flex-wrap: wrap; gap: 6px; align-self: flex-start; max-width: 82%; }
+.ai-chat-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--accent);
+  background: var(--white);
+  color: var(--accent);
+  border-radius: var(--radius-full);
+  padding: 7px 12px;
+  font-size: 12.5px;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.ai-chat-link:hover { background: var(--accent); color: var(--white); }
+
 .ai-chat-input-row { display: flex; gap: 8px; }
 .ai-chat-input-row .modern-input { flex: 1; }
 .ai-chat-input-row button { flex-shrink: 0; width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center; }

@@ -22,10 +22,12 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import com.soldesk.service.ReservationService;
+import com.soldesk.service.SalonService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.ChatRequest;
 import com.soldesk.vo.ChatResponse;
 import com.soldesk.vo.ReservationVO;
+import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
 /** ai-service(FastAPI) 로 시술 추천 채팅을 중계하는 컨트롤러.
@@ -41,16 +43,18 @@ public class AiChatController {
     private final RestTemplate restTemplate;
     private final UserService userService;
     private final ReservationService reservationService;
+    private final SalonService salonService;
 
     @Value("${fastapi.url}")
     private String fastApiUrl;
 
     @Autowired
     public AiChatController(RestTemplate restTemplate, UserService userService,
-            ReservationService reservationService) {
+            ReservationService reservationService, SalonService salonService) {
         this.restTemplate = restTemplate;
         this.userService = userService;
         this.reservationService = reservationService;
+        this.salonService = salonService;
     }
 
     @PostMapping(value = "/chat", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -69,6 +73,7 @@ public class AiChatController {
 
         // 클라이언트가 보낸 값은 신뢰하지 않고, 로그인 사용자 본인의 예약이력으로 서버가 직접 채운다
         request.setUserContext(buildUserContext(authentication));
+        request.setSalonId(resolveSalonId(request.getSalonId()));
 
         try {
             return restTemplate.postForEntity(fastApiUrl + "/api/chat", request, ChatResponse.class);
@@ -87,6 +92,18 @@ public class AiChatController {
                     request.getQuestion(),
                     request.getSessionId()));
         }
+    }
+
+    /** 영업 중인 매장일 때만 통과 — 없는 매장으로 범위를 좁히면 답이 통째로 빔 */
+    private Integer resolveSalonId(Integer salonId) {
+        if (salonId == null || salonId <= 0) {
+            return null;
+        }
+        SalonVO salon = salonService.getSalon(salonId);
+        if (salon == null || salon.getClosedAt() != null) {
+            return null;
+        }
+        return salonId;
     }
 
     /** 로그인 사용자가 완료한 시술 이력을 "시술명(카테고리)" 형태로 최근 순 요약

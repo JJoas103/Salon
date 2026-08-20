@@ -248,6 +248,7 @@ def hybrid_search(
 def list_services(
     category: str | None = None,
     salon: str | None = None,
+    salon_id: str | int | None = None,
     sort_by: str = 'price',
     order: str = 'asc',
     count: int = 20,
@@ -257,6 +258,10 @@ def list_services(
     conditions: list[dict[str, Any]] = []
     if category:
         conditions.append({'term': {'category': category}})
+
+    # 매장 상세 페이지에서 넘어온 매장은 id 로 거름 — 아래 salon 인자와 달리 ES 가 바로 필터링함
+    if salon_id is not None and str(salon_id).strip():
+        conditions.append({'term': {'salon_id': str(salon_id).strip()}})
 
     query: dict[str, Any] = (
         {'bool': {'filter': conditions}} if conditions else {'match_all': {}}

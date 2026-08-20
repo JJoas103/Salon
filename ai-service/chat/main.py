@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
 from chat.intent import (Intent, classify, needs_history,
                          no_history_answer, out_of_scope_answer)
+from chat.links import reservation_links, salon_link
 from time import monotonic
 
 from langchain_mcp_adapters.tools import load_mcp_tools
@@ -92,6 +93,9 @@ class McpChatService:
 
         # 세션별 마지막 접근시간
         self._last_access_by_session: dict[str, float] = {}
+
+        # 매 턴 같은 매장을 다시 붙이지 않으려고 들고 있음
+        self._salon_by_session: dict[str, int] = {}
 
     # MCP 서버 연결 및 에이전트 객체 생성
     async def start(self) -> None:
@@ -220,6 +224,33 @@ class McpChatService:
             + "\n이 목록에 없는 시술은 해당 매장에서 받을 수 없습니다."
         )
 
+    # 매장 상세 페이지에서 연 상담
+    # 후보가 카탈로그 전체에서 그 매장 몇 건으로 줄어 환각이 줄고 빨라짐
+    @staticmethod
+    def _current_salon_hint(salon_id: int) -> str | None:
+        try:
+            from search.elasticsearch_store import list_services
+            items = list_services(salon_id=salon_id, count=50)
+        except Exception:
+            return None
+
+        if not items:
+            return None
+
+        salon_name = items[0].get("salon_name") or ""
+        listed = "\n".join(
+            f"- {i.get('name')} ({i.get('category')}/{i.get('price')}원/"
+            f"{i.get('duration_min', 0)}분)"
+            for i in items
+        )
+        return (
+            f"[지금 사용자가 보고 있는 매장: {salon_name}]\n"
+            f"{listed}\n"
+            f"사용자는 {salon_name} 의 예약 화면에서 상담을 열었습니다. "
+            "이 목록에 있는 시술을 먼저 추천하고, 목록에 없는 시술을 물으면 "
+            f"{salon_name} 에는 없다고 밝힌 뒤 다른 매장을 안내하세요."
+        )
+
     @staticmethod
     def _salon_find_hint(question: str) -> str | None:
         try:
@@ -251,19 +282,27 @@ class McpChatService:
                 return text
         return ""
 
-    # 에이전트를 통해 LLM에 질문하고, 세션별 대화기록을 갱신
-    async def ask(self, session_id: str, question: str, user_context: str | None = None)-> str:
+    # (답변, 예약 링크용 매장 목록) 을 돌려줌
+    async def ask(
+        self,
+        session_id: str,
+        question: str,
+        user_context: str | None = None,
+        salon_id: int | None = None,
+    ) -> tuple[str, list[dict[str, Any]]]:
         # 카탈로그에 없는 정보를 묻는 질문은 LLM 까지 보내지 않음
         # 없는 걸 답하려면 지어낼 수밖에 없어서, 모델이 바뀌어도 흔들리지 않게 코드에서 끊음
         # 대화기록에도 안 남김 — 차단된 질문이 이후 턴의 맥락을 오염시키지 않도록
         intent, blocked_reason = classify(question)
         if intent is Intent.OUT_OF_SCOPE:
-            return out_of_scope_answer(blocked_reason or "요청하신 정보")
+            # 보고 있던 매장의 예약 화면까지 걸어줌
+            links = salon_link(salon_id) if blocked_reason == "예약 방법" else []
+            return out_of_scope_answer(blocked_reason or "요청하신 정보"), links
 
         # 이력을 봐야만 답할 수 있는데 이력이 없으면 근거가 없어 엉뚱한 답이 나감
         # 매장을 직접 댄 질문("라움헤어에 뭐 있어")은 이력이 필요 없으므로 걸리지 않음
         if not user_context and needs_history(question):
-            return no_history_answer()
+            return no_history_answer(), []
 
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
         await self.start()
@@ -273,7 +312,7 @@ class McpChatService:
             await asyncio.wait_for(self._invoke_lock.acquire(), LOCK_WAIT_SECONDS)
         except (asyncio.TimeoutError, TimeoutError):
             return ("지금 다른 상담을 처리하고 있어 답변이 늦어지고 있습니다. "
-                    "잠시 후 다시 여쭤봐 주세요.")
+                    "잠시 후 다시 여쭤봐 주세요."), []
 
         try:
             now = monotonic()   # 시간측정
@@ -295,6 +334,13 @@ class McpChatService:
                 hint = self._salon_catalog_hint(user_context)
                 if hint:
                     request_messages.append(HumanMessage(content=hint))
+
+            # 같은 탭에서 매장을 옮겨도 세션은 그대로라 매장이 바뀐 턴에만 넣음
+            if salon_id is not None and self._salon_by_session.get(session_id) != salon_id:
+                current_hint = self._current_salon_hint(salon_id)
+                if current_hint:
+                    request_messages.append(HumanMessage(content=current_hint))
+                    self._salon_by_session[session_id] = salon_id
 
             # 매장을 고르려는 질문은 시술 인덱스로 답할 수 없어 salons 인덱스를 미리 붙임
             # 매 턴 넣으면 컨텍스트가 빨리 차므로 해당 인텐트일 때만
@@ -325,7 +371,7 @@ class McpChatService:
                 self._exit_stack = None
                 self._base_messages = []
                 return ("답변이 너무 오래 걸려 중단했습니다. "
-                        "질문을 조금 더 짧고 구체적으로 적어 주시면 다시 찾아보겠습니다.")
+                        "질문을 조금 더 짧고 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
             # 에이전트 결과 처리
             result_messages = list(result["messages"])
 
@@ -335,10 +381,12 @@ class McpChatService:
             self._last_access_by_session[session_id] = now # 세션별 마지막 접근 시간 갱신
             answer = _strip_internal(_strip_markdown(self._final_answer(result_messages)))
             if not answer:
-                # 여기까지 왔는데 비었으면 답을 만들지 못한 것 — 빈 말풍선을 띄우지 않음
+                # 답을 못 만들었거나 내부 이야기뿐이었던 것 — 빈 말풍선을 띄우지 않음
                 return ("답변을 정리하지 못했습니다. "
-                        "질문을 조금 더 구체적으로 적어 주시면 다시 찾아보겠습니다.")
-            return answer
+                        "질문을 조금 더 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
+
+            # 답변이 매장을 언급 안 해도 매장 페이지에서 물었으면 그 매장으로 이어줌
+            return answer, (reservation_links(answer) or salon_link(salon_id))
         finally:
             # 어떤 경로로 빠져나가든 락은 반드시 돌려놓음
             self._invoke_lock.release()
@@ -354,6 +402,7 @@ class McpChatService:
         for session_id in expired_session_ids:
             self._messages_by_session.pop(session_id, None)
             self._last_access_by_session.pop(session_id, None)
+            self._salon_by_session.pop(session_id, None)
 
     # 세션 공간 생성
     def _make_session_space(self, session_id: str)->None:
@@ -365,6 +414,7 @@ class McpChatService:
                                     key=self._last_access_by_session.get)
             self._messages_by_session.pop(oldest_session_id, None)
             self._last_access_by_session.pop(oldest_session_id, None)
+            self._salon_by_session.pop(oldest_session_id, None)
 
     # 최근 사용자 대화만 남기고, Tool 요청 결과 묶음은 유지
     def _trim_history(self, messages: list[BaseMessage]) -> list[BaseMessage]:
@@ -391,3 +441,4 @@ class McpChatService:
             self._base_messages = []
             self._messages_by_session = {}
             self._last_access_by_session.clear()
+            self._salon_by_session.clear()

@@ -16,6 +16,18 @@ class ChatRequest(BaseModel):
         alias="userContext",
         max_length=2000
     )
+    # 매장 상세 페이지에서 열었을 때만 채워짐
+    salon_id: int | None = Field(
+        default=None,
+        alias="salonId",
+        gt=0
+    )
+
+# 답변에 나온 매장 — URL 조립은 JSP 가 함
+class SalonLink(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+    salon_id: int = Field(alias="salonId")
+    salon_name: str = Field(alias="salonName")
 
 # Fast-API에서 전달할 채팅 객체(LLM 답변)
 class ChatResponse(BaseModel):
@@ -24,3 +36,4 @@ class ChatResponse(BaseModel):
     source: str
     question: str
     session_id: str = Field(alias="sessionId")
+    salons: list[SalonLink] = Field(default_factory=list)
