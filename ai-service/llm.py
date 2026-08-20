@@ -25,20 +25,42 @@ DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
 TEMPERATURE = 0.3
 
 
+# Y/N 한 글자면 되지만 조사가 붙어 나올 때를 봐서 여유를 둠
+GATE_MAX_TOKENS = 4
+
+
+def _use_openai() -> bool:
+    return os.getenv("LLM_PROVIDER", "ollama").strip().lower() == "openai"
+
+
 @lru_cache(maxsize=1)
 def get_llm():
     """LLM 인스턴스 (앱 전체에서 공유)
        LLM_PROVIDER=openai 면 OpenAI, 그 외에는 로컬 Ollama 를 씀"""
-    if os.getenv("LLM_PROVIDER", "ollama").strip().lower() == "openai":
+    if _use_openai():
         return _openai_llm()
     return _ollama_llm()
 
 
-def _ollama_llm() -> ChatOllama:
+@lru_cache(maxsize=1)
+def get_gate_llm():
+    """도메인 게이트 전용 인스턴스
+
+    상담과 같은 모델을 씀 — 더 작은 모델을 쓰면 Ollama 가 매번 모델을 바꿔 올리느라
+    판정(1초 미만)보다 교체가 더 걸림
+    """
+    if _use_openai():
+        return _openai_llm(temperature=0, max_tokens=GATE_MAX_TOKENS)
+    return _ollama_llm(temperature=0, num_predict=GATE_MAX_TOKENS)
+
+
+def _ollama_llm(temperature: float = TEMPERATURE,
+                num_predict: int | None = None) -> ChatOllama:
     return ChatOllama(
         model=os.getenv("OLLAMA_MODEL", DEFAULT_MODEL),
         base_url=os.getenv("OLLAMA_BASE_URL", DEFAULT_BASE_URL),
-        temperature=TEMPERATURE,
+        temperature=temperature,
+        num_predict=num_predict,
         num_ctx=int(os.getenv("OLLAMA_NUM_CTX", DEFAULT_NUM_CTX)),
         # 사고 과정을 끔
         # qwen3.5 는 사고형 모델이라 생각을 thinking 으로 따로 내보내는데, 그 턴을 생각으로만
@@ -48,7 +70,7 @@ def _ollama_llm() -> ChatOllama:
     )
 
 
-def _openai_llm():
+def _openai_llm(temperature: float = TEMPERATURE, max_tokens: int | None = None):
     # 로컬 전용으로 돌릴 때는 langchain-openai 가 없어도 되도록 여기서 임포트함
     try:
         from langchain_openai import ChatOpenAI
@@ -68,5 +90,6 @@ def _openai_llm():
     return ChatOpenAI(
         model=os.getenv("OPENAI_MODEL", DEFAULT_OPENAI_MODEL),
         api_key=api_key,
-        temperature=TEMPERATURE,
+        temperature=temperature,
+        max_tokens=max_tokens,
     )

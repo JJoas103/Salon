@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
 from chat.intent import (Intent, classify, needs_history,
                          no_history_answer, out_of_scope_answer)
+from chat.gate import is_in_domain, off_domain_answer
 from chat.links import reservation_links, salon_link
 from time import monotonic
 
@@ -303,6 +304,11 @@ class McpChatService:
         # 매장을 직접 댄 질문("라움헤어에 뭐 있어")은 이력이 필요 없으므로 걸리지 않음
         if not user_context and needs_history(question):
             return no_history_answer(), []
+
+        # 규칙으로 못 거르는 도메인 밖 질문 (chat/gate.py)
+        # 첫 턴에만 물음 — 후속 발화("좋아 그걸로 할게")는 떼어놓고 보면 판정이 틀림
+        if session_id not in self._messages_by_session and not await is_in_domain(question):
+            return off_domain_answer(), []
 
         # 첫 요청에서 에이전트 객체를 오직 하나만 만들 수 있게끔
         await self.start()
