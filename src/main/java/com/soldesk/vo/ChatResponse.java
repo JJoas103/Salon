@@ -1,5 +1,8 @@
 package com.soldesk.vo;
 
+import java.util.ArrayList;
+import java.util.List;
+
 // ai-service(FastAPI) 응답을 그대로 담아 브라우저에 전달
 public class ChatResponse {
 
@@ -7,6 +10,8 @@ public class ChatResponse {
     private String source;
     private String question;
     private String sessionId;
+    // 답변에 등장한 매장. 오류 응답에도 필드가 있어야 화면이 분기 없이 읽음
+    private List<SalonLink> salons = new ArrayList<>();
 
     public ChatResponse() {
     }
@@ -41,5 +46,11 @@ public class ChatResponse {
     }
     public void setSessionId(String sessionId) {
         this.sessionId = sessionId;
+    }
+    public List<SalonLink> getSalons() {
+        return salons;
+    }
+    public void setSalons(List<SalonLink> salons) {
+        this.salons = salons == null ? new ArrayList<>() : salons;
     }
 }

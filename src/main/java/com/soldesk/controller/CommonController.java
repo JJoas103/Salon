@@ -440,7 +440,9 @@ public class CommonController {
             return Map.of(
                     "success", true);
 
-        } catch (IllegalArgumentException e) {
+        // 환불 실패는 IllegalStateException 으로 올라옴. 같이 잡지 않으면 500 이 나가서
+        // 화면에 "오류가 발생했습니다" 만 뜨고 왜 취소가 안 됐는지 손님이 알 수 없음
+        } catch (IllegalArgumentException | IllegalStateException e) {
 
             return Map.of(
                     "success", false,

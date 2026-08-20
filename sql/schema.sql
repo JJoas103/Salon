@@ -153,6 +153,7 @@ CREATE TABLE Reservations (
     -- 점주가 확정된 예약을 정리하면 status 는 cancelled 가 되고 아래 두 컬럼이 남는다.
     --   cancelled + cancel_type='rejected'  → 점주가 부득이 취소하고 환불해 준 건
     --   cancelled + cancel_type='no_show'   → 손님이 오지 않아 노쇼로 마감(선불 금액은 매장 정산)
+    --   cancelled + cancel_type='user_cancelled' → 손님이 직접 취소(결제 완료건이면 환불)
     --   cancelled + cancel_type IS NULL     → 결제 실패/이탈로 자리만 비운 건 (reject_reason 도 NULL)
     -- 손님 자가 취소가 생기면 'customer' 같은 값을 여기에 추가하면 된다.
     reject_reason VARCHAR(255) NULL DEFAULT NULL,

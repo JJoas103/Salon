@@ -249,8 +249,7 @@
 </script>
 </sec:authorize>
 
-<%-- AI 시술 추천 챗봇 위젯 — 개인 예약이력을 다루는 상담이라 로그인 사용자에게만 노출
-     (/api/chat 은 permitAll 목록에 없어 비로그인 호출은 어차피 401) --%>
+<%-- AI 시술 추천 챗봇 위젯 — 개인 예약이력을 다루므로 로그인 사용자에게만 노출 --%>
 <sec:authorize access="isAuthenticated()">
 <button type="button" id="aiChatFab" class="ai-chat-fab" aria-label="AI 시술 추천 상담">
   <i class="fas fa-wand-magic-sparkles"></i>
@@ -263,12 +262,13 @@
       <button type="button" class="modal-close" id="closeAiChatBtn"><i class="fas fa-times"></i></button>
     </div>
     <div class="ai-chat-messages" id="aiChatMessages">
-      <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다. 고민이나 궁금한 점을 말씀해주세요.</div>
+      <%-- pre-wrap 이라 줄바꿈이 그대로 보임. 한 줄로 유지 --%>
+      <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다.<c:if test="${not empty salon.salonId}"> 지금 보고 계신 <c:out value="${salon.salonName}"/> 시술을 먼저 찾아드립니다.</c:if> 고민이나 궁금한 점을 말씀해주세요.</div>
     </div>
+    <%-- 칩 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
+         첫 질문을 보내면 .is-compact 로 접힘 --%>
     <div class="ai-chat-suggestions" id="aiChatSuggestions">
-      <%-- 버튼 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
-           service_search / catalog_list / salon_find / salon_menu 순서이고
-           마지막은 예약이력 기반 개인화라 로그인 사용자에게만 의미가 있음 --%>
+      <p class="ai-chat-suggestions-label">이런 걸 물어보실 수 있어요. 눌러보시거나 직접 입력해 주세요.</p>
       <button type="button" class="ai-chat-suggestion-chip">손상모 케어 시술 추천해줘</button>
       <button type="button" class="ai-chat-suggestion-chip">제일 저렴한 시술이 뭐야?</button>
       <button type="button" class="ai-chat-suggestion-chip">평점 좋은 매장 추천해줘</button>
@@ -293,11 +293,31 @@
   var input = document.getElementById('aiChatInput');
   var sendBtn = document.getElementById('aiChatSendBtn');
 
-  // 세션ID는 브라우저 탭(sessionStorage) 단위 — MCP 쪽이 이 값으로 대화 맥락을 이어간다
-  var sessionId = sessionStorage.getItem('aiChatSessionId');
-  if (!sessionId) {
-    sessionId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(16).slice(2));
-    sessionStorage.setItem('aiChatSessionId', sessionId);
+  // 매장 상세 화면이면 그 매장으로 후보를 좁힘. 서버가 영업 중인 매장인지 다시 확인함
+  var pageSalonId = ${empty salon.salonId ? 'null' : salon.salonId};
+
+  // ai-service 는 매장 id 와 이름만 주므로 주소는 여기서 조립함
+  var reserveUrl = '<c:url value="/common/reserve"/>';
+
+  // 세션ID는 페이지 로드 단위 — MCP 가 이 값으로 대화 맥락을 이어감
+  // sessionStorage 에 두면 새로고침해도 살아남아, 화면 말풍선은 비었는데 서버는 대화를 기억하는 상태가 됨
+  // 그러면 첫 턴에만 도는 도메인 게이트도 건너뛰어 "대진대학교가 어디있어" 가 통과함
+  var sessionId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : (Date.now() + '-' + Math.random().toString(16).slice(2));
+
+  // 답변을 기다리는 동안 두 번째 요청을 막음 — 서버가 상담을 한 건씩 처리해 뒤엣것이 최대 25초 대기함
+  var isSending = false;
+
+  function setSending(on) {
+    isSending = on;
+    input.disabled = on;
+    sendBtn.disabled = on;
+    if (suggestions) {
+      Array.prototype.forEach.call(
+        suggestions.querySelectorAll('.ai-chat-suggestion-chip'),
+        function (chip) { chip.disabled = on; });
+    }
   }
 
   function openModal() { modal.classList.add('active'); input.focus(); }
@@ -316,32 +336,58 @@
     return el;
   }
 
-  // 예시 질문 버튼과 직접 입력이 같은 전송 경로를 타도록 공용 함수로 뺀다
+  // 답변에 등장한 매장을 예약 링크로 붙임
+  // LLM 이 문장 안에 링크를 쓰게 하면 없는 매장을 지어내므로 확인된 목록만 받아서 만듦
+  function appendLinks(salons) {
+    if (!salons || !salons.length) return;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'ai-chat-links';
+    salons.forEach(function (salon) {
+      if (!salon || !salon.salonId) return;
+      var link = document.createElement('a');
+      link.className = 'ai-chat-link';
+      link.href = reserveUrl + '?salonId=' + encodeURIComponent(salon.salonId);
+      // 예약은 새 탭으로 보내 상담을 남겨둠
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.innerHTML = '<i class="fas fa-calendar-check"></i>';
+      // 매장명은 마크업이 아니라 텍스트로 넣음
+      link.appendChild(document.createTextNode(' ' + (salon.salonName || '이 매장') + ' 예약하기'));
+      wrap.appendChild(link);
+    });
+
+    if (!wrap.children.length) return;
+    messages.appendChild(wrap);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // 예시 질문 버튼과 직접 입력이 같은 경로를 타도록 공용 함수로 뺌
   function sendQuestion(question) {
-    if (!question) return;
-    if (suggestions) { suggestions.remove(); suggestions = null; }
+    if (!question || isSending) return;
+    // 지우지 않고 접음 — 다른 갈래를 이어서 눌러보는 흐름이 많음
+    if (suggestions) suggestions.classList.add('is-compact');
 
     appendMessage(question, 'user');
     input.value = '';
-    input.disabled = true;
-    sendBtn.disabled = true;
+    setSending(true);
     var pending = appendMessage('생각하는 중...', 'bot pending');
 
     fetch('<c:url value="/api/chat"/>', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: question, sessionId: sessionId })
+      body: JSON.stringify({ question: question, sessionId: sessionId, salonId: pageSalonId })
     }).then(function (res) {
       return res.json();
     }).then(function (data) {
       pending.remove();
       appendMessage(data.answer || '답변을 받지 못했습니다.', 'bot');
+      appendLinks(data.salons);
     }).catch(function () {
       pending.remove();
       appendMessage('상담 서버에 연결할 수 없습니다.', 'bot');
     }).finally(function () {
-      input.disabled = false;
-      sendBtn.disabled = false;
+      setSending(false);
       input.focus();
     });
   }

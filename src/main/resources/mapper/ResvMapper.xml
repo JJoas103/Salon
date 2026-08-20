@@ -20,6 +20,7 @@
         <result column="salon_name" property="salonName"/>
         <result column="transaction_id" property="transactionId"/>
         <result column="payment_method" property="paymentMethod"/>
+        <result column="payment_status" property="paymentStatus"/>
         <result column="amount" property="amount"/>
         <result column="service_name" property="serviceName"/>
         <result column="category" property="category"/>
@@ -48,9 +49,12 @@
             r.service_id,
             r.reservation_time,
             r.status,
+            r.reject_reason,
+            r.cancel_type,
             s.salon_name AS salon_name,
             p.transaction_id,
             p.payment_method,
+            p.payment_status,
             p.amount,
             se.service_name AS service_name,
             se.category AS category,
@@ -197,6 +201,7 @@
             p.amount AS amount,
             p.transaction_id,
             p.payment_method,
+            p.payment_status,
             p.original_amount,
             p.coupon_discount,
             p.point_used,
@@ -249,9 +254,11 @@
           AND status = 'pending'
     </update>
 
+    <!-- 손님 자가 취소. cancel_type 을 남겨야 점주 현황판에서 결제 이탈 건과 갈림 -->
     <update id="cancelReservation">
     UPDATE Reservations
     SET status = 'cancelled',
+        cancel_type = 'user_cancelled',
         updated_at = NOW()
     WHERE reservation_id = #{reservationId}
       AND user_id = #{userId}

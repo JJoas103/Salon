@@ -8,29 +8,25 @@ from elasticsearch import Elasticsearch, helpers
 from sentence_transformers import SentenceTransformer
 
 # ── 상수 ──────────────────────────────────────────
-# Spring 이 내려주는 시술 카탈로그(salon_id/salon_name 포함, 폐업 매장 제외).
-# SalonService 가 시술 등록/수정/삭제 직후 /api/reindex 를 호출해 항상 최신으로 맞춘다.
+# Spring 이 내려주는 시술 카탈로그 (폐업 매장 제외)
+# SalonService 가 시술 CRUD 직후 /api/reindex 를 호출함
 SPRING_SERVICES_URL = os.getenv('SPRING_SERVICES_URL', 'http://localhost:8080/api/services')
 INDEX_NAME = 'salon-services-agent'
 EMBEDDING_MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
 
-# 임베딩 모델
 embedding_model: SentenceTransformer | None = None
 
-# ES 클라이언트
 client = Elasticsearch(
     os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
     request_timeout=30
 )
 
-# 임베딩 모델 객체 생성
 def get_embedding_model() -> SentenceTransformer:
     global embedding_model
     if embedding_model is None:
         embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     return embedding_model
 
-# ES 연결 상태 확인
 def ensure_elasticsearch() -> None:
     if not client.ping():
         raise ConnectionError('엘라스틱서치 연결에 실패했습니다.')
@@ -94,8 +90,7 @@ def _index_mappings(embedding_dims: int) -> dict[str, Any]:
     }
 
 # ── 인덱스 새로고침 (무조건 재생성) ─────────────────
-# 시술이 등록/수정/삭제될 때마다 Spring 이 호출한다(/api/reindex). 카탈로그 규모가
-# 작아 매번 통째로 다시 만드는 편이 "일부만 갱신"하다 누락되는 것보다 안전하다.
+# 카탈로그가 작아 통째로 다시 만듦 — 일부만 갱신하다 누락되는 것보다 안전함
 def rebuild_index() -> dict[str, Any]:
     ensure_elasticsearch()
 
@@ -138,9 +133,8 @@ def rebuild_index() -> dict[str, Any]:
     }
 
 # ── 인덱스 준비 (없을 때만 새로고침) ────────────────
-# MCP 툴(prepare_service_index)이 상담 중 호출하는 진입점 — 이미 색인돼 있으면 그대로 쓴다.
-# 실제 최신화는 rebuild_index 가 시술 CRUD 이벤트로 담당하므로, 여기서는 "완전히 비어있는
-# 최초 상태"만 채워주면 된다.
+# prepare_service_index 툴의 진입점 — 최신화는 rebuild_index 가 하므로
+# 여기서는 완전히 비어있는 최초 상태만 채움
 def prepare_index() -> dict[str, Any]:
     ensure_elasticsearch()
 
@@ -182,7 +176,6 @@ def hybrid_search(
     elif count > 10:
         count = 10
 
-    # 필터 조건 구성(가격/카테고리)
     filters: list[dict[str, Any]] = []
 
     if max_price is not None:
@@ -191,8 +184,7 @@ def hybrid_search(
     if category is not None:
         filters.append({'term': {'category': category}})
 
-    # 키워드 검색 — concerns(고민) 필드에 가중치를 줘서
-    # "부스스해요" 같은 자연어가 잘 매칭되도록
+    # concerns 에 가중치를 줘야 "부스스해요" 같은 자연어가 매칭됨
     keyword_query: dict[str, Any] = {
         'multi_match': {
             'query': query,
@@ -208,7 +200,6 @@ def hybrid_search(
             }
         }
 
-    # 벡터 기반 검색
     model = get_embedding_model()
     knn: dict[str, Any] = {
         'field': 'embedding',
@@ -223,7 +214,6 @@ def hybrid_search(
     if filters:
         knn['filter'] = {'bool': {'filter': filters}}
 
-    # 검색 요청
     response = client.search(
         index=INDEX_NAME,
         size=count,
@@ -231,7 +221,6 @@ def hybrid_search(
         knn=knn
     )
 
-    # 결과 반환
     results = []
     for hit in response['hits']['hits']:
         item = dict(hit['_source'])
@@ -243,11 +232,11 @@ def hybrid_search(
 
 
 # ── 카탈로그 목록 조회 (검색이 아니라 정렬/전량) ─────────────────
-# hybrid_search 는 관련도 top-k 라서 "제일 저렴한", "10만원 넘는 것 전부" 같은
-# 정렬·집계형 질문에 구조적으로 못 맞춤. 그런 질문은 이 함수로 받음
+# hybrid_search 는 관련도 top-k 라서 "제일 저렴한" 같은 정렬형 질문에 구조적으로 못 맞춤
 def list_services(
     category: str | None = None,
     salon: str | None = None,
+    salon_id: str | int | None = None,
     sort_by: str = 'price',
     order: str = 'asc',
     count: int = 20,
@@ -258,6 +247,10 @@ def list_services(
     if category:
         conditions.append({'term': {'category': category}})
 
+    # 매장 상세 페이지에서 넘어온 매장은 id 로 거름 — 아래 salon 인자와 달리 ES 가 바로 필터링함
+    if salon_id is not None and str(salon_id).strip():
+        conditions.append({'term': {'salon_id': str(salon_id).strip()}})
+
     query: dict[str, Any] = (
         {'bool': {'filter': conditions}} if conditions else {'match_all': {}}
     )
@@ -265,9 +258,8 @@ def list_services(
     sort_field = sort_by if sort_by in ('price', 'duration_min') else 'price'
     sort_order = 'desc' if order == 'desc' else 'asc'
 
-    # 매장 필터는 ES 에 안 맡김 — salon_name 이 nori 분석 text 라
-    # '라움헤어' 로 match 하면 '헤어' 토큰이 겹치는 위드헤어/블랑쉬헤어까지 딸려옴
-    # keyword 서브필드가 매핑에 없으므로 후보를 넉넉히 받아 여기서 정확히 거름
+    # salon_name 은 nori 분석 text 라 '라움헤어' 로 match 하면 '헤어' 가 겹치는 매장까지 딸려옴
+    # keyword 서브필드가 없으므로 후보를 넉넉히 받아 파이썬에서 거름
     fetch_size = 100 if salon else max(1, min(count, 100))
     response = client.search(
         index=INDEX_NAME,
