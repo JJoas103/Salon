@@ -27,6 +27,11 @@ RESOURCE_URI = "catalog://salon/search-guide"      #리소스 경로
 LOCK_WAIT_SECONDS = 25      # 앞 사람 답변을 기다리는 시간
 AGENT_TIMEOUT_SECONDS = 90  # 한 건이 LLM·도구에 쓸 수 있는 시간
 
+# 규칙이 갈래를 확정한 질문은 게이트를 건너뜀
+# 판정이 Ollama 캐시 상태에 따라 흔들려 "제일 저렴한 시술이 뭐야" 를 N 으로 막은 적 있음
+# SALON_FIND 는 '어디' 한 낱말로도 걸려서("대진대학교가 어디에있어") 제외하지 않음
+GATE_SKIP_INTENTS = frozenset({Intent.CATALOG_LIST, Intent.SALON_MENU})
+
 # 프롬프트로 금지해도 모델이 무시해서 문자열에서 벗겨냄
 _MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _MD_HEADING_RE = re.compile(r"^#{1,6}\s*", re.MULTILINE)
@@ -286,7 +291,9 @@ class McpChatService:
 
         # 규칙으로 못 거르는 도메인 밖 질문 (chat/gate.py)
         # 첫 턴에만 물음 — 후속 발화("좋아 그걸로 할게")는 떼어놓고 보면 판정이 틀림
-        if session_id not in self._messages_by_session and not await is_in_domain(question):
+        if (intent not in GATE_SKIP_INTENTS
+                and session_id not in self._messages_by_session
+                and not await is_in_domain(question)):
             return off_domain_answer(), []
 
         await self.start()
@@ -300,7 +307,7 @@ class McpChatService:
 
         try:
             now = monotonic()   # 시간측정
-            self._remove_expired_sessions(now)       # (수정) 오탈자: _remove_expired_session -> _remove_expired_sessions
+            self._remove_expired_sessions(now)
             self._make_session_space(session_id)     # 세션 공간 생성
 
             history = self._messages_by_session.get(session_id, []) # 세션별 대화 기록 가져오기
@@ -368,9 +375,9 @@ class McpChatService:
         finally:
             self._invoke_lock.release()
 
-    def _remove_expired_sessions(self, now: float)-> None:  # (수정) 오탈자: _remove_expried_sessions -> _remove_expired_sessions
-        expired_session_ids = []  # (수정) 오탈자: exprired_session_ids -> expired_session_ids
-        for session_id, last_access in self._last_access_by_session.items():  # (수정) 오탈자: last_accesss -> last_access
+    def _remove_expired_sessions(self, now: float)-> None:
+        expired_session_ids = []
+        for session_id, last_access in self._last_access_by_session.items():
             if now - last_access >= 60 * 60 :
                 expired_session_ids.append(session_id)
 
