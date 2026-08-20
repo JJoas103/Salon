@@ -17,8 +17,30 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PY="$DIR/.venv/bin/python"
 LOG="$DIR/ai-service.log"
 
-MODEL="${OLLAMA_MODEL:-qwen3.5:9b}"
-BASE="${OLLAMA_BASE_URL:-http://localhost:11434}"
+# .env 는 파이썬(load_dotenv)만 읽는다. 여기서도 같은 값을 봐야 표시와 실제 추론 대상이 어긋나지 않음
+# load_dotenv 는 이미 있는 환경변수를 덮어쓰지 않으므로, 여기서 기본값을 넣어 넘기면 .env 가 통째로 무시됨
+# 우선순위는 llm.py 와 같게 — 셸 > 저장소 루트 .env > ai-service/.env
+env_value() {
+    local key="$1" file line value
+    for file in "$DIR/../.env" "$DIR/.env"; do
+        [ -f "$file" ] || continue
+        line=$(grep -E "^[[:space:]]*${key}=" "$file" | tail -1)
+        [ -n "$line" ] || continue
+        value=${line#*=}
+        value=${value%$'\r'}                       # 윈도우에서 저장한 .env 대비
+        value=${value%\"}; value=${value#\"}
+        value=${value%\'}; value=${value#\'}
+        [ -n "$value" ] || continue
+        printf '%s' "$value"
+        return
+    done
+}
+
+MODEL="${OLLAMA_MODEL:-$(env_value OLLAMA_MODEL)}"
+MODEL="${MODEL:-qwen3.5:9b}"
+BASE="${OLLAMA_BASE_URL:-$(env_value OLLAMA_BASE_URL)}"
+BASE="${BASE:-http://localhost:11434}"
+PROVIDER="${LLM_PROVIDER:-$(env_value LLM_PROVIDER)}"
 
 [ -x "$PY" ] || { echo "가상환경이 없습니다: $PY"; echo "  python -m venv .venv && .venv/bin/pip install -r requirements.txt"; exit 1; }
 
@@ -34,7 +56,12 @@ check() {
     if curl -sf -m 3 "$1" >/dev/null 2>&1; then echo "  [ok]  $2"; else echo "  [--]  $2  ← 꺼져 있음"; return 1; fi
 }
 echo "의존 서비스"
-check "$BASE/api/tags"          "Ollama        $BASE"  || OLLAMA_DOWN=1
+if [ "${PROVIDER:-ollama}" = "openai" ]; then
+    echo "  [--]  Ollama        건너뜀 (LLM_PROVIDER=openai)"
+    OLLAMA_DOWN=1
+else
+    check "$BASE/api/tags"      "Ollama        $BASE"  || OLLAMA_DOWN=1
+fi
 check "http://localhost:9200"   "Elasticsearch localhost:9200" || ES_DOWN=1
 
 # 3. 모델이 실제로 받아져 있는지 — 없으면 첫 질문에서 404 가 남
@@ -46,7 +73,11 @@ if [ -z "${OLLAMA_DOWN:-}" ] && ! curl -s -m 5 "$BASE/api/tags" | grep -q "\"$MO
 fi
 
 echo
-echo "모델 $MODEL  →  $BASE"
+if [ "${PROVIDER:-ollama}" = "openai" ]; then
+    echo "공급자 OpenAI (OPENAI_MODEL / OPENAI_API_KEY 사용)"
+else
+    echo "모델 $MODEL  →  $BASE"
+fi
 
 # 4. 기동
 cd "$DIR" || exit 1
