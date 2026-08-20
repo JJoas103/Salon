@@ -299,11 +299,25 @@
   // ai-service 는 매장 id 와 이름만 주므로 주소는 여기서 조립함
   var reserveUrl = '<c:url value="/common/reserve"/>';
 
-  // 세션ID는 브라우저 탭 단위 — MCP 가 이 값으로 대화 맥락을 이어감
-  var sessionId = sessionStorage.getItem('aiChatSessionId');
-  if (!sessionId) {
-    sessionId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(16).slice(2));
-    sessionStorage.setItem('aiChatSessionId', sessionId);
+  // 세션ID는 페이지 로드 단위 — MCP 가 이 값으로 대화 맥락을 이어감
+  // sessionStorage 에 두면 새로고침해도 살아남아, 화면 말풍선은 비었는데 서버는 대화를 기억하는 상태가 됨
+  // 그러면 첫 턴에만 도는 도메인 게이트도 건너뛰어 "대진대학교가 어디있어" 가 통과함
+  var sessionId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : (Date.now() + '-' + Math.random().toString(16).slice(2));
+
+  // 답변을 기다리는 동안 두 번째 요청을 막음 — 서버가 상담을 한 건씩 처리해 뒤엣것이 최대 25초 대기함
+  var isSending = false;
+
+  function setSending(on) {
+    isSending = on;
+    input.disabled = on;
+    sendBtn.disabled = on;
+    if (suggestions) {
+      Array.prototype.forEach.call(
+        suggestions.querySelectorAll('.ai-chat-suggestion-chip'),
+        function (chip) { chip.disabled = on; });
+    }
   }
 
   function openModal() { modal.classList.add('active'); input.focus(); }
@@ -347,14 +361,13 @@
 
   // 예시 질문 버튼과 직접 입력이 같은 경로를 타도록 공용 함수로 뺌
   function sendQuestion(question) {
-    if (!question) return;
+    if (!question || isSending) return;
     // 지우지 않고 접음 — 다른 갈래를 이어서 눌러보는 흐름이 많음
     if (suggestions) suggestions.classList.add('is-compact');
 
     appendMessage(question, 'user');
     input.value = '';
-    input.disabled = true;
-    sendBtn.disabled = true;
+    setSending(true);
     var pending = appendMessage('생각하는 중...', 'bot pending');
 
     fetch('<c:url value="/api/chat"/>', {
@@ -371,8 +384,7 @@
       pending.remove();
       appendMessage('상담 서버에 연결할 수 없습니다.', 'bot');
     }).finally(function () {
-      input.disabled = false;
-      sendBtn.disabled = false;
+      setSending(false);
       input.focus();
     });
   }

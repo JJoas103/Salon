@@ -837,7 +837,8 @@ body {
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
-.ai-chat-suggestion-chip:hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.ai-chat-suggestion-chip:not(:disabled):hover { background: var(--accent); border-color: var(--accent); color: var(--white); }
+.ai-chat-suggestion-chip:disabled { opacity: 0.45; cursor: default; }
 
 /* 첫 질문 뒤 — 5개를 3줄로 펼친 채 두면 620px 모달에서 대화 영역을 105px 잠식함 */
 .ai-chat-suggestions.is-compact {
