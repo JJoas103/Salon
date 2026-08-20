@@ -12,6 +12,8 @@ public class UserVO {
     private String phoneNumber; // 전화번호 (phone_number)
     private String profileImageUrl; // 프로필 사진 (profile_image_url)
     private String userType; // 사용자 유형: customer/owner/admin (user_type)
+    private String provider; // 로그인 수단: local/google/naver (provider)
+    private String providerId; // 소셜 로그인 제공자가 발급한 사용자 식별자 (provider_id, 로컬 계정은 null)
     private String createdAt; // 생성일시 (created_at)
     private String updatedAt; // 수정일시 (updated_at)
     private String deletedAt; // 삭제일시 (deleted_at)
@@ -40,6 +42,10 @@ public class UserVO {
     public void setProfileImageUrl(String profileImageUrl) { this.profileImageUrl = profileImageUrl; }
     public String getUserType() { return userType; }
     public void setUserType(String userType) { this.userType = userType; }
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
+    public String getProviderId() { return providerId; }
+    public void setProviderId(String providerId) { this.providerId = providerId; }
     public String getCreatedAt() { return createdAt; }
     public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
     public String getUpdatedAt() { return updatedAt; }

@@ -26,8 +26,8 @@ public class UserDetailService implements UserDetailsService{
         return new CustomUserDetails(user, resolveRole(user.getUserType()));
         //CustomUserDetails: 인증된 사용자 객체(이름, userId 포함)를 생성
     }   
-    //권한 설정(문자열 -> 권한으로 변환)
-    private String resolveRole(String usertype){
+    //권한 설정(문자열 -> 권한으로 변환). CustomOAuth2UserService도 동일 로직을 쓰므로 패키지 공용으로 둔다.
+    static String resolveRole(String usertype){
         if("ADMIN".equalsIgnoreCase(usertype)){
             return "ADMIN";
         }

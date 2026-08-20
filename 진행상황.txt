@@ -304,3 +304,112 @@ ReserveController에서 유저 정보 받아오기 위해
       -> ?
 - 자동화된 테스트 코드 없음 (프로젝트 전체에 테스트 프레임워크 미도입, CLAUDE.md 참고)
       -> ?
+
+
+==========================================================================
+[8. 구글/네이버 소셜 로그인 + 마이페이지/점주요청 소셜계정 제한] 진행상황
+==========================================================================
+
+## 요구사항
+- 로그인 기능에 구글/네이버 소셜 로그인(OAuth2) 추가
+- 소셜 계정은 로컬 비밀번호가 없으므로 "내 정보 변경(비밀번호 변경)"에서 변경 불가 정보 고려
+- 구글/네이버 로그인 이메일이 기존 로컬(이메일/비밀번호) 계정과 같으면 자동 연동 (계정 분리 없음)
+- (추가 요청) 점주 승격 신청(점주요청)은 자체 회원가입(로컬) 계정만 가능, 소셜 계정은 접근 불가
+
+## DB 변경 (sql/migration_oauth_login.sql, schema.sql 둘 다 반영 + 로컬 salu DB에 mysql로 실제 적용 완료)
+- Users.password: NOT NULL -> NULL 허용 (소셜 전용 계정은 로컬 비밀번호 없음)
+- Users에 컬럼 추가: provider ENUM('local','google','naver') NOT NULL DEFAULT 'local', provider_id VARCHAR(255) NULL
+- UNIQUE KEY uq_users_provider_id (provider, provider_id) (NULL끼리는 유니크 위반 아님 -> 로컬 계정들은 서로 충돌 안 함)
+
+## pom.xml
+- spring-security-oauth2-client 추가 (기존 spring-security.version=5.8.13에 맞춤, Boot 아님)
+
+## 프로퍼티 관리 (payment.properties와 동일 패턴)
+- properties/oauth2.properties (gitignore 대상, 로컬 전용) + oauth2.properties.example(커밋되는 템플릿) 신규
+- applicationContext.xml의 기존 db/app property-placeholder 위치 목록에 oauth2.properties 합류
+  (처음엔 별도 placeholder로 분리했다가, "먼저 처리되는 placeholder가 없는 키를 자기 기본값으로
+  먼저 확정시켜버려서 나중 placeholder가 실제 값을 못 읽는" 버그 발견 -> 하나로 합쳐서 해결, 아래
+  "겪은 오류" 참고)
+- dispatcher-servlet.xml의 기존 placeholder 위치 목록에도 oauth2.properties 추가 (SecurityConfig가
+  root/web 두 컨텍스트 모두에서 스캔되므로 양쪽 다 필요)
+
+## 신규 보안 클래스 (com.soldesk.security)
+- CustomOAuth2UserService (OAuth2UserService 구현): DefaultOAuth2UserService에 위임 후 구글/네이버
+  응답 모양 차이를 평탄화(네이버는 {response:{id,email,name}} 구조라 따로 꺼냄) -> email로
+  findByEmail 조회 -> 없으면 insertOAuthUser(신규 customer 계정, password NULL), 있으면
+  provider가 다를 때만 linkProvider(자동 연동)
+- CustomOAuth2User (OAuth2User 구현): getName()이 OAuth2 기본 규약(sub 등) 대신 이메일을 반환하도록
+  오버라이드 (기존 코드 전체가 authentication.getName()을 로그인ID/이메일로 취급하는 관례를
+  건드리지 않기 위함)
+- CustomUserDetails: provider 필드/getter 추가, password가 NULL인 소셜 전용 계정이 폼 로그인
+  시도할 때 BCryptPasswordEncoder.matches(raw,null) NPE가 안 나도록 항상 매칭 실패하는 더미 해시로
+  대체
+- UserDetailService.resolveRole()을 private -> package-private static으로 변경해 CustomOAuth2UserService와
+  공용
+
+## SecurityConfig.java
+- oauth2Login() 추가: loginPage("/user/login"), userInfoEndpoint().userService(customOAuth2UserService),
+  defaultSuccessUrl("/", true), 기존 AjaxAwareAuthenticationFailureHandler 재사용
+- clientRegistrationRepository 빈: Boot 전용 CommonOAuth2Provider를 못 쓰는 순수 Spring MVC라 구글도
+  네이버처럼 ClientRegistration을 수동 구성 (scope에 openid 미포함 -> OIDC 아닌 일반 OAuth2 로그인
+  경로 유지). 값이 빈 provider(client-id 없음)는 목록에서 아예 빼서 등록 자체를 안 함 (겪은 오류 참고)
+- authorizeHttpRequests permitAll에 /oauth2/authorization/**, /login/oauth2/code/** 추가 (안 하면
+  리다이렉트 루프)
+- /common/owner-request에 WebExpressionAuthorizationManager("isAuthenticated() and
+  !hasAuthority('SOCIAL_ACCOUNT')") 규칙 추가 (SUSPENDED 권한 적용 패턴과 동일하게 재사용)
+- SOCIAL_ACCOUNT 권한: CustomUserDetails는 provider != 'local'일 때, CustomOAuth2User는 OAuth2
+  로그인 세션이면 항상 부여
+
+## VO/Mapper
+- UserVO: provider, providerId 필드 추가
+- UserMapper.xml: userResultMap/findByEmail에 provider, provider_id 반영, insertOAuthUser/linkProvider
+  신규 statement 추가
+
+## 마이페이지 - 비밀번호 변경 소셜 계정 대응
+- CommonController.passwordSubmit(): provider != 'local'이면 서버측에서 rejectValue로 차단 (UI 숨김과
+  별개의 이중 방어)
+- mypage.jsp: provider가 local이 아니면 비밀번호 변경 메뉴/모달 자체를 숨기고 "OO 계정으로 로그인됨"
+  배지 표시
+
+## 프론트엔드 (로그인/회원가입 진입점)
+- login.jsp, join.jsp, sidebar_common.jsp(로그인/회원가입 모달 양쪽)에 Google/네이버 버튼 추가
+  (일반 <a href="/oauth2/authorization/{provider}"> 링크, AJAX 아님)
+- auth.css: .btn-social/.btn-google/.btn-naver/.auth-divider/.social-login-row 추가
+  - 처음엔 버튼 두 개를 세로로 쌓았다가, "회원가입 창이 너무 길어진다"는 피드백으로
+    .social-login-row(flex row)로 한 줄에 나란히 배치하도록 수정
+
+## 겪은 오류와 해결 (실 배포 중 발견)
+1. CommonOAuth2Provider(Boot autoconfigure 전용 클래스)를 import했다가 컴파일 에러 -> 순수
+   spring-security-oauth2-client jar엔 없는 클래스임을 jar 내용물 확인 후 구글도 네이버처럼 수동
+   구성으로 변경
+2. 배포 후 브라우저 접속이 계속 무한 로딩 -> 원인: oauth2.properties에 google.client-id= 를 빈
+   값으로 남겨둠. @Value("${...:기본값}")의 기본값은 "키가 아예 없을 때"만 적용되고 "키는 있는데
+   값이 빈 경우"엔 적용 안 돼서 빈 문자열이 그대로 들어감 -> ClientRegistration.build()가
+   clientId 공백을 거부(IllegalArgumentException)하며 필터체인 빈 생성 자체가 실패, 요청마다
+   dispatcher 서블릿 재초기화를 반복하며 계속 같은 에러로 실패 -> 해결: clientId가 비어있는
+   provider는 목록에서 제외하도록 SecurityConfig 수정
+3. 위 수정 후에도 네이버 로그인 리다이렉트에 실제 키가 아니라 더미값(client_id=dummy-naver-client-id)이
+   계속 나감 -> 원인: applicationContext.xml에 property-placeholder가 2개로 나뉘어 있어서, 첫
+   번째(db/app 전용, oauth2.properties 없음) placeholder가 먼저 처리되며 "자기 프로퍼티에 없다"는
+   이유로 인라인 기본값(dummy-...)으로 먼저 확정시켜버림 -> 두 번째(oauth2.properties) placeholder가
+   실행될 땐 이미 플레이스홀더 문자열 자체가 사라진 뒤라 반영 불가 -> 해결: 두 placeholder를
+   하나의 location 목록으로 합침
+
+## 검증 상태
+- mvn clean package -DskipTests 매 변경마다 빌드 성공 확인
+- deploy.bat으로 로컬 Tomcat 재배포, 로그(catalina/localhost 로그) 직접 확인
+- curl로 /oauth2/authorization/google, /naver 리다이렉트에 실제 client_id 들어가는 것 확인
+- migration_oauth_login.sql 로컬 DB(salu)에 실제 적용 완료, provider/provider_id 컬럼 생성 확인
+- 브라우저로 실제 동의화면 -> 콜백 -> DB 반영까지의 E2E는 사용자가 직접 진행 중
+- 구글 OAuth 앱은 현재 "테스트" 상태 (테스트 사용자로 등록된 계정만 로그인 가능, 아직 프로덕션 심사 전)
+
+## 남은 일 / 참고
+- 팀원들은 각자 로컬 DB에 sql/migration_oauth_login.sql 직접 적용 필요 (schema.sql은 신규 DB만
+  자동 반영)
+- oauth2.properties.example만 커밋됨, 실제 키 든 oauth2.properties는 gitignore로 제외됨 (git push
+  안전 확인함)
+- 구글 로그인을 아무나 쓰게 하려면 나중에 Google Cloud Console에서 앱을 프로덕션으로 전환 + 심사
+  필요 (네이버는 이런 제약 없음)
+- 마이너 개선 후보(당장 안 급함): 네이버 응답 비정상 시 providerId가 문자열 "null"로 저장될 수 있는
+  엣지케이스, 소셜 로그인 실패시 로그인 페이지 에러문구가 폼로그인용 문구 그대로 뜨는 점, 로컬
+  계정이 나중에 소셜로 연동되면 provider가 덮어써져서 비밀번호 변경 메뉴가 막히는 트레이드오프

@@ -41,6 +41,11 @@
                 ORDER BY p.created_at DESC
             </otherwise>
         </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM Posts p WHERE p.status = 'visible'
     </select>
 
     <select id="findByCategory" resultMap="postResultMap">
@@ -62,6 +67,25 @@
                 ORDER BY p.created_at DESC
             </otherwise>
         </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByCategory" resultType="int">
+        SELECT COUNT(*) FROM Posts p WHERE p.category = #{category} AND p.status = 'visible'
+    </select>
+
+    <select id="findByUserId" resultMap="postResultMap">
+        SELECT p.post_id, p.user_id, p.title, p.content, p.category,
+               p.image_url, p.salon_id, p.view_count, p.like_count, p.dislike_count,
+               p.report_count, p.status,
+               p.created_at, p.updated_at,
+               COALESCE(u.user_name, '익명') AS author_name,
+               s.salon_name AS salon_name
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        WHERE p.user_id = #{userId} AND p.status = 'visible'
+        ORDER BY p.created_at DESC
     </select>
 
     <select id="findById" parameterType="int" resultMap="postResultMap">
@@ -122,6 +146,10 @@
     <delete id="delete" parameterType="int">
         DELETE FROM Posts WHERE post_id = #{postId}
     </delete>
+
+    <update id="softDelete" parameterType="int">
+        UPDATE Posts SET status = 'deleted' WHERE post_id = #{postId}
+    </update>
 
     <update id="incrementViewCount" parameterType="int">
         UPDATE Posts SET view_count = view_count + 1 WHERE post_id = #{postId}
@@ -206,6 +234,39 @@
                 ORDER BY p.created_at DESC
             </otherwise>
         </choose>
+        LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countSearch" resultType="int">
+        SELECT COUNT(DISTINCT p.post_id)
+        FROM Posts p
+        LEFT JOIN Users u ON p.user_id = u.user_id
+        LEFT JOIN Salons s ON p.salon_id = s.salon_id
+        <if test="searchType == 'comment'">
+        LEFT JOIN Comments c ON p.post_id = c.post_id
+        </if>
+        WHERE
+        <choose>
+            <when test="searchType == 'title_content'">
+                (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </when>
+            <when test="searchType == 'content'">
+                p.content LIKE #{keyword}
+            </when>
+            <when test="searchType == 'comment'">
+                c.content LIKE #{keyword}
+            </when>
+            <when test="searchType == 'author'">
+                u.user_name LIKE #{keyword}
+            </when>
+            <when test="searchType == 'salon'">
+                s.salon_name LIKE #{keyword}
+            </when>
+            <otherwise>
+                (p.title LIKE #{keyword} OR p.content LIKE #{keyword})
+            </otherwise>
+        </choose>
+        AND p.status = 'visible'
     </select>
 
 </mapper>

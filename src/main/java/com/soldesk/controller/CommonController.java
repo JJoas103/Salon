@@ -35,6 +35,7 @@ import com.soldesk.service.ChatService;
 import com.soldesk.service.CouponService;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.PointService;
+import com.soldesk.service.PostService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
@@ -94,9 +95,11 @@ public class CommonController {
     @Autowired
     private SalonNoticeService salonNoticeService;
 
-    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 생성
-    private final ObjectMapper objectMapper =
-            new ObjectMapper();
+    @Autowired
+    private PostService postService;
+
+    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${kakaoMapApiKey}")
     private String kakaoMapApiKey;
@@ -170,8 +173,45 @@ public class CommonController {
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
         model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
         model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
+        model.addAttribute("communityReplyCount", postService.countRepliesToMyPosts(user.getUserId()));
 
         return "common/mypage";
+    }
+
+    /** 내 커뮤니티 활동(작성 글/댓글, 받은 댓글) — 마이페이지의 커뮤니티 활동 카드에서 들어온다 */
+    @GetMapping("/my-community")
+    public String myCommunity(@RequestParam(required = false, defaultValue = "posts") String tab,
+                              Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+        int userId = user.getUserId();
+
+        if ("replies".equals(tab)) {
+            userService.markReplyCheck(userId); // 안읽음 배지를 0으로 되돌린다
+        }
+
+        model.addAttribute("tab", tab);
+        model.addAttribute("myPosts", postService.getMyPosts(userId));
+        model.addAttribute("myComments", postService.getMyComments(userId));
+        model.addAttribute("myReplies", postService.getRepliesToMyPosts(userId));
+
+        return "common/my-community";
+    }
+
+    /** 내 커뮤니티 활동 - "내가 쓴 댓글" 탭에서 삭제된 게시글의 죽은 기록 정리 (본인 댓글만) */
+    @PostMapping("/my-community/comments/{commentId}/delete")
+    public String deleteMyComment(@PathVariable int commentId, Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        postService.removeComment(commentId, user.getUserId());
+        return "redirect:/common/my-community?tab=comments";
+    }
+
+    /** 내 커뮤니티 활동 - "내 글에 달린 댓글" 탭에서 삭제된 게시글의 죽은 기록 정리 (내 글 주인일 때만) */
+    @PostMapping("/my-community/replies/{commentId}/delete")
+    public String deleteReplyOnMyPost(@PathVariable int commentId, Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        postService.removeCommentAsPostOwner(commentId, user.getUserId());
+        return "redirect:/common/my-community?tab=replies";
     }
 
     /** 쿠폰함 — 마이페이지의 쿠폰 카드에서 들어온다 */
@@ -233,6 +273,12 @@ public class CommonController {
             @ModelAttribute("changePassword")
             PasswordChangeVO changePassword,
             BindingResult result) {
+        // 소셜(구글/네이버) 계정은 로컬 비밀번호가 없다. 화면에서 버튼을 숨기는 것과 별개로,
+        // 요청을 직접 보내는 경우까지 막기 위해 서버에서도 한 번 더 확인한다.
+        UserVO currentUser = userService.getUser(authentication.getName());
+        if (!"local".equals(currentUser.getProvider())) {
+            result.rejectValue("currentPassword", "provider.notLocal", "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
 
         if (!result.hasErrors()) {
 

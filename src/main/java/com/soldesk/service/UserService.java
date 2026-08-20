@@ -204,4 +204,10 @@ public class UserService {
     public void liftSanction(int userId) {
         userMapper.updateSuspension(userId, "active", null);
     }
+
+    // 마이페이지 "내 글에 달린 댓글" 탭 확인 -- 안읽음 배지를 0으로 되돌린다
+    @Transactional
+    public void markReplyCheck(int userId) {
+        userMapper.updateLastReplyCheckAt(userId);
+    }
 }

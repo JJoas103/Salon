@@ -15,6 +15,7 @@ public class CommentVO {
     private int reportCount; // 누적 신고 수 (DB 컬럼 아님 -- comment_reports COUNT(*) 조인 집계, 관리자 화면 전용)
     private String reportReasonSummary; // 신고 사유 집계 요약 (DB 컬럼 아님, 관리자 화면 전용)
     private String postTitle; // 소속 게시글 제목 (DB 컬럼 아님, Posts JOIN 조회, 관리자 화면 전용)
+    private String postStatus; // 소속 게시글 상태 (DB 컬럼 아님, Posts JOIN 조회 -- 마이페이지에서 삭제/블라인드된 글 판별용)
 
     public int getCommentId() { return commentId; }
     public void setCommentId(int commentId) { this.commentId = commentId; }
@@ -36,4 +37,6 @@ public class CommentVO {
     public void setReportReasonSummary(String reportReasonSummary) { this.reportReasonSummary = reportReasonSummary; }
     public String getPostTitle() { return postTitle; }
     public void setPostTitle(String postTitle) { this.postTitle = postTitle; }
+    public String getPostStatus() { return postStatus; }
+    public void setPostStatus(String postStatus) { this.postStatus = postStatus; }
 }

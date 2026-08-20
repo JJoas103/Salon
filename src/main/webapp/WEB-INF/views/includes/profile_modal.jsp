@@ -1,5 +1,6 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
 <%-- 마이페이지를 대체하는 "내 정보" 모달 (점주/관리자 공용). 일반사용자의 info_modal.jsp와 같은 구조 —
      연락처/비밀번호 버튼 중 하나만 펼쳐지는 아코디언. 열릴 때 whoami로 직접 불러오므로 페이지가 user 모델을
      안 채워도 된다. 포함하는 페이지는 아래가 필요함
@@ -30,7 +31,11 @@
 
     <div style="display:flex; gap:8px;">
       <button type="button" class="btn-modern btn-outline profile-section-btn" data-section="phone" style="flex:1;"><i class="fas fa-phone" style="margin-right:6px;"></i>연락처</button>
+      <%-- 소셜(구글/네이버) 계정은 로컬 비밀번호가 없어 변경할 것이 없다. 버튼 자체를 숨긴다.
+           (서버는 CommonController.passwordSubmit 에서 provider 를 한 번 더 확인한다) --%>
+      <sec:authorize access="!hasAuthority('SOCIAL_ACCOUNT')">
       <button type="button" class="btn-modern btn-outline profile-section-btn" data-section="password" style="flex:1;"><i class="fas fa-shield-alt" style="margin-right:6px;"></i>비밀번호</button>
+      </sec:authorize>
     </div>
 
     <!-- 연락처 변경 섹션 -->
@@ -45,7 +50,8 @@
       <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">연락처 저장</button>
     </form>
 
-    <!-- 비밀번호 변경 섹션 -->
+    <!-- 비밀번호 변경 섹션 (소셜 계정에는 렌더링하지 않음) -->
+    <sec:authorize access="!hasAuthority('SOCIAL_ACCOUNT')">
     <form id="profilePasswordForm" class="profile-section" data-section="password" style="display:none; margin-top:18px; padding-top:18px; border-top:1px solid var(--border);">
       <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">현재 비밀번호</label>
       <input type="password" name="currentPassword" class="modern-input">
@@ -56,6 +62,7 @@
       <p id="profilePasswordSuccess" class="success-text" style="display:none; margin-top:10px;">비밀번호가 변경되었습니다.</p>
       <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">비밀번호 변경</button>
     </form>
+    </sec:authorize>
   </div>
 </div>
 
@@ -115,7 +122,8 @@
       infoError.style.display = 'none';
       infoSuccess.style.display = 'none';
       photoError.style.display = 'none';
-      passwordSuccess.style.display = 'none';
+      // 소셜 계정은 비밀번호 섹션이 아예 렌더링되지 않아 없을 수 있다
+      if (passwordSuccess) passwordSuccess.style.display = 'none';
       modal.classList.add('active');
       fetch('<c:url value="/common/mypage/whoami"/>')
         .then(function (res) { return res.json(); })
@@ -130,6 +138,7 @@
     }
     function closeModal() {
       modal.classList.remove('active');
+      if (!passwordForm) return;
       passwordForm.reset();
       passwordForm.querySelectorAll('.error-text').forEach(function (el) { el.remove(); });
       passwordForm.querySelectorAll('.input-error').forEach(function (el) { el.classList.remove('input-error'); });
@@ -182,7 +191,7 @@
         });
     });
 
-    passwordForm.addEventListener('submit', function (e) {
+    if (passwordForm) passwordForm.addEventListener('submit', function (e) {
       e.preventDefault();
       passwordForm.querySelectorAll('.error-text').forEach(function (el) { el.remove(); });
       passwordForm.querySelectorAll('.input-error').forEach(function (el) { el.classList.remove('input-error'); });

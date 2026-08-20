@@ -31,7 +31,11 @@
     <!-- 섹션 토글 버튼 3개 — 하나만 열림 -->
     <div style="display:flex; gap:8px;">
       <button type="button" class="btn-modern btn-outline info-section-btn" data-section="phone" style="flex:1; font-size:14px;"><i class="fas fa-phone" style="margin-right:5px;"></i>연락처</button>
+      <%-- 소셜(구글/네이버) 계정은 로컬 비밀번호가 없어 변경할 것이 없다. 버튼 자체를 숨긴다.
+           (서버는 CommonController.passwordSubmit 에서 provider 를 한 번 더 확인한다) --%>
+      <sec:authorize access="!hasAuthority('SOCIAL_ACCOUNT')">
       <button type="button" class="btn-modern btn-outline info-section-btn" data-section="password" style="flex:1; font-size:14px;"><i class="fas fa-shield-alt" style="margin-right:5px;"></i>비밀번호</button>
+      </sec:authorize>
       <button type="button" class="btn-modern btn-outline info-section-btn" data-section="notif" style="flex:1; font-size:14px;"><i class="fas fa-bell" style="margin-right:5px;"></i>알림 설정</button>
     </div>
 
@@ -52,7 +56,8 @@
       <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">연락처 저장</button>
     </form>
 
-    <!-- 비밀번호 변경 섹션 -->
+    <!-- 비밀번호 변경 섹션 (소셜 계정에는 렌더링하지 않음) -->
+    <sec:authorize access="!hasAuthority('SOCIAL_ACCOUNT')">
     <form id="passwordForm" class="info-section" data-section="password" style="display:none; margin-top:18px; padding-top:18px; border-top:1px solid var(--border);">
       <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">현재 비밀번호</label>
       <input type="password" name="currentPassword" class="modern-input">
@@ -63,6 +68,7 @@
       <p id="passwordSuccess" class="success-text" style="display:none; margin-top:10px;">비밀번호가 변경되었습니다.</p>
       <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">비밀번호 변경</button>
     </form>
+    </sec:authorize>
 
     <!-- 알림 설정 섹션 -->
     <div class="info-section" data-section="notif" style="display:none; margin-top:18px; padding-top:18px; border-top:1px solid var(--border);">
@@ -144,7 +150,8 @@
         infoError.style.display = 'none';
         infoSuccess.style.display = 'none';
         photoError.style.display = 'none';
-        passwordSuccess.style.display = 'none';
+        // 소셜 계정은 비밀번호 섹션이 아예 렌더링되지 않아 없을 수 있다
+        if (passwordSuccess) passwordSuccess.style.display = 'none';
         infoModal.classList.add('active');
         fetch('<c:url value="/common/mypage/whoami"/>')
           .then(function (res) { return res.json(); })
@@ -208,7 +215,7 @@
         });
     });
 
-    passwordForm.addEventListener('submit', function (e) {
+    if (passwordForm) passwordForm.addEventListener('submit', function (e) {
       e.preventDefault();
       passwordForm.querySelectorAll('.error-text').forEach(function (el) { el.remove(); });
       passwordForm.querySelectorAll('.input-error').forEach(function (el) { el.classList.remove('input-error'); });

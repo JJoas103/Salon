@@ -65,6 +65,11 @@
               <button type="submit" class="btn-modern btn-primary" style="width: 100%; margin-top: 15px;">회원가입
                 완료하기</button>
             </form>
+            <div class="auth-divider">또는</div>
+            <div class="social-login-row">
+              <a href="${pageContext.request.contextPath}/oauth2/authorization/google" class="btn-social btn-google"><i class="fab fa-google"></i> Google</a>
+              <a href="${pageContext.request.contextPath}/oauth2/authorization/naver" class="btn-social btn-naver"><strong>N</strong> 네이버</a>
+            </div>
             <div class="auth-footer">이미 계정이 있으신가요? <a href="/user/login" class="auth-link">로그인</a></div>
           </div>
           <script>

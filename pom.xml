@@ -91,6 +91,12 @@
             <artifactId>spring-security-taglibs</artifactId>
             <version>${spring-security.version}</version>
         </dependency>
+        <!-- 구글/네이버 소셜 로그인 (OAuth2 클라이언트) -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-client</artifactId>
+            <version>${spring-security.version}</version>
+        </dependency>
 
         <!-- ===== 로깅 ===== -->
         <dependency>

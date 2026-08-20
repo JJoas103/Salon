@@ -6,9 +6,17 @@ import java.util.List;
 
 public interface PostMapper {
 
-    List<PostVO> findAll(@Param("sort") String sort);
+    List<PostVO> findAll(@Param("sort") String sort, @Param("offset") int offset, @Param("size") int size);
 
-    List<PostVO> findByCategory(@Param("category") String category, @Param("sort") String sort);
+    int countAll();
+
+    List<PostVO> findByCategory(@Param("category") String category, @Param("sort") String sort,
+                                 @Param("offset") int offset, @Param("size") int size);
+
+    int countByCategory(@Param("category") String category);
+
+    // 마이페이지 "내가 쓴 글" 탭 -- 개수가 작아 페이지네이션 없이 전체 조회
+    List<PostVO> findByUserId(@Param("userId") int userId);
 
     PostVO findById(int postId);
 
@@ -21,6 +29,9 @@ public interface PostMapper {
     void update(PostVO post);
 
     void delete(int postId);
+
+    // 글 삭제 -- 하드 삭제 대신 소프트 삭제 (댓글이 참조하는 행을 남겨 마이페이지 로그로 보존)
+    void softDelete(int postId);
 
     void incrementViewCount(int postId);
 
@@ -38,5 +49,7 @@ public interface PostMapper {
     int sumReportCountByAuthor(@Param("userId") int userId);
 
     List<PostVO> search(@Param("searchType") String searchType, @Param("keyword") String keyword,
-                         @Param("sort") String sort);
+                         @Param("sort") String sort, @Param("offset") int offset, @Param("size") int size);
+
+    int countSearch(@Param("searchType") String searchType, @Param("keyword") String keyword);
 }

@@ -77,6 +77,10 @@
           <strong style="font-size:26px;">${reviewCount}개</strong>
           <small>내가 작성한 리뷰 보기 <i class="fas fa-chevron-right"></i></small>
         </a>
+        <a class="stat-card stat-card-link" href="<c:url value='/common/my-community'/>">
+          <span style="font-size:13px;color:var(--text-sub);display:block;margin-bottom:8px;">내 커뮤니티 활동</span>
+          <span><strong>${communityReplyCount}</strong>개 새 댓글 <i class="fas fa-chevron-right" style="margin-left:8px;"></i></span>
+        </a>
       </div>
     </main>
   </div>
@@ -127,6 +131,21 @@
       modal.addEventListener('click', function (e) {
         if (e.target === modal) modal.classList.remove('active');
       });
+
+      // 비밀번호 변경은 별도 모달이 아니라 사이드바의 "내 정보" 모달(info_modal.jsp) 안 섹션으로 통합됐다.
+      // 마이페이지 메뉴에서는 그 모달을 열고 비밀번호 섹션까지 펼쳐준다.
+      // 소셜 계정은 이 버튼도, 모달 안 비밀번호 섹션도 렌더링되지 않는다.
+      var passwordMenuBtn = document.getElementById('openPasswordModalBtn');
+      if (passwordMenuBtn) {
+        passwordMenuBtn.addEventListener('click', function (e) {
+          e.preventDefault();
+          var openInfoBtn = document.getElementById('openInfoModalBtn');
+          var passwordSectionBtn = document.querySelector('.info-section-btn[data-section="password"]');
+          if (!openInfoBtn || !passwordSectionBtn) return;
+          openInfoBtn.click();
+          passwordSectionBtn.click();
+        });
+      }
     })();
   </script>
 </body>
