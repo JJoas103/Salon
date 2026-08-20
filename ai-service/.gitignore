@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 .env
 .env.*
+# 예시 파일은 팀이 공유해야 하므로 위 .env.* 규칙에서 빼둠
+!.env.example
