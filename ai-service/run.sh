@@ -7,9 +7,9 @@
 # 그래서 포트를 먼저 비우고, 어디에 붙는지 찍고 나서 띄움
 #
 # 사용법
-#   ./run.sh                                  로컬 Ollama(localhost:11434)
-#   OLLAMA_BASE_URL=http://192.168.1.23:11434 ./run.sh   다른 PC 의 Ollama
-#   ./run.sh --fg                             로그를 화면에 띄운 채 실행(Ctrl+C 로 종료)
+#   ./run.sh                                     로컬 Ollama(localhost:11434)
+#   ./run.sh --fg                                로그를 화면에 띄운 채 실행(Ctrl+C 로 종료)
+#   OLLAMA_BASE_URL=http://<주소>:11434 ./run.sh   다른 PC 의 Ollama 로 추론
 
 set -u
 

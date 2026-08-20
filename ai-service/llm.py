@@ -18,8 +18,7 @@ DEFAULT_MODEL = "qwen3.5:9b"
 # 넘치는 순간 오래된 쪽부터 잘려나가므로 여유를 두고 16384 로 올림
 DEFAULT_NUM_CTX = 16384
 
-# 추론만 별도 머신(6800XT 데스크탑)으로 넘길 때 쓰는 스위치
-# 환경변수를 안 주면 이 머신의 내장그래픽으로 그대로 돌아감
+# 어느 Ollama 에 물을지 — 안 주면 이 PC, 다른 주소를 주면 그 PC 가 대신 추론함
 DEFAULT_BASE_URL = "http://localhost:11434"
 
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
@@ -63,7 +62,7 @@ def _openai_llm():
     if not api_key:
         raise RuntimeError(
             "OPENAI_API_KEY 가 없습니다. "
-            "저장소 루트 .env 또는 환경변수에 키를 설정하세요"
+            "ai-service/.env 또는 환경변수에 키를 설정하세요"
         )
 
     return ChatOpenAI(
