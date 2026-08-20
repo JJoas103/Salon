@@ -90,7 +90,9 @@ WHERE NOT EXISTS (
 -- 개인화 상담(이력 기반 추천)을 시연하려면 완료 예약이 있어야 함
 -- 서로 다른 매장 두 곳, 서로 다른 카테고리로 넣어 "이력 매장 비교" 가 성립하게 함
 INSERT INTO Reservations (user_id, salon_id, stylist_id, service_id, reservation_time, status)
-SELECT u.user_id, s.salon_id, st.stylist_id, sv.service_id, v.reservation_time, 'completed'
+-- 매장에 스타일리스트가 여럿이면 LEFT JOIN 이 행을 늘리므로 한 명만 고른다.
+-- MIN 으로 집계해야 ONLY_FULL_GROUP_BY(MySQL 8 기본 sql_mode)에 걸리지 않는다.
+SELECT u.user_id, s.salon_id, MIN(st.stylist_id), sv.service_id, v.reservation_time, 'completed'
 FROM (
     SELECT '라움헤어' AS salon_name, '레이어드컷' AS service_name,
            TIMESTAMP(CURRENT_DATE - INTERVAL 40 DAY, '14:00:00') AS reservation_time

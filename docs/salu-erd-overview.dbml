@@ -1,0 +1,382 @@
+// ============================================================
+//  salu ERD — 개요판 (PK / FK / 식별 컬럼만)
+//
+//  전체 컬럼이 다 들어간 상세판은 docs/salu-erd.dbml 참고.
+//  이 파일은 "테이블끼리 어떻게 물려 있는지"만 보기 위한 것이라
+//  created_at / updated_at / 본문 텍스트 등 관계와 무관한 컬럼은 뺐다.
+//  테이블이 작아져서 dbdiagram.io 에서 도메인별로 끌어다 놓기 쉽다.
+//
+//  총 25개 테이블 / 45개 FK
+// ============================================================
+
+// ============================================================
+//  1. 계정 / 권한
+// ============================================================
+
+Table Users [headercolor: #3498DB] {
+  user_id   int     [pk, increment]
+  email     varchar [not null, unique]
+  user_type enum    [not null, note: 'customer / owner / admin']
+  status    enum    [note: 'active / suspended / banned']
+  deleted_at datetime [note: 'soft delete']
+
+  Note: '고객·점주·관리자를 한 테이블에. 거의 모든 테이블이 여기를 참조하는 허브.'
+}
+
+Table OwnerRequests [headercolor: #3498DB] {
+  request_id   int  [pk, increment]
+  user_id      int  [not null]
+  processed_by int  [note: '처리한 관리자']
+  request_type enum [not null, note: 'promotion / additional_salon']
+  status       enum [not null, note: 'pending / approved / rejected']
+}
+
+Table user_sanctions [headercolor: #3498DB] {
+  sanction_id   int  [pk, increment]
+  user_id       int  [not null]
+  post_id       int  [note: 'FK 없음 — 삭제 후에도 기록 보존']
+  comment_id    int  [note: 'FK 없음']
+  sanction_type enum [not null, note: 'suspend_3d / suspend_7d / permanent']
+}
+
+
+// ============================================================
+//  2. 매장
+// ============================================================
+
+Table Salons [headercolor: #27AE60] {
+  salon_id          int     [pk, increment]
+  owner_id          int     [not null]
+  salon_name        varchar [not null]
+  closed_at         datetime [note: 'soft delete (폐업)']
+  activation_status enum    [not null, note: 'preparing / active']
+
+  Note: '두 번째 허브. 8개 테이블이 CASCADE 없이 참조한다.'
+}
+
+Table Services [headercolor: #27AE60] {
+  service_id   int     [pk, increment]
+  salon_id     int     [not null]
+  service_name varchar [not null]
+  price        decimal [not null]
+}
+
+Table Stylists [headercolor: #27AE60] {
+  stylist_id   int     [pk, increment]
+  salon_id     int     [not null]
+  stylist_name varchar [not null]
+}
+
+Table Salon_Operating_Hours [headercolor: #27AE60] {
+  hour_id     int  [pk, increment]
+  salon_id    int  [not null]
+  day_of_week enum [not null, note: '월~일']
+}
+
+Table Stylist_Schedules [headercolor: #27AE60] {
+  schedule_id  int     [pk, increment]
+  stylist_id   int     [not null]
+  date         date    [not null]
+  is_available boolean
+}
+
+Table SalonNotices [headercolor: #27AE60] {
+  notice_id int     [pk, increment]
+  salon_id  int     [not null]
+  title     varchar [not null]
+}
+
+Table Promotions [headercolor: #27AE60] {
+  promotion_id int     [pk, increment]
+  salon_id     int     [note: 'NULL 가능']
+  title        varchar [not null]
+  coupon_code  varchar [unique]
+}
+
+
+// ============================================================
+//  3. 예약 / 결제
+// ============================================================
+
+Table Reservations [headercolor: #E74C3C] {
+  reservation_id   int      [pk, increment]
+  user_id          int      [not null]
+  salon_id         int      [not null]
+  stylist_id       int
+  service_id       int      [not null]
+  reservation_time datetime [not null]
+  status           enum     [not null, note: 'pending / confirmed / completed / cancelled']
+
+  Note: '플랫폼의 중심. Payments·Reviews·Point_Transactions·User_Coupons 가 여기에 묶인다.'
+}
+
+Table Payments [headercolor: #E74C3C] {
+  payment_id     int     [pk, increment]
+  reservation_id int     [not null, unique, note: '1:1']
+  user_id        int     [not null]
+  user_coupon_id int
+  amount         decimal [not null]
+  payment_status enum    [not null, note: 'pending / completed / failed / refunded']
+}
+
+Table Reviews [headercolor: #E74C3C] {
+  review_id      int [pk, increment]
+  user_id        int [not null]
+  salon_id       int [not null]
+  reservation_id int [not null, unique, note: '1:1']
+  rating         int [not null, note: '1 ~ 5']
+}
+
+Table Wishlists [headercolor: #E74C3C] {
+  wishlist_id int [pk, increment]
+  user_id     int [not null]
+  salon_id    int [not null]
+
+  indexes {
+    (user_id, salon_id) [unique]
+  }
+}
+
+Table Point_Transactions [headercolor: #E74C3C] {
+  point_tx_id    int  [pk, increment]
+  user_id        int  [not null]
+  reservation_id int
+  tx_type        enum [not null, note: 'earn / use / restore / revoke / expire / admin']
+  amount         int  [not null, note: '적립 + / 사용 -']
+  balance_after  int  [not null]
+
+  indexes {
+    (reservation_id, tx_type) [unique]
+  }
+}
+
+
+// ============================================================
+//  4. 쿠폰
+// ============================================================
+
+Table Coupons [headercolor: #F39C12] {
+  coupon_id     int     [pk, increment]
+  promotion_id  int
+  salon_id      int     [note: 'NULL = 전 매장']
+  service_id    int     [note: 'NULL = 전 시술']
+  coupon_name   varchar [not null]
+  coupon_code   varchar [unique]
+  discount_type enum    [not null, note: 'percent / amount']
+
+  Note: '쿠폰 정책. 실제 보유분은 User_Coupons.'
+}
+
+Table User_Coupons [headercolor: #F39C12] {
+  user_coupon_id int  [pk, increment]
+  user_id        int  [not null]
+  coupon_id      int  [not null]
+  reservation_id int
+  status         enum [not null, note: 'available / reserved / used / expired']
+}
+
+
+// ============================================================
+//  5. 커뮤니티
+// ============================================================
+
+Table Posts [headercolor: #9B59B6] {
+  post_id      int     [pk, increment]
+  user_id      int     [not null]
+  salon_id     int     [note: '연관 미용실 (선택)']
+  title        varchar [not null]
+  report_count int
+  status       enum    [note: 'visible / blinded']
+}
+
+Table Comments [headercolor: #9B59B6] {
+  comment_id int  [pk, increment]
+  post_id    int  [not null]
+  user_id    int  [not null]
+  content    text [not null]
+}
+
+Table post_likes [headercolor: #9B59B6] {
+  like_id       int  [pk, increment]
+  post_id       int  [not null]
+  user_id       int  [not null]
+  reaction_type enum [not null, note: 'like / dislike']
+
+  indexes {
+    (post_id, user_id) [unique]
+  }
+}
+
+Table post_reports [headercolor: #9B59B6] {
+  report_id int  [pk, increment]
+  post_id   int  [not null]
+  user_id   int  [not null]
+  reason    enum [not null]
+
+  indexes {
+    (post_id, user_id) [unique]
+  }
+}
+
+Table comment_reports [headercolor: #9B59B6] {
+  report_id  int  [pk, increment]
+  comment_id int  [not null]
+  user_id    int  [not null]
+  reason     enum [not null]
+
+  indexes {
+    (comment_id, user_id) [unique]
+  }
+}
+
+
+// ============================================================
+//  6. 1:1 채팅
+// ============================================================
+
+Table Chats [headercolor: #16A085] {
+  chat_id  int [pk, increment]
+  user1_id int [not null, note: '고객 — 순서 고정']
+  user2_id int [not null, note: '점주 — 순서 고정']
+  salon_id int [not null]
+
+  indexes {
+    (user1_id, salon_id) [unique, note: '고객+매장당 방 하나']
+  }
+}
+
+Table Messages [headercolor: #16A085] {
+  message_id int     [pk, increment]
+  chat_id    int     [not null]
+  sender_id  int     [not null]
+  is_read    tinyint [not null]
+}
+
+
+// ============================================================
+//  7. 관리자 광고 (독립 — FK 없음)
+// ============================================================
+
+Table Advertisements [headercolor: #7F8C8D] {
+  advertisement_id int     [pk, increment]
+  title            varchar [not null]
+  display_order    int     [not null]
+  active           boolean [not null]
+
+  Note: '어느 매장에도 묶이지 않는다. 관리자가 직접 운영하는 메인 배너.'
+}
+
+
+// ============================================================
+//  관계 (Foreign Keys)
+// ============================================================
+
+// -- 계정 / 권한 --
+Ref: OwnerRequests.user_id      > Users.user_id
+Ref: OwnerRequests.processed_by > Users.user_id
+Ref: user_sanctions.user_id     > Users.user_id
+
+// -- 매장 --
+Ref: Salons.owner_id                > Users.user_id
+Ref: Services.salon_id              > Salons.salon_id
+Ref: Stylists.salon_id              > Salons.salon_id
+Ref: Salon_Operating_Hours.salon_id > Salons.salon_id
+Ref: Stylist_Schedules.stylist_id   > Stylists.stylist_id
+Ref: SalonNotices.salon_id          > Salons.salon_id
+Ref: Promotions.salon_id            > Salons.salon_id
+
+// -- 예약 --
+Ref: Reservations.user_id    > Users.user_id
+Ref: Reservations.salon_id   > Salons.salon_id
+Ref: Reservations.stylist_id > Stylists.stylist_id
+Ref: Reservations.service_id > Services.service_id
+
+// -- 결제 / 리뷰 / 찜 / 포인트 --
+Ref: Payments.reservation_id           - Reservations.reservation_id
+Ref: Payments.user_id                  > Users.user_id
+Ref: Payments.user_coupon_id           > User_Coupons.user_coupon_id
+Ref: Reviews.reservation_id            - Reservations.reservation_id
+Ref: Reviews.user_id                   > Users.user_id
+Ref: Reviews.salon_id                  > Salons.salon_id
+Ref: Wishlists.user_id                 > Users.user_id
+Ref: Wishlists.salon_id                > Salons.salon_id
+Ref: Point_Transactions.user_id        > Users.user_id
+Ref: Point_Transactions.reservation_id > Reservations.reservation_id
+
+// -- 쿠폰 --
+Ref: Coupons.promotion_id        > Promotions.promotion_id
+Ref: Coupons.salon_id            > Salons.salon_id
+Ref: Coupons.service_id          > Services.service_id
+Ref: User_Coupons.user_id        > Users.user_id
+Ref: User_Coupons.coupon_id      > Coupons.coupon_id
+Ref: User_Coupons.reservation_id > Reservations.reservation_id
+
+// -- 커뮤니티 --
+Ref: Posts.user_id              > Users.user_id
+Ref: Posts.salon_id             > Salons.salon_id
+Ref: Comments.post_id           > Posts.post_id
+Ref: Comments.user_id           > Users.user_id
+Ref: post_likes.post_id         > Posts.post_id
+Ref: post_likes.user_id         > Users.user_id
+Ref: post_reports.post_id       > Posts.post_id [delete: cascade]
+Ref: post_reports.user_id       > Users.user_id
+Ref: comment_reports.comment_id > Comments.comment_id [delete: cascade]
+Ref: comment_reports.user_id    > Users.user_id
+
+// -- 채팅 --
+Ref: Chats.user1_id     > Users.user_id
+Ref: Chats.user2_id     > Users.user_id
+Ref: Chats.salon_id     > Salons.salon_id
+Ref: Messages.chat_id   > Chats.chat_id
+Ref: Messages.sender_id > Users.user_id
+
+
+// ============================================================
+//  도메인 그룹
+// ============================================================
+
+TableGroup "계정 / 권한" [color: #3498DB] {
+  Users
+  OwnerRequests
+  user_sanctions
+}
+
+TableGroup "매장" [color: #27AE60] {
+  Salons
+  Services
+  Stylists
+  Salon_Operating_Hours
+  Stylist_Schedules
+  SalonNotices
+  Promotions
+}
+
+TableGroup "예약 / 결제" [color: #E74C3C] {
+  Reservations
+  Payments
+  Reviews
+  Wishlists
+  Point_Transactions
+}
+
+TableGroup "쿠폰" [color: #F39C12] {
+  Coupons
+  User_Coupons
+}
+
+TableGroup "커뮤니티" [color: #9B59B6] {
+  Posts
+  Comments
+  post_likes
+  post_reports
+  comment_reports
+}
+
+TableGroup "채팅" [color: #16A085] {
+  Chats
+  Messages
+}
+
+TableGroup "광고" [color: #7F8C8D] {
+  Advertisements
+}

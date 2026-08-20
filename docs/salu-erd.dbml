@@ -1,0 +1,614 @@
+// ============================================================
+//  salu (미용실 예약 플랫폼) ERD  —  DBML
+//  https://dbdiagram.io 에 붙여넣으면 ERD 가 그려진다.
+//
+//  기준: sql/schema.sql + sql/migration_*.sql 전부 반영한 현재 상태
+//  (schema.sql 은 2026-07-31 기준이라 그것만 보면 실제 DB 와 다르다.
+//   activation_status / point_balance / Coupons 등은 이후 마이그레이션에서 추가됨)
+//
+//  총 25개 테이블
+// ============================================================
+
+// ------------------------------------------------------------
+//  ENUM 정의
+// ------------------------------------------------------------
+Enum user_type {
+  customer
+  owner
+  admin
+}
+
+Enum user_status {
+  active
+  suspended
+  banned
+}
+
+Enum salon_activation_status {
+  preparing [note: '관리자 2차 승인 대기 (손님에게 안 보임)']
+  active
+}
+
+Enum day_of_week {
+  "월"
+  "화"
+  "수"
+  "목"
+  "금"
+  "토"
+  "일"
+}
+
+Enum reservation_status {
+  pending
+  confirmed
+  completed
+  cancelled
+}
+
+Enum payment_status {
+  pending
+  completed
+  failed
+  refunded
+}
+
+Enum post_status {
+  visible
+  blinded
+}
+
+Enum reaction_type {
+  like
+  dislike
+}
+
+Enum report_reason {
+  spam
+  illegal
+  abuse
+  privacy
+  other
+}
+
+Enum sanction_type {
+  suspend_3d
+  suspend_7d
+  permanent
+}
+
+Enum owner_request_status {
+  pending
+  approved
+  rejected
+}
+
+Enum owner_request_type {
+  promotion [note: '고객 → 점주 승격 요청']
+  additional_salon [note: '기존 점주의 매장 추가 등록 요청']
+}
+
+Enum point_tx_type {
+  earn
+  use
+  restore
+  revoke
+  expire
+  admin
+}
+
+Enum discount_type {
+  percent
+  amount
+}
+
+Enum user_coupon_status {
+  available
+  reserved
+  used
+  expired
+}
+
+
+// ============================================================
+//  1. 계정 / 권한
+// ============================================================
+
+Table Users [headercolor: #3498DB] {
+  user_id               int          [pk, increment]
+  email                 varchar(255) [not null, unique, note: '로그인 ID']
+  password              varchar(255) [not null]
+  user_name             varchar(100)
+  phone_number          varchar(20)
+  profile_image_url     varchar(255) [note: '마이페이지 프로필 사진']
+  user_type             user_type    [not null, note: '역할은 이 컬럼에서 파생 (roles 테이블 없음)']
+  status                user_status  [default: 'active', note: '커뮤니티 이용 제한 상태']
+  notifications_enabled tinyint      [not null, default: 1]
+  suspended_until       datetime     [note: '정지 만료 시각 (영구정지면 NULL)']
+  point_balance         int          [not null, default: 0]
+  created_at            datetime     [default: `CURRENT_TIMESTAMP`]
+  updated_at            datetime     [default: `CURRENT_TIMESTAMP`]
+  deleted_at            datetime     [note: 'soft delete — NULL 이면 활성 회원']
+
+  Note: '고객 / 점주 / 관리자를 한 테이블에 담는다. 탈퇴는 행 삭제가 아니라 deleted_at 기록.'
+}
+
+Table OwnerRequests [headercolor: #3498DB] {
+  request_id   int                  [pk, increment]
+  user_id      int                  [not null]
+  salon_name   varchar(255)         [not null]
+  salon_phone  varchar(20)
+  message      text                 [note: '신청 사유']
+  request_type owner_request_type   [not null, default: 'promotion']
+  status       owner_request_status [not null, default: 'pending']
+  requested_at datetime             [default: `CURRENT_TIMESTAMP`]
+  processed_at datetime
+  processed_by int                  [note: '처리한 관리자 user_id']
+
+  Note: '점주 권한 승격 / 매장 추가 등록 요청'
+}
+
+Table user_sanctions [headercolor: #3498DB] {
+  sanction_id     int           [pk, increment]
+  user_id         int           [not null]
+  post_id         int           [note: '원인 게시글 ID (FK 없음 — 삭제 후에도 기록 보존)']
+  post_title      varchar(255)  [note: '삭제 전 제목 스냅샷']
+  comment_id      int           [note: '원인 댓글 ID (FK 없음)']
+  comment_content text          [note: '삭제 전 내용 스냅샷']
+  admin_reason    varchar(255)
+  sanction_type   sanction_type [not null]
+  suspended_until datetime      [note: 'permanent 면 NULL']
+  created_at      datetime      [default: `CURRENT_TIMESTAMP`]
+
+  Note: '회원 제재 이력. post_id / comment_id 는 의도적으로 FK 를 걸지 않는다.'
+}
+
+
+// ============================================================
+//  2. 매장
+// ============================================================
+
+Table Salons [headercolor: #27AE60] {
+  salon_id          int                     [pk, increment]
+  owner_id          int                     [not null]
+  salon_name        varchar(255)            [not null]
+  address           varchar(255)            [not null]
+  phone_number      varchar(20)
+  description       text
+  average_rating    "decimal(2,1)"          [default: 0.0]
+  image_url         varchar(255)
+  latitude          "decimal(10,7)"         [note: '지도 마커용. NULL 이면 지도에 표시 안 함']
+  longitude         "decimal(10,7)"
+  created_at        datetime                [default: `CURRENT_TIMESTAMP`]
+  updated_at        datetime                [default: `CURRENT_TIMESTAMP`]
+  closed_at         datetime                [note: 'soft delete — NULL 이면 운영중, 값이 있으면 폐업']
+  activation_status salon_activation_status [not null, default: 'active']
+
+  Note: '8개 테이블이 salon_id 를 CASCADE 없이 참조하므로 하드 delete 불가 → closed_at soft delete.'
+}
+
+Table Services [headercolor: #27AE60] {
+  service_id       int            [pk, increment]
+  salon_id         int            [not null]
+  service_name     varchar(255)   [not null]
+  price            "decimal(10,2)" [not null]
+  duration_minutes int
+  description      text
+  created_at       datetime       [default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime       [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Stylists [headercolor: #27AE60] {
+  stylist_id   int          [pk, increment]
+  salon_id     int          [not null]
+  stylist_name varchar(100) [not null]
+  phone_number varchar(20)
+  description  text
+  image_url    varchar(255)
+  created_at   datetime     [default: `CURRENT_TIMESTAMP`]
+  updated_at   datetime     [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Salon_Operating_Hours [headercolor: #27AE60] {
+  hour_id     int         [pk, increment]
+  salon_id    int         [not null]
+  day_of_week day_of_week [not null]
+  open_time   time        [not null]
+  close_time  time        [not null]
+}
+
+Table Stylist_Schedules [headercolor: #27AE60] {
+  schedule_id  int     [pk, increment]
+  stylist_id   int     [not null]
+  date         date    [not null]
+  start_time   time    [not null]
+  end_time     time    [not null]
+  is_available boolean [default: true]
+}
+
+Table SalonNotices [headercolor: #27AE60] {
+  notice_id  int          [pk, increment]
+  salon_id   int          [not null]
+  title      varchar(255) [not null]
+  content    text         [not null]
+  image_url  varchar(255)
+  created_at datetime     [default: `CURRENT_TIMESTAMP`]
+
+  Note: '점주 이벤트/공지사항 — 고객 지도검색 상세 카드의 "공지사항" 탭에 노출'
+}
+
+Table Promotions [headercolor: #27AE60] {
+  promotion_id  int            [pk, increment]
+  salon_id      int            [note: 'NULL 가능 (선택)']
+  title         varchar(255)   [not null]
+  description   text
+  start_date    date           [not null]
+  end_date      date           [not null]
+  discount_rate "decimal(5,2)" [note: '10.00 = 10%']
+  coupon_code   varchar(50)    [unique]
+  image_url     varchar(255)
+  created_at    datetime       [default: `CURRENT_TIMESTAMP`]
+  updated_at    datetime       [default: `CURRENT_TIMESTAMP`]
+}
+
+
+// ============================================================
+//  3. 예약 / 결제
+// ============================================================
+
+Table Reservations [headercolor: #E74C3C] {
+  reservation_id   int                [pk, increment]
+  user_id          int                [not null]
+  salon_id         int                [not null]
+  stylist_id       int                [note: 'NULL = 스타일리스트 미지정']
+  service_id       int                [not null]
+  reservation_time datetime           [not null]
+  status           reservation_status [not null]
+  reject_reason    varchar(255)
+  cancel_type      varchar(20)        [note: "'rejected' = 점주 거절+환불 / 'no_show' = 노쇼 / NULL = 결제 실패·이탈"]
+  created_at       datetime           [default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime           [default: `CURRENT_TIMESTAMP`]
+
+  Note: '플랫폼의 중심 테이블. Reviews / Payments / Point_Transactions / User_Coupons 가 여기에 묶인다.'
+}
+
+Table Payments [headercolor: #E74C3C] {
+  payment_id      int             [pk, increment]
+  reservation_id  int             [not null, unique, note: '예약 1건당 결제 1건 (1:1)']
+  user_id         int             [not null]
+  amount          "decimal(10,2)" [not null, note: 'original_amount - coupon_discount - point_used']
+  payment_method  varchar(50)
+  payment_status  payment_status  [not null]
+  transaction_id  varchar(255)    [unique, note: 'PG 트랜잭션 ID']
+  paid_at         datetime        [default: `CURRENT_TIMESTAMP`]
+  original_amount "decimal(10,2)" [not null, default: 0]
+  coupon_discount "decimal(10,2)" [not null, default: 0]
+  point_used      int             [not null, default: 0]
+  pg_provider     varchar(20)     [not null, default: 'KAKAOPAY']
+  user_coupon_id  int
+}
+
+Table Reviews [headercolor: #E74C3C] {
+  review_id      int          [pk, increment]
+  user_id        int          [not null]
+  salon_id       int          [not null]
+  reservation_id int          [not null, unique, note: '예약 1건당 리뷰 1건 (1:1)']
+  rating         int          [not null, note: 'CHECK 1 ~ 5']
+  comment        text
+  image_url      varchar(255)
+  image_url2     varchar(255)
+  created_at     datetime     [default: `CURRENT_TIMESTAMP`]
+  updated_at     datetime     [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Wishlists [headercolor: #E74C3C] {
+  wishlist_id int      [pk, increment]
+  user_id     int      [not null]
+  salon_id    int      [not null]
+  created_at  datetime [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, salon_id) [unique, name: 'uq_user_salon']
+  }
+}
+
+Table Point_Transactions [headercolor: #E74C3C] {
+  point_tx_id    int            [pk, increment]
+  user_id        int            [not null]
+  reservation_id int
+  tx_type        point_tx_type  [not null]
+  amount         int            [not null, note: '부호 있음: 적립 +, 사용 -']
+  balance_after  int            [not null]
+  description    varchar(255)
+  expires_at     datetime
+  created_at     datetime       [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user_id, created_at) [name: 'idx_user_created']
+    (reservation_id, tx_type) [unique, name: 'uq_reservation_tx', note: '중복 적립/중복 원복을 DB 가 막는다']
+  }
+
+  Note: '포인트 원장. Users.point_balance 는 이 원장의 현재 잔액 스냅샷.'
+}
+
+
+// ============================================================
+//  4. 쿠폰
+// ============================================================
+
+Table Coupons [headercolor: #F39C12] {
+  coupon_id        int             [pk, increment]
+  promotion_id     int             [note: '이 쿠폰을 광고하는 프로모션 (선택)']
+  salon_id         int             [note: 'NULL = 전 매장 공통']
+  service_id       int             [note: 'NULL = 전 시술 공통']
+  coupon_name      varchar(100)    [not null]
+  coupon_code      varchar(50)     [unique, note: 'NULL = 코드 입력형이 아님']
+  discount_type    discount_type   [not null]
+  discount_value   "decimal(10,2)" [not null]
+  max_discount     "decimal(10,2)" [note: 'percent 형의 상한 (NULL = 무제한)']
+  min_order_amount "decimal(10,2)" [not null, default: 0]
+  valid_from       date            [not null]
+  valid_until      date            [not null]
+  issue_type       varchar(20)     [not null, note: 'signup / admin / code ... 확장 예정이라 ENUM 대신 VARCHAR']
+  once_per_user    tinyint         [not null, default: 0]
+  is_active        tinyint         [not null, default: 1]
+  created_at       datetime        [default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime        [default: `CURRENT_TIMESTAMP`]
+
+  Note: '쿠폰 "정책". 실제 보유분은 User_Coupons.'
+}
+
+Table User_Coupons [headercolor: #F39C12] {
+  user_coupon_id int                [pk, increment]
+  user_id        int                [not null]
+  coupon_id      int                [not null]
+  status         user_coupon_status [not null, default: 'available']
+  reservation_id int                [note: 'reserved/used 일 때 묶인 예약']
+  issued_at      datetime           [default: `CURRENT_TIMESTAMP`]
+  expires_at     datetime           [not null, note: '발급 시점의 Coupons.valid_until 복사본 (소급 변경 방지)']
+  used_at        datetime
+
+  indexes {
+    (user_id, status) [name: 'idx_user_status']
+  }
+
+  Note: 'available → reserved(결제 시작) → used(승인) / 취소·실패 시 available 로 복귀'
+}
+
+
+// ============================================================
+//  5. 커뮤니티
+// ============================================================
+
+Table Posts [headercolor: #9B59B6] {
+  post_id       int          [pk, increment]
+  user_id       int          [not null]
+  title         varchar(255) [not null]
+  content       text         [not null]
+  category      varchar(50)
+  image_url     varchar(255)
+  salon_id      int          [note: '연관 미용실 (선택)']
+  view_count    int          [default: 0]
+  like_count    int          [default: 0]
+  dislike_count int          [default: 0]
+  report_count  int          [default: 0]
+  status        post_status  [default: 'visible', note: '누적 신고 시 자동 블라인드']
+  created_at    datetime     [default: `CURRENT_TIMESTAMP`]
+  updated_at    datetime     [default: `CURRENT_TIMESTAMP`]
+}
+
+Table Comments [headercolor: #9B59B6] {
+  comment_id int      [pk, increment]
+  post_id    int      [not null]
+  user_id    int      [not null]
+  content    text     [not null]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+Table post_likes [headercolor: #9B59B6] {
+  like_id       int           [pk, increment]
+  post_id       int           [not null]
+  user_id       int           [not null]
+  reaction_type reaction_type [not null]
+  created_at    datetime      [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (post_id, user_id) [unique, name: 'uk_post_user', note: '게시글당 1인 1반응']
+  }
+}
+
+Table post_reports [headercolor: #9B59B6] {
+  report_id     int           [pk, increment]
+  post_id       int           [not null]
+  user_id       int           [not null]
+  reason        report_reason [not null, default: 'other']
+  reason_detail varchar(255)  [note: "reason='other' 일 때 직접 입력"]
+  created_at    datetime      [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (post_id, user_id) [unique, name: 'uk_post_user', note: '중복 신고 방지']
+  }
+}
+
+Table comment_reports [headercolor: #9B59B6] {
+  report_id     int           [pk, increment]
+  comment_id    int           [not null]
+  user_id       int           [not null]
+  reason        report_reason [not null, default: 'other']
+  reason_detail varchar(255)
+  created_at    datetime      [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (comment_id, user_id) [unique, name: 'uk_comment_user', note: '중복 신고 방지']
+  }
+}
+
+
+// ============================================================
+//  6. 1:1 채팅
+// ============================================================
+
+Table Chats [headercolor: #16A085] {
+  chat_id    int      [pk, increment]
+  user1_id   int      [not null, note: '고객 — 순서 고정']
+  user2_id   int      [not null, note: '점주 — 순서 고정']
+  salon_id   int      [not null]
+  created_at datetime [default: `CURRENT_TIMESTAMP`]
+  updated_at datetime [default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (user1_id, salon_id) [unique, name: 'uq_chats_customer_salon', note: '고객+매장당 방 하나']
+  }
+
+  Note: 'user1_id = 고객, user2_id = 점주 순서를 지켜야 UNIQUE 제약과 단일 조건 조회가 성립한다.'
+}
+
+Table Messages [headercolor: #16A085] {
+  message_id      int      [pk, increment]
+  chat_id         int      [not null]
+  sender_id       int      [not null]
+  message_content text     [not null]
+  is_read         tinyint  [not null, default: 0, note: '안읽음 배지용']
+  sent_at         datetime [default: `CURRENT_TIMESTAMP`]
+}
+
+
+// ============================================================
+//  7. 관리자 광고
+// ============================================================
+
+Table Advertisements [headercolor: #7F8C8D] {
+  advertisement_id int          [pk, increment]
+  title            varchar(200) [not null]
+  description      varchar(500)
+  image_url        varchar(500) [not null]
+  target_url       varchar(1000) [note: '배너 클릭 시 이동할 주소']
+  display_order    int          [not null, default: 0, note: '작을수록 먼저']
+  active           boolean      [not null, default: true]
+  start_at         datetime     [note: 'NULL 이면 제한 없음']
+  end_at           datetime     [note: 'NULL 이면 제한 없음']
+  created_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at       datetime     [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (active, start_at, end_at, display_order) [name: 'idx_advertisements_exposure']
+  }
+
+  Note: '특정 매장에 묶이는 Promotions 와 달리, 관리자가 직접 운영하는 메인 배너. FK 없음.'
+}
+
+
+// ============================================================
+//  관계 (Foreign Keys)
+// ============================================================
+
+// -- 계정 / 권한 --
+Ref: OwnerRequests.user_id      > Users.user_id
+Ref: OwnerRequests.processed_by > Users.user_id
+Ref: user_sanctions.user_id     > Users.user_id
+
+// -- 매장 --
+Ref: Salons.owner_id                > Users.user_id
+Ref: Services.salon_id              > Salons.salon_id
+Ref: Stylists.salon_id              > Salons.salon_id
+Ref: Salon_Operating_Hours.salon_id > Salons.salon_id
+Ref: Stylist_Schedules.stylist_id   > Stylists.stylist_id
+Ref: SalonNotices.salon_id          > Salons.salon_id
+Ref: Promotions.salon_id            > Salons.salon_id
+
+// -- 예약 --
+Ref: Reservations.user_id    > Users.user_id
+Ref: Reservations.salon_id   > Salons.salon_id
+Ref: Reservations.stylist_id > Stylists.stylist_id
+Ref: Reservations.service_id > Services.service_id
+
+// -- 결제 / 리뷰 / 찜 / 포인트 --
+Ref: Payments.reservation_id      - Reservations.reservation_id  // 1:1 (UNIQUE)
+Ref: Payments.user_id             > Users.user_id
+Ref: Payments.user_coupon_id      > User_Coupons.user_coupon_id
+Ref: Reviews.reservation_id       - Reservations.reservation_id  // 1:1 (UNIQUE)
+Ref: Reviews.user_id              > Users.user_id
+Ref: Reviews.salon_id             > Salons.salon_id
+Ref: Wishlists.user_id            > Users.user_id
+Ref: Wishlists.salon_id           > Salons.salon_id
+Ref: Point_Transactions.user_id        > Users.user_id
+Ref: Point_Transactions.reservation_id > Reservations.reservation_id
+
+// -- 쿠폰 --
+Ref: Coupons.promotion_id      > Promotions.promotion_id
+Ref: Coupons.salon_id          > Salons.salon_id
+Ref: Coupons.service_id        > Services.service_id
+Ref: User_Coupons.user_id        > Users.user_id
+Ref: User_Coupons.coupon_id      > Coupons.coupon_id
+Ref: User_Coupons.reservation_id > Reservations.reservation_id
+
+// -- 커뮤니티 --
+Ref: Posts.user_id            > Users.user_id
+Ref: Posts.salon_id           > Salons.salon_id
+Ref: Comments.post_id         > Posts.post_id
+Ref: Comments.user_id         > Users.user_id
+Ref: post_likes.post_id       > Posts.post_id
+Ref: post_likes.user_id       > Users.user_id
+Ref: post_reports.post_id     > Posts.post_id [delete: cascade]
+Ref: post_reports.user_id     > Users.user_id
+Ref: comment_reports.comment_id > Comments.comment_id [delete: cascade]
+Ref: comment_reports.user_id    > Users.user_id
+
+// -- 채팅 --
+Ref: Chats.user1_id    > Users.user_id
+Ref: Chats.user2_id    > Users.user_id
+Ref: Chats.salon_id    > Salons.salon_id
+Ref: Messages.chat_id  > Chats.chat_id
+Ref: Messages.sender_id > Users.user_id
+
+
+// ============================================================
+//  도메인 그룹 (dbdiagram.io 에서 색으로 묶여 보인다)
+// ============================================================
+
+TableGroup "계정 / 권한" [color: #3498DB] {
+  Users
+  OwnerRequests
+  user_sanctions
+}
+
+TableGroup "매장" [color: #27AE60] {
+  Salons
+  Services
+  Stylists
+  Salon_Operating_Hours
+  Stylist_Schedules
+  SalonNotices
+  Promotions
+}
+
+TableGroup "예약 / 결제" [color: #E74C3C] {
+  Reservations
+  Payments
+  Reviews
+  Wishlists
+  Point_Transactions
+}
+
+TableGroup "쿠폰" [color: #F39C12] {
+  Coupons
+  User_Coupons
+}
+
+TableGroup "커뮤니티" [color: #9B59B6] {
+  Posts
+  Comments
+  post_likes
+  post_reports
+  comment_reports
+}
+
+TableGroup "채팅" [color: #16A085] {
+  Chats
+  Messages
+}
+
+TableGroup "광고" [color: #7F8C8D] {
+  Advertisements
+}
