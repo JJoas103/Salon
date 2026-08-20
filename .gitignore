@@ -10,6 +10,13 @@
 /.project
 /bin/
 
+# npm — 이 프로젝트는 node 를 쓰지 않는다.
+# 파이썬 FastAPI 를 설치하려다 npm 의 동명이인 패키지(fastapi)를 받은 흔적이 있어 통째로 막아둔다.
+# 나중에 실제로 node 도구를 도입하면 package.json 은 이 목록에서 빼고 커밋할 것.
+/node_modules/
+/package.json
+/package-lock.json
+
 # OS
 Thumbs.db
 .DS_Store
