@@ -156,7 +156,17 @@
                   <span class="status-badge">이용 완료</span>
                 </c:when>
                 <c:when test="${reserve.status eq 'cancelled'}">
-                  <span class="status-badge">예약 취소</span>
+                  <c:choose>
+                    <c:when test="${reserve.cancelType eq 'no_show'}">
+                      <span class="status-badge">노쇼 처리</span>
+                    </c:when>
+                    <c:when test="${reserve.cancelType eq 'rejected'}">
+                      <span class="status-badge">매장 거절</span>
+                    </c:when>
+                    <c:otherwise>
+                      <span class="status-badge">예약 취소</span>
+                    </c:otherwise>
+                  </c:choose>
                 </c:when>
                 <c:otherwise>
                   <span class="status-badge">${reserve.status}</span>
@@ -198,6 +208,14 @@
                     </c:if>
                   </strong>
                 </div>
+
+                <%-- 점주가 접은 건만 사유가 있음. 손님 자가 취소는 사유를 받지 않아 이 칸이 안 뜸 --%>
+                <c:if test="${not empty reserve.rejectReason}">
+                  <div class="res-meta-item">
+                    <span>${reserve.cancelType eq 'no_show' ? '노쇼 처리 사유' : '매장 거절 사유'}</span>
+                    <strong><c:out value="${reserve.rejectReason}"/></strong>
+                  </div>
+                </c:if>
               </div>
 
               <div style="display:flex; flex-direction:column; gap:8px;">

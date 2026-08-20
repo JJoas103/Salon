@@ -21,6 +21,7 @@ public class ReservationVO {
     private String salonName; // 매장명 (salons.name)
     private String transactionId; // 주문번호 (payments.transaction_id)
     private String paymentMethod; // 결제수단 (payments.payment_method)
+    private String paymentStatus; // pending/completed/failed/refunded (payments.payment_status)
     private int amount; // 결제금액 (payments.amount)
     private String serviceName; // 시술명(service.name)
     private String category; // 시술 카테고리 (services.category)
@@ -121,6 +122,8 @@ public class ReservationVO {
     public void setTransactionId(String transactionId) { this.transactionId = transactionId; }
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public String getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(String paymentStatus) { this.paymentStatus = paymentStatus; }
     public int getAmount() { return amount; }
     public void setAmount(int amount) { this.amount = amount; }
     public String getRejectReason() { return rejectReason; }

@@ -113,14 +113,20 @@ public class ReservationService {
         }
         if ("ZERO".equals(provider)) {
             // 쿠폰·적립금이 정가를 전부 덮어 외부 결제사를 거치지 않은 건 (ZeroAmountGateway)
-            reservation.setDisplayPayment("적립금·쿠폰으로 전액 결제");
+            reservation.setDisplayPayment(withRefundMark(reservation, "적립금·쿠폰으로 전액 결제"));
             return;
         }
 
         String method = methodLabelOf(reservation.getPaymentMethod());
         String providerLabel = "KAKAOPAY".equals(provider) ? "카카오페이" : provider;
-        reservation.setDisplayPayment(
-                method == null ? providerLabel : providerLabel + " (" + method + ")");
+        reservation.setDisplayPayment(withRefundMark(reservation,
+                method == null ? providerLabel : providerLabel + " (" + method + ")"));
+    }
+
+    // 취소된 예약에서는 돈이 돌아갔는지가 결제수단보다 중요함
+    // 노쇼로 마감된 건은 환불이 없어 이 표시가 붙지 않고, 그래서 둘이 화면에서 갈림
+    private String withRefundMark(ReservationVO reservation, String label) {
+        return "refunded".equals(reservation.getPaymentStatus()) ? label + " · 환불 완료" : label;
     }
 
     /**
@@ -580,6 +586,8 @@ public class ReservationService {
                 reservation.setDisplayStatus("노쇼");
             } else if (reservation.getRejectReason() != null) {
                 reservation.setDisplayStatus("거절됨");
+            } else if ("user_cancelled".equals(reservation.getCancelType())) {
+                reservation.setDisplayStatus("손님 취소");
             } else {
                 reservation.setDisplayStatus("취소됨"); // 결제 이탈로 자리만 비운 건
             }
@@ -622,37 +630,17 @@ public class ReservationService {
         if (!"confirmed".equals(reservation.getStatus())) {
             throw new IllegalArgumentException("이미 처리된 예약입니다.");
         }
-        boolean started = !LocalDateTime.now().isBefore(LocalDateTime.parse(
-                reservation.getReservationTime().substring(0, 16).replace(' ', 'T')));
         // 아직 오지도 않은 손님을 노쇼로 만들 수는 없으므로, 노쇼는 예약 시각이 지난 뒤에만 가능
-        if (noShow && !started) {
+        if (noShow && !isStarted(reservation)) {
             throw new IllegalArgumentException("아직 예약 시간이 되지 않아 노쇼로 처리할 수 없습니다.");
         }
 
         // 환불은 거절일 때만. 노쇼는 결제 상태를 그대로 둠
-        // 카카오 취소가 실패하면 예외로 트랜잭션이 통째로 롤백돼서, 예약은 confirmed 인 채로
-        // (환불은 안 됐는데 예약만 취소되는 상태가 제일 위험해서 순서를 이렇게 잡음)
+        //
+        // 노쇼에서 적립금·쿠폰을 되돌리지 않는 것도 같은 이유임. 환불이 없어 매장이 결제액을
+        // 그대로 가지므로, 적립금만 돌려주면 그 몫을 플랫폼이 떠안게 됨
         if (!noShow) {
-            PaymentVO payment = paymentMapper.findByReservationId(reservationId);
-            if (payment != null && "completed".equals(payment.getPaymentStatus())) {
-                try {
-                    kakaoPayService.cancel(payment.getTransactionId(), payment.getAmount());
-                } catch (IllegalStateException e) {
-                    // 카카오 쪽 원문 메시지가 그대로 뜨면 점주는 처리가 된 건지조차 알 수 없어서 문구를 바꿔 던짐
-                    throw new IllegalStateException("환불에 실패해 처리가 취소되었습니다. 잠시 후 다시 시도해 주세요.", e);
-                }
-                // 돈을 되돌렸으면 적립금·쿠폰도 함께 되돌린다. 매장 사정으로 취소된 것이라
-                // 사용자가 쓴 할인 수단까지 잃을 이유가 없다.
-                //
-                // 노쇼(위 if 밖)에서는 되돌리지 않는다. 환불이 없어 매장이 결제액을 그대로
-                // 가지므로, 적립금만 돌려주면 그 몫을 플랫폼이 떠안게 된다.
-                // 원복 여부는 환불 여부와 항상 같이 간다.
-                if (paymentMapper.markRefunded(reservationId) == 1) {
-                    pointService.restore(reservationId);
-                    // release 가 아니라 refund 다. 확정된 쿠폰은 used 상태라 release 로는 안 잡힌다.
-                    couponService.refund(reservationId);
-                }
-            }
+            refundIfPaid(reservationId);
         }
 
         // UPDATE 쪽에도 status='confirmed' 조건이 걸려 있어서, 위 검증 통과 뒤에 누가 먼저
@@ -663,12 +651,67 @@ public class ReservationService {
         }
     }
 
-    /** 사용자가 자신의 확정 예약을 취소 */
+    /**
+     * 사용자가 자신의 확정 예약을 취소. 결제까지 끝난 건이면 환불·적립금·쿠폰 원복까지 함께 함
+     *
+     * 검증 순서와 환불 시점은 점주 거절(rejectReservation)과 같음 — 환불을 먼저 부르고,
+     * 실패하면 예외로 통째로 롤백해 예약을 confirmed 로 남김
+     */
     @Transactional
     public void cancelReservation(int reservationId, int userId) {
-        int result = resvMapper.cancelReservation(reservationId, userId);
-        if (result == 0) {
+        ReservationVO reservation = resvMapper.findById(reservationId);
+        if (reservation == null || reservation.getUserId() != userId
+                || !"confirmed".equals(reservation.getStatus())) {
             throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
         }
+        // 화면도 지난 예약의 취소 버튼을 감추지만 그 검사가 브라우저에만 있어서, POST 를 직접 부르면 통과했음
+        if (isStarted(reservation)) {
+            throw new IllegalArgumentException("이미 예약 시간이 지나 취소할 수 없습니다.");
+        }
+
+        refundIfPaid(reservationId);
+
+        // UPDATE 에도 status='confirmed' 가 걸려 있어, 검증을 통과한 뒤 다른 요청이 먼저 처리했으면 0행이 됨
+        if (resvMapper.cancelReservation(reservationId, userId) == 0) {
+            throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
+        }
+    }
+
+    /**
+     * 완료된 결제를 되돌린다. 점주 거절과 손님 취소가 같이 씀
+     *
+     * 카카오 취소가 실패하면 예외를 그대로 올려 부른 쪽 트랜잭션까지 롤백시킴
+     * 환불은 안 됐는데 예약만 취소된 상태가 제일 위험해서 순서를 이렇게 잡음
+     */
+    private void refundIfPaid(int reservationId) {
+        PaymentVO payment = paymentMapper.findByReservationId(reservationId);
+        if (payment == null || !"completed".equals(payment.getPaymentStatus())) {
+            return; // 결제까지 못 간 예약은 되돌릴 것이 없음
+        }
+
+        // ZERO 는 적립금·쿠폰이 정가를 전부 덮어 카카오를 거치지 않은 건이라 취소할 결제가 없음
+        // 그냥 cancel 을 부르면 tid 가 'ZERO-{예약번호}' 라 카카오가 거절하고, 그 예외로 처리 전체가
+        // 롤백됨 — 전액 할인 예약은 점주가 거절조차 할 수 없었음
+        if (!"ZERO".equals(payment.getPgProvider())) {
+            try {
+                kakaoPayService.cancel(payment.getTransactionId(), payment.getAmount());
+            } catch (IllegalStateException e) {
+                // 카카오 쪽 원문 메시지가 그대로 뜨면 처리가 된 건지조차 알 수 없어서 문구를 바꿔 던짐
+                throw new IllegalStateException("환불에 실패해 처리가 취소되었습니다. 잠시 후 다시 시도해 주세요.", e);
+            }
+        }
+
+        // 돈을 되돌렸으면 사용자가 쓴 할인 수단도 함께 되돌림
+        if (paymentMapper.markRefunded(reservationId) == 1) {
+            pointService.restore(reservationId);
+            // release 가 아니라 refund 임. 확정된 쿠폰은 used 상태라 release 로는 안 잡힘
+            couponService.refund(reservationId);
+        }
+    }
+
+    // 예약 시각이 이미 됐는지 (지났거나 지금)
+    private boolean isStarted(ReservationVO reservation) {
+        return !LocalDateTime.now().isBefore(LocalDateTime.parse(
+                reservation.getReservationTime().substring(0, 16).replace(' ', 'T')));
     }
 }
