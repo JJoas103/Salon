@@ -40,11 +40,14 @@ docs/checkout-handoff.md
 docs/checkout-todo.md
 sql/migration_2026-08-04_consolidated.sql
 
-# ai-service 이식 작업용 개인 메모(강사 실습본 참조 내용 포함, 팀 공유 문서 아님)
-docs/ai-chatbot-todo.md
+# AI 관련 개인 메모는 통째로 제외한다. 팀 공유 문서가 아니다.
+# 슬래시 없이 ai-* 로 적으면 소스 디렉토리 ai-service/ 까지 무시되므로 docs/ 아래로 한정한다.
+docs/ai-*
+# 세팅가이드는 팀원(주로 Windows)이 기동할 때 필요하므로 예외로 둔다.
+!docs/ai-service-세팅가이드.md
 
-# ai-service 추가 아이디어 메모 — 아직 결정된 계획 아니라 팀 공유 문서 아님
-docs/ai-service-ideas.txt
+# 발표 Q&A 대비 개인 자료
+docs/내가-구현한-기능.md
 
 # 강의자료 zip 이 병합 중에 딸려 들어온 적이 있어 통째로 막아둔다.
 # (그 안에 강사 계정 OpenAI 키가 들어있었다)
