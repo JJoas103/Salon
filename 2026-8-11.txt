@@ -1,0 +1,145 @@
+==========================================================================
+[1. 커뮤니티 게시글 리스트 - 카드 크기 축소 + 페이지네이션] 진행상황
+==========================================================================
+
+## 요구사항
+- 커뮤니티 화면 글 리스트의 카드가 너무 커서 줄이고 싶음
+- 게시글이 10개 넘어가면 1,2,3... 페이지 번호로 넘어갈 수 있게
+
+## 백엔드 변경
+- PostMapper.java / PostMapper.xml
+  - findAll, findByCategory, search 3개 select에 offset/size 파라미터 + LIMIT #{offset}, #{size} 추가
+  - countAll, countByCategory, countSearch 3개 신규 count select 추가 (총 페이지 수 계산용)
+- PostService.java / PostServiceImpl.java
+  - getPostList(category, sort) -> getPostList(category, sort, page, size)로 변경
+  - searchPosts도 동일하게 page/size 추가
+  - getPostListCount(category), getSearchCount(searchType, keyword) 신규 추가
+- CommunityController.java
+  - list() 핸들러에 page(기본 1) 파라미터 추가, size=10 고정
+  - totalPages = Math.ceil(totalCount / size) 계산해서 모델에 추가
+  - 검색 결과 건수 표시가 fn:length(posts)(페이지당 개수)였던 걸 totalCount(전체 개수)로 수정
+    (페이지네이션 도입하면서 원래 있던 카운트가 깨질 뻔한 부분, 같이 고침)
+
+## 프론트엔드 변경
+- common/community/list.jsp: .post-card-list 다음에 페이지네이션 블록 추가
+  (owner/reservations.jsp의 .board-pagination/.board-page 패턴 재사용,
+   category/sort/keyword/searchType 쿼리파라미터 유지하며 페이지 이동)
+- resources/css/user.css
+  - .post-card 계열 사이즈 축소 (padding 22px 26px -> 12px 16px, 타이틀 16px -> 14px,
+    미리보기 2줄 -> 1줄, 썸네일 84px -> 56px 등)
+  - .board-pagination/.board-page/.board-page.is-active 신규 추가 (owner.css 컨벤션을 user.css로 이식)
+
+
+==========================================================================
+[2. 마이페이지 "내 커뮤니티 활동" 탭 추가] 진행상황
+==========================================================================
+
+## 요구사항
+- 마이페이지에서 내가 커뮤니티에 쓴 글/댓글을 확인할 수 있는 탭 필요
+- 누가 내 글에 댓글을 달았는지도 마이페이지에서 확인 가능하게
+- 마이페이지 기존 틀(사이드바 + 프레임)은 유지
+
+## 설계
+- 이 프로젝트 마이페이지는 허브 앤 스포크 구조(mypage.jsp는 통계+메뉴만, 실제 "탭"은
+  쿠폰함/적립금/작성한 리뷰처럼 각각 독립 라우트인 스포크 페이지) -> 동일 컨벤션으로
+  신규 스포크 페이지 /common/my-community 추가
+- 페이지 내부 "내가 쓴 글/내가 쓴 댓글/내 글에 달린 댓글" 3분류는 커뮤니티 목록의
+  카테고리 탭(.cat-tab, 쿼리파라미터 ?tab= 전환) 패턴 재사용
+
+## 백엔드 변경
+- PostMapper.java/xml: findByUserId(userId) 추가 (내가 쓴 글, 페이지네이션 없이 전체 조회)
+- CommentMapper.java/xml
+  - findByUserId(userId) 추가 (내가 쓴 댓글, Posts JOIN해서 post_title 채움)
+  - findRepliesToUserPosts(userId) 추가 (내 글에 달린 남의 댓글, 본인이 자기 글에 단 댓글은 제외)
+  - countRepliesToUserPosts(userId) 추가 (마이페이지 뱃지 숫자 전용 COUNT)
+- PostService.java/PostServiceImpl.java: getMyPosts, getMyComments, getRepliesToMyPosts,
+  countRepliesToMyPosts 추가 (댓글 관련 로직은 원래도 PostService에 있어서 그대로 이어서 구현,
+  별도 CommentService 안 만듦)
+- CommonController.java
+  - PostService 의존성 추가
+  - mypage()에 communityReplyCount(받은 댓글 수) 모델 속성 추가
+  - GET /common/my-community?tab=posts|comments|replies 핸들러 추가
+
+## 프론트엔드 변경
+- common/mypage.jsp: "내 커뮤니티 활동" 메뉴 항목 추가 (받은 댓글 수 뱃지, menu-item-modern 스타일)
+- 신규 common/my-community.jsp: 마이페이지 프레임 유지, 서브탭 3개(글/댓글/받은 댓글),
+  글 탭은 커뮤니티 목록의 .post-card 마크업 재사용, 댓글 탭은 신규 카드 스타일
+- resources/css/user.css: .comment-activity-list/.comment-activity-card/-post/-content/-meta 추가
+
+## 추가 요청: "새 댓글" 뱃지가 확인해도 안 줄어드는 문제
+- 사용자 지적: 뱃지가 사실 누적 총합이라 계속 늘어나기만 하고 리셋이 안 됨
+- 해결: Users 테이블에 last_reply_check_at DATETIME 컬럼 추가, "내 글에 달린 댓글" 탭을
+  열 때마다 현재 시각으로 갱신, countRepliesToUserPosts 쿼리가
+  "last_reply_check_at 이후에 달린 댓글"만 세도록 조건 추가 -> 진짜 안읽음 카운트로 동작
+
+## DB 변경 (로컬 salu DB에 mysql 클라이언트로 실제 적용 완료)
+- sql/schema.sql: Users 테이블에 last_reply_check_at DATETIME NULL 추가
+- 신규 sql/migration_my_community.sql: ALTER TABLE Users ADD COLUMN last_reply_check_at
+- UserMapper.java/xml: updateLastReplyCheckAt(userId) 추가
+- UserService.java: markReplyCheck(userId) 추가 (userMapper.updateLastReplyCheckAt 래핑)
+- CommonController.myCommunity(): tab="replies"일 때 markReplyCheck 호출
+
+
+==========================================================================
+[3. 게시글 삭제돼도 댓글 기록은 로그로 보존 + 죽은 기록 수동 삭제(X)] 진행상황
+==========================================================================
+
+## 요구사항
+- 지금은 게시글을 삭제하면 "내가 쓴 댓글"/"내 글에 달린 댓글" 기록까지 같이 사라짐
+- 그러지 말고 로그처럼: 게시글이 삭제됐으면 회색으로 "삭제된 게시글입니다" 표시하고
+  내가 무슨 댓글을 썼는지 내용은 남아있게
+- 옆에 X 표시로 그 기록을 삭제하고 싶으면 삭제할 수 있게
+- (대화로 확정) X는 게시글이 이미 삭제된(회색) 항목에만 뜨고, 누르면 DB에서 실제 영구 삭제
+
+## 설계
+- 댓글이 살아남으려면 Posts 행 자체가 사라지면 안 됨 -> 기존 "블라인드"(status='blinded')
+  패턴을 그대로 확장해서 글 삭제도 하드 삭제 대신 소프트 삭제(status='deleted')로 전환
+- 기존 목록/검색/상세/"내가 쓴 글" 탭은 전부 이미 status='visible' 필터가 있어서
+  소프트 삭제된 글은 자동으로 안 보임 (추가 수정 불필요)
+- "내가 쓴 댓글"/"내 글에 달린 댓글" 쿼리에서만 status='visible' 필터를 빼고,
+  댓글에 연결된 게시글 상태(post_status)를 같이 조회해서 화면에서 분기
+
+## DB 변경 (로컬 salu DB에 실제 적용 완료)
+- sql/schema.sql: Posts.status ENUM에 'deleted' 추가 ('visible','blinded','deleted')
+- 신규 sql/migration_comment_log.sql: ALTER TABLE Posts MODIFY COLUMN status ENUM(...)
+
+## 백엔드 변경
+- PostMapper.java/xml: softDelete(postId) 추가 (UPDATE Posts SET status='deleted')
+- PostServiceImpl.deletePostCascade() 수정
+  - commentMapper.deleteByPostId(...) 호출 제거 (댓글은 이제 안 지움)
+  - postMapper.delete(...) (하드 삭제) -> postMapper.softDelete(...)로 교체
+  - postReportMapper/postLikeMapper의 deleteByPostId, fileService.deleteFile은 그대로 유지
+- CommentVO.java: postStatus 필드 추가 (Posts JOIN 조회 전용, DB 컬럼 아님)
+- CommentMapper.xml
+  - findByUserId, findRepliesToUserPosts: AND p.status='visible' 필터 제거,
+    SELECT에 p.status AS post_status 추가, resultMap에 post_status -> postStatus 매핑 추가
+  - countRepliesToUserPosts(마이페이지 뱃지)는 그대로 둠 (여전히 visible 글 기준으로만 카운트)
+- PostService.java/PostServiceImpl.java: removeCommentAsPostOwner(commentId, userId) 신규 추가
+  - 내 글에 달린 남의 댓글을 지우는 새 권한 경로 (기존 removeComment는 댓글 작성자만 허용)
+  - 게시글 주인 본인 확인 + 게시글 status가 'visible'이 아닐 때만 허용(서버에서도 X버튼 규칙 강제)
+- CommonController.java: 신규 엔드포인트 2개
+  - POST /common/my-community/comments/{commentId}/delete (내가 쓴 댓글용, removeComment 재사용)
+  - POST /common/my-community/replies/{commentId}/delete (내 글에 달린 댓글용, removeCommentAsPostOwner)
+
+## 프론트엔드 변경
+- common/my-community.jsp: 댓글/받은 댓글 탭 카드를 postStatus 기준으로 분기
+  - visible: 기존처럼 클릭 가능한 카드(제목+링크), X 없음
+  - 그 외(blinded/deleted): 회색 카드, 제목 대신 "삭제된 게시글입니다", 댓글 내용은 그대로 표시,
+    우측에 X 삭제 폼(common/community/detail.jsp의 댓글삭제 폼 패턴 재사용)
+- resources/css/user.css: .comment-activity-card.is-dead(회색 스타일), .comment-activity-meta를
+  flex row로 변경해서 날짜와 X버튼 한 줄 배치
+
+## 검증 상태
+- 매 변경마다 mvn clean package -DskipTests 빌드 성공 확인
+- sql/migration_my_community.sql, sql/migration_comment_log.sql 둘 다 로컬 salu DB에
+  mysql 클라이언트(C:\Program Files\MySQL\MySQL Server 8.0\bin\mysql.exe)로 직접 적용,
+  DESCRIBE/SHOW COLUMNS로 컬럼 반영 확인함
+- 브라우저로 직접 클릭해보는 E2E 테스트는 아직 안 한 상태
+  (세션 중간에 로컬 MySQL 'root'@'localhost' Access denied 이슈가 있었으나 db.properties의
+   비밀번호(kor03187)로 CLI 접속은 정상 확인됨 - Tomcat 쪽 원인은 미확인 상태로 남음)
+
+
+## 오늘 남은 일 / 다음에 확인할 것
+- 실제 브라우저로 3개 기능(페이지네이션, 내 커뮤니티 활동 탭, 삭제글 댓글 로그+X삭제) 전부
+  사람이 눈으로 보는 E2E 테스트 필요
+- Tomcat에서 DB 연결 에러가 재현되는지 재확인 필요 (재현되면 Tomcat 재시작/재배포 먼저 시도)

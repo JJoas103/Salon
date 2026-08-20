@@ -64,6 +64,14 @@ public interface CouponMapper {
     /** 발급 경로별 정책 목록. 회원가입 시 issueType='signup' 을 전부 발급한다. */
     List<CouponVO> findByIssueType(String issueType);
 
+    /**
+     * 사용자가 입력한 쿠폰 코드로 정책을 찾는다.
+     * coupon_code 가 NULL 인 정책(가입 자동발급 등)은 애초에 코드로 걸리지 않는다.
+     *
+     * @return 없으면 null. 발급 가능 여부는 여기서 보지 않고 issueCoupon 이 판정한다.
+     */
+    CouponVO findByCouponCode(String couponCode);
+
     // ---- 관리자 ----
 
     /** 관리자 목록 — 발급/사용 집계를 함께 담아 온다 */

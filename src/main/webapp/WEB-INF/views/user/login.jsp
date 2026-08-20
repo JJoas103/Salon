@@ -21,6 +21,10 @@
     <c:if test="${param.error != null}">
       <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 이메일 또는 비밀번호가 올바르지 않습니다.</div>
     </c:if>
+    <%-- 소셜 로그인 실패는 비밀번호와 무관하므로 별도 안내. 원인은 서버 로그(OAuth2LoginFailureHandler)에 남는다 --%>
+    <c:if test="${param.socialError != null}">
+      <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 소셜 로그인에 실패했습니다. 잠시 후 다시 시도해 주세요.</div>
+    </c:if>
     <c:if test="${param.required != null}">
       <div class="auth-alert"><i class="fas fa-circle-exclamation"></i> 로그인이 필요합니다.</div>
     </c:if>
@@ -35,6 +39,11 @@
         </div>
         <button class="btn-modern btn-primary" style="width: 100%; margin-top: 15px;">로그인</button>
     </form>
+    <div class="auth-divider">또는</div>
+    <div class="social-login-row">
+      <a href="${pageContext.request.contextPath}/oauth2/authorization/google" class="btn-social btn-google"><i class="fab fa-google"></i> Google</a>
+      <a href="${pageContext.request.contextPath}/oauth2/authorization/naver" class="btn-social btn-naver"><strong>N</strong> 네이버</a>
+    </div>
 <div class="auth-footer">
   아직 계정이 없으신가요?
   <a href="${pageContext.request.contextPath}/user/join" class="auth-link">회원가입</a>

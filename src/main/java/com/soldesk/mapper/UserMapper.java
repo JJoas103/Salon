@@ -15,11 +15,21 @@ public interface UserMapper {
     /** 이메일로 회원 조회 (로그인 / 중복확인) */
     UserVO findByEmail(String email);
 
+    /** 소셜 로그인 최초 가입 (password는 항상 null) */
+    void insertOAuthUser(UserVO user);
+
+    /** 기존 로컬 계정에 소셜 로그인 수단 연동 (이메일 기준 자동 연동) */
+    void linkProvider(@Param("email") String email, @Param("provider") String provider,
+                      @Param("providerId") String providerId);
+
     // user_id로 조회
     UserVO findById(int userId);
 
     // 이메일 기준 업데이트
     void updateUser(UserVO userVO);
+
+    /** 마이페이지 "알림 설정" on/off 토글 (현재 값 반전) */
+    void toggleNotifications(int userId);
 
     // 회원 제재(정지) 상태 갱신, user_id 기준
     void updateSuspension(@Param("userId") int userId, @Param("status") String status,
@@ -61,4 +71,7 @@ public interface UserMapper {
 
     // 현재 제재중(정지/영구정지)인 회원 목록 -- CustomUserDetails.currentlySuspended와 동일한 조건
     List<UserVO> findSanctionedUsers();
+
+    // 마이페이지 "내 글에 달린 댓글" 탭 확인 시각 갱신 -- 안읽음 배지 리셋용
+    void updateLastReplyCheckAt(@Param("userId") int userId);
 }

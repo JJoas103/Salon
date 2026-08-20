@@ -19,8 +19,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.PostService;
 import com.soldesk.service.SalonService;
+import com.soldesk.service.StylistService;
 import com.soldesk.service.UserService;
+import com.soldesk.vo.OwnerRequestVO;
 import com.soldesk.vo.PostVO;
+import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserSanctionVO;
 import com.soldesk.vo.UserVO;
 
@@ -39,6 +42,9 @@ public class AdminController {
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private StylistService stylistService;
 
     private int currentAdminId(Authentication authentication){
         return userService.getUser(authentication.getName()).getUserId();
@@ -59,21 +65,64 @@ public class AdminController {
         if (page < 1) page = 1;
         if (size <= 0) size = 10;
 
-        int totalCount = salonService.countSalonsForAdmin(keyword, status);
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-
         model.addAttribute("user", userService.getUser(authentication.getName()));
-        model.addAttribute("salons", salonService.getSalonsForAdmin(keyword, status, page, size));
         model.addAttribute("keyword", keyword);
         model.addAttribute("status", status);
         model.addAttribute("page", page);
         model.addAttribute("size", size);
-        model.addAttribute("totalCount", totalCount);
-        model.addAttribute("totalPages", totalPages);
         model.addAttribute("activeSalonCount", salonService.countActiveSalons());
         model.addAttribute("newThisMonthCount", salonService.countNewSalonsThisMonth());
         model.addAttribute("activeReservationCount", salonService.countActiveReservations());
+
+        // 탭 배지 숫자는 어느 탭을 보고 있든 항상 필요하다
+        model.addAttribute("preparingSalonCount", salonService.getPreparingSalons().size());
+        model.addAttribute("additionalSalonRequestCount", ownerRequestService.countPendingAdditionalSalon());
+
+        if ("preparing".equals(status)) {
+            // 심사 대기 큐 — 2차 승인 전이라 보통 몇 건 안 돼서 검색/페이지네이션 없이 전체를 보여준다
+            List<SalonVO> preparing = salonService.getPreparingSalons();
+            model.addAttribute("salons", preparing);
+            // 체크리스트(주소/영업시간/시술메뉴/디자이너)는 매장마다 직접 조회 — 대기 큐가 커봐야 수십 건이라 N+1이어도 무방
+            Map<Integer, Boolean> hasAddress = new HashMap<>();
+            Map<Integer, Integer> hoursCount = new HashMap<>();
+            Map<Integer, Integer> serviceCount = new HashMap<>();
+            Map<Integer, Integer> stylistCount = new HashMap<>();
+            for (SalonVO salon : preparing) {
+                hasAddress.put(salon.getSalonId(), salon.getAddress() != null && !salon.getAddress().isBlank());
+                hoursCount.put(salon.getSalonId(), salonService.getOperatingHours(salon.getSalonId()).size());
+                serviceCount.put(salon.getSalonId(), salonService.getServices(salon.getSalonId()).size());
+                stylistCount.put(salon.getSalonId(), stylistService.findBySalonId(salon.getSalonId()).size());
+            }
+            model.addAttribute("hasAddress", hasAddress);
+            model.addAttribute("hoursCount", hoursCount);
+            model.addAttribute("serviceCount", serviceCount);
+            model.addAttribute("stylistCount", stylistCount);
+            model.addAttribute("totalCount", preparing.size());
+            model.addAttribute("totalPages", 1);
+        } else if ("requests".equals(status)) {
+            // 매장 추가 요청 큐 — 회원관리에서 옮겨온 승인/반려 처리
+            List<OwnerRequestVO> requests = ownerRequestService.getPendingAdditionalSalonRequests();
+            model.addAttribute("additionalSalonRequests", requests);
+            model.addAttribute("totalCount", requests.size());
+            model.addAttribute("totalPages", 1);
+        } else {
+            int totalCount = salonService.countSalonsForAdmin(keyword, status);
+            model.addAttribute("salons", salonService.getSalonsForAdmin(keyword, status, page, size));
+            model.addAttribute("totalCount", totalCount);
+            model.addAttribute("totalPages", (int) Math.ceil((double) totalCount / size));
+        }
         return "admin/salons";
+    }
+
+    @PostMapping("/salons/{salonId}/activate")
+    public String activateSalon(@PathVariable int salonId, RedirectAttributes redirectAttributes) {
+        try {
+            salonService.activateSalon(salonId);
+            redirectAttributes.addFlashAttribute("success", "매장을 승인했습니다. 이제 손님에게 노출됩니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/salons?status=preparing";
     }
 
     @PostMapping("/salons/{salonId}/close")
@@ -122,7 +171,7 @@ public class AdminController {
         model.addAttribute("activeCount", userService.countActiveMembers());
         model.addAttribute("newThisMonthCount", userService.countNewMembersThisMonth());
         model.addAttribute("deletedCount", userService.countDeletedMembers());
-        model.addAttribute("pendingOwnerRequestCount", ownerRequestService.countPending());
+        model.addAttribute("pendingOwnerRequestCount", ownerRequestService.countPendingPromotion());
         return "admin/members";
     }
 
@@ -224,16 +273,52 @@ public class AdminController {
         return "redirect:/admin/advertisements";
     }
 
+    // 회원관리 "점주 승격 요청" 탭 전용 — 매장 추가 요청은 매장관리(/admin/salons?status=requests)에서 처리한다.
     @PostMapping("/owner-requests/{id}/approve")
-    public String approveOwnerRequest(@PathVariable int id, Authentication authentication){
-        ownerRequestService.approve(id, currentAdminId(authentication));
-        // approve() 내부에서: 1) Users.user_type='owner' 2) OwnerRequests.status='approved'
+    public String approveOwnerRequest(@PathVariable int id, Authentication authentication,
+            RedirectAttributes redirectAttributes){
+        try {
+            ownerRequestService.approvePromotionRequest(id, currentAdminId(authentication));
+            // approve() 내부에서: 1) Users.user_type='owner' 2) OwnerRequests.status='approved'
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/members";
     }
 
     @PostMapping("/owner-requests/{id}/reject")
-    public String rejectOwnerRequest(@PathVariable int id, Authentication authentication){
-        ownerRequestService.reject(id, currentAdminId(authentication));
+    public String rejectOwnerRequest(@PathVariable int id, Authentication authentication,
+            RedirectAttributes redirectAttributes){
+        try {
+            ownerRequestService.rejectPromotionRequest(id, currentAdminId(authentication));
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
         return "redirect:/admin/members";
+    }
+
+    // 매장관리 "매장 추가 요청" 탭 전용 — 회원관리에서 이쪽으로 옮겨왔다.
+    @PostMapping("/salons/requests/{id}/approve")
+    public String approveSalonRequest(@PathVariable int id, Authentication authentication,
+            RedirectAttributes redirectAttributes){
+        try {
+            ownerRequestService.approveAdditionalSalonRequest(id, currentAdminId(authentication));
+            redirectAttributes.addFlashAttribute("success", "매장 추가 요청을 승인했습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/salons?status=requests";
+    }
+
+    @PostMapping("/salons/requests/{id}/reject")
+    public String rejectSalonRequest(@PathVariable int id, Authentication authentication,
+            RedirectAttributes redirectAttributes){
+        try {
+            ownerRequestService.rejectAdditionalSalonRequest(id, currentAdminId(authentication));
+            redirectAttributes.addFlashAttribute("success", "매장 추가 요청을 반려했습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/salons?status=requests";
     }
 }

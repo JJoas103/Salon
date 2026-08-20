@@ -71,18 +71,27 @@ public class CommunityController {
                        @RequestParam(required = false, defaultValue = "") String keyword,
                        @RequestParam(required = false, defaultValue = "title_content") String searchType,
                        @RequestParam(required = false, defaultValue = "latest") String sort,
+                       @RequestParam(required = false, defaultValue = "1") int page,
                        Model model) {
+        int size = 10;
         List<PostVO> posts;
+        int totalCount;
         if (!keyword.trim().isEmpty()) {
-            posts = postService.searchPosts(searchType, keyword, sort);
+            posts = postService.searchPosts(searchType, keyword, sort, page, size);
+            totalCount = postService.getSearchCount(searchType, keyword);
         } else {
-            posts = postService.getPostList(category, sort);
+            posts = postService.getPostList(category, sort, page, size);
+            totalCount = postService.getPostListCount(category);
         }
+        int totalPages = (int) Math.ceil((double) totalCount / size);
         model.addAttribute("posts", posts);
+        model.addAttribute("totalCount", totalCount);
         model.addAttribute("category", category);
         model.addAttribute("keyword", keyword);
         model.addAttribute("searchType", searchType);
         model.addAttribute("sort", sort);
+        model.addAttribute("page", page);
+        model.addAttribute("totalPages", totalPages);
         return "common/community/list";
     }
 

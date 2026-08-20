@@ -3,6 +3,7 @@ package com.soldesk.controller;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -35,6 +37,7 @@ import com.soldesk.service.StaffService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.ChatRoomVO;
 import com.soldesk.vo.SalonNoticeVO;
+import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.StylistScheduleVO;
 import com.soldesk.vo.StylistVO;
@@ -104,6 +107,13 @@ public class OwnerController {
             try {
                 model.addAttribute("salon", salonService.getSalonForOwner(salonId, user.getUserId()));
                 model.addAttribute("services", salonService.getServices(salonId));
+                // 화면에서 요일별로 바로 꺼내 쓸 수 있게 dayOfWeek('월'~'일')를 키로 하는 맵으로 넘긴다
+                Map<String, SalonOperatingHourVO> hoursByDay = new HashMap<>();
+                for (SalonOperatingHourVO hour : salonService.getOperatingHours(salonId)) {
+                    hoursByDay.put(hour.getDayOfWeek(), hour);
+                }
+                model.addAttribute("operatingHours", hoursByDay);
+                model.addAttribute("notices", salonNoticeService.getBySalonId(salonId));
             } catch (IllegalArgumentException e) {
                 // 세션의 selectedSalonId가 본인 소유가 아니면 빈 폼으로 둔다
             }
@@ -112,6 +122,97 @@ public class OwnerController {
             model.addAttribute("notices", List.of());
         }
         return "owner/store";
+    }
+
+    /**
+     * 준비중 매장의 필수정보 체크리스트 상태 — 사이드바는 모든 점주 화면에 떠 있어서
+     * (기본정보/영업시간/시술메뉴/직원관리처럼 서로 다른 컨트롤러가 각자 모델을 채우는) 페이지마다
+     * 이 값을 채워주는 대신, 사이드바 JS가 이 엔드포인트를 한 번 불러서 직접 채운다.
+     */
+    @GetMapping("/store/prep-status")
+    @ResponseBody
+    public Map<String, Object> prepStatus(Authentication authentication, HttpSession session) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("isPreparing", false);
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            return result;
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            SalonVO salon = salonService.getSalonForOwner(salonId, user.getUserId());
+            if (!"preparing".equals(salon.getActivationStatus())) {
+                return result;
+            }
+            boolean addrOk = salon.getAddress() != null && !salon.getAddress().isBlank();
+            boolean hoursOk = !salonService.getOperatingHours(salonId).isEmpty();
+            boolean menuOk = !salonService.getServices(salonId).isEmpty();
+            boolean stylistOk = !staffService.getStylists(salonId, user.getUserId()).isEmpty();
+
+            List<String> missingLabels = new ArrayList<>();
+            if (!addrOk) missingLabels.add("주소");
+            if (!hoursOk) missingLabels.add("영업시간");
+            if (!menuOk) missingLabels.add("시술메뉴");
+            if (!stylistOk) missingLabels.add("디자이너");
+
+            result.put("isPreparing", true);
+            result.put("totalCount", 4);
+            result.put("doneCount", 4 - missingLabels.size());
+            result.put("missingLabels", missingLabels);
+            result.put("addrOk", addrOk);
+            result.put("hoursOk", hoursOk);
+            result.put("menuOk", menuOk);
+            result.put("stylistOk", stylistOk);
+        } catch (IllegalArgumentException e) {
+            // 세션의 selectedSalonId가 본인 소유가 아니면 isPreparing=false 그대로 반환
+        }
+        return result;
+    }
+
+    // 요일 키(영문, 폼 파라미터용) ↔ DB ENUM('월'~'일') 매핑
+    private static final String[] HOUR_DAY_KEYS = { "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN" };
+    private static final String[] HOUR_DAY_KO = { "월", "화", "수", "목", "금", "토", "일" };
+
+    /** 영업시간 저장. 요일마다 open_MON=on 식으로 체크된 요일만 openTime_MON/closeTime_MON 을 읽는다 */
+    @PostMapping("/store/hours")
+    public String updateOperatingHours(Authentication authentication, HttpSession session,
+            HttpServletRequest request, RedirectAttributes redirectAttributes) {
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
+            return "redirect:/owner/store";
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        List<SalonOperatingHourVO> hours = new java.util.ArrayList<>();
+        try {
+            for (int i = 0; i < HOUR_DAY_KEYS.length; i++) {
+                String key = HOUR_DAY_KEYS[i];
+                if (request.getParameter("open_" + key) == null) {
+                    continue; // 체크 안 된 요일 = 휴무, 행 자체를 안 만든다
+                }
+                String openTime = request.getParameter("openTime_" + key);
+                String closeTime = request.getParameter("closeTime_" + key);
+                if (openTime == null || openTime.isBlank() || closeTime == null || closeTime.isBlank()) {
+                    throw new IllegalArgumentException(HOUR_DAY_KO[i] + "요일 영업시간을 입력해주세요.");
+                }
+                if (closeTime.compareTo(openTime) <= 0) {
+                    throw new IllegalArgumentException(HOUR_DAY_KO[i] + "요일 마감 시간은 오픈 시간보다 늦어야 합니다.");
+                }
+                SalonOperatingHourVO hour = new SalonOperatingHourVO();
+                hour.setDayOfWeek(HOUR_DAY_KO[i]);
+                hour.setOpenTime(openTime);
+                hour.setCloseTime(closeTime);
+                hours.add(hour);
+            }
+            if (hours.isEmpty()) {
+                throw new IllegalArgumentException("최소 하루 이상은 영업일로 선택해주세요.");
+            }
+            salonService.updateOperatingHours(user.getUserId(), salonId, hours);
+            redirectAttributes.addFlashAttribute("success", "영업시간이 저장되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/owner/store#hours";
     }
 
     @PostMapping("/store/service/register")
@@ -125,7 +226,7 @@ public class OwnerController {
         Integer salonId = (Integer) session.getAttribute("selectedSalonId");
         if (salonId == null) {
             redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/store";
+            return "redirect:/owner/store#menu";
         }
         UserVO user = userService.getUser(authentication.getName());
         com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
@@ -142,7 +243,7 @@ public class OwnerController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/store";
+        return "redirect:/owner/store#menu";
     }
 
     @PostMapping("/store/service/{serviceId}/update")
@@ -168,7 +269,7 @@ public class OwnerController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/store";
+        return "redirect:/owner/store#menu";
     }
 
     @PostMapping("/store/service/{serviceId}/delete")
@@ -180,7 +281,7 @@ public class OwnerController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/store";
+        return "redirect:/owner/store#menu";
     }
 
     /**
@@ -312,7 +413,10 @@ public class OwnerController {
         return "redirect:/owner/reservations";
     }
 
-    /** 공지사항 작성. 세션에 선택된 매장(selectedSalonId)이 실제로 이 점주 소유인지 확인한 뒤에만 저장한다. */
+    /**
+     * 공지사항 작성. 매장정보관리(store.jsp)의 "이벤트·공지사항" 탭에서 들어온다 — 이제 별도 페이지가 아니다.
+     * 세션에 선택된 매장(selectedSalonId)이 실제로 이 점주 소유인지 확인한 뒤에만 저장한다.
+     */
     @PostMapping("/store/notices")
     public String createNotice(Authentication authentication, HttpSession session,
             @RequestParam String title,
@@ -322,7 +426,7 @@ public class OwnerController {
         Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
         if (selectedSalonId == null) {
             redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/store";
+            return "redirect:/owner/store#notice";
         }
 
         UserVO user = userService.getUser(authentication.getName());
@@ -338,7 +442,7 @@ public class OwnerController {
         } catch (IllegalArgumentException | IOException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/store";
+        return "redirect:/owner/store#notice";
     }
 
     @PostMapping("/store/notices/{noticeId}/delete")
@@ -347,7 +451,7 @@ public class OwnerController {
         Integer selectedSalonId = (Integer) session.getAttribute("selectedSalonId");
         if (selectedSalonId == null) {
             redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/store";
+            return "redirect:/owner/store#notice";
         }
 
         UserVO user = userService.getUser(authentication.getName());
@@ -358,7 +462,7 @@ public class OwnerController {
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/owner/store";
+        return "redirect:/owner/store#notice";
     }
 
     /** 매장 추가 등록 요청 — 사이드바 매장 선택 모달의 "+ 매장 추가" 카드에서 들어온다 */
@@ -372,9 +476,15 @@ public class OwnerController {
     public String salonRequestSubmit(Authentication authentication,
             @RequestParam String salonName,
             @RequestParam String salonPhone,
-            @RequestParam String message) {
+            @RequestParam String message,
+            RedirectAttributes redirectAttributes) {
         UserVO user = userService.getUser(authentication.getName());
-        ownerRequestService.submitAdditionalSalon(user.getUserId(), salonName, salonPhone, message);
+        try {
+            ownerRequestService.submitAdditionalSalon(user.getUserId(), salonName, salonPhone, message);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/owner/salon-request";
+        }
         return "redirect:/owner/salon-request?submitted=true";
     }
 
@@ -434,17 +544,21 @@ public class OwnerController {
         return "owner/staff";
     }
 
+    // 등록 모달 안에서 바로 오류를 보여줘야 해서(특히 연락처 칸 바로 아래) 리다이렉트 대신 JSON으로 응답한다.
     @PostMapping("/staff/register")
-    public String registerStylist(Authentication authentication, HttpSession session,
+    @ResponseBody
+    public Map<String, Object> registerStylist(Authentication authentication, HttpSession session,
             @RequestParam String stylistName,
             @RequestParam(required = false) String phoneNumber,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) MultipartFile imageFile,
-            RedirectAttributes redirectAttributes) {
+            @RequestParam(required = false) String dayOffDays,
+            @RequestParam(required = false) MultipartFile imageFile) {
+        Map<String, Object> result = new HashMap<>();
         Integer salonId = (Integer) session.getAttribute("selectedSalonId");
         if (salonId == null) {
-            redirectAttributes.addFlashAttribute("error", "매장을 먼저 선택해주세요.");
-            return "redirect:/owner/staff";
+            result.put("success", false);
+            result.put("message", "매장을 먼저 선택해주세요.");
+            return result;
         }
         UserVO user = userService.getUser(authentication.getName());
         StylistVO stylist = new StylistVO();
@@ -452,20 +566,24 @@ public class OwnerController {
         stylist.setPhoneNumber(phoneNumber);
         stylist.setDescription(description);
         try {
-            staffService.registerStylist(salonId, user.getUserId(), stylist, imageFile);
+            staffService.registerStylist(salonId, user.getUserId(), stylist, dayOffDays, imageFile);
+            result.put("success", true);
         } catch (IllegalArgumentException | IOException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage());
         }
-        return "redirect:/owner/staff";
+        return result;
     }
 
+    // 등록 모달과 마찬가지로 실패 시 모달이 닫히지 않도록 JSON으로 응답한다.
     @PostMapping("/staff/{stylistId}/update")
-    public String updateStylist(@PathVariable int stylistId, Authentication authentication,
+    @ResponseBody
+    public Map<String, Object> updateStylist(@PathVariable int stylistId, Authentication authentication,
             @RequestParam String stylistName,
             @RequestParam(required = false) String phoneNumber,
             @RequestParam(required = false) String description,
-            @RequestParam(required = false) MultipartFile imageFile,
-            RedirectAttributes redirectAttributes) {
+            @RequestParam(required = false) MultipartFile imageFile) {
+        Map<String, Object> result = new HashMap<>();
         UserVO user = userService.getUser(authentication.getName());
         StylistVO stylist = new StylistVO();
         stylist.setStylistId(stylistId);
@@ -474,10 +592,12 @@ public class OwnerController {
         stylist.setDescription(description);
         try {
             staffService.updateStylist(user.getUserId(), stylist, imageFile);
+            result.put("success", true);
         } catch (IllegalArgumentException | IOException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage());
         }
-        return "redirect:/owner/staff";
+        return result;
     }
 
     @PostMapping("/staff/{stylistId}/delete")
@@ -496,24 +616,26 @@ public class OwnerController {
     // [{"date":"2026-07-23","startTime":"10:00","endTime":"19:00","isAvailable":true},
     // ...]
     @PostMapping("/staff/{stylistId}/schedule")
-    public String registerSchedules(@PathVariable int stylistId, Authentication authentication,
-            @RequestParam String scheduleData,
-            RedirectAttributes redirectAttributes) {
+    @ResponseBody
+    public Map<String, Object> registerSchedules(@PathVariable int stylistId, Authentication authentication,
+            @RequestParam String scheduleData) {
+        Map<String, Object> result = new HashMap<>();
         UserVO user = userService.getUser(authentication.getName());
         try {
             List<StylistScheduleVO> schedules = new ObjectMapper().readValue(scheduleData,
                     new TypeReference<List<StylistScheduleVO>>() {
                     });
             String skippedMessage = staffService.registerSchedules(user.getUserId(), stylistId, schedules);
-            if (skippedMessage != null) {
-                redirectAttributes.addFlashAttribute("error", skippedMessage);
-            }
+            result.put("success", true);
+            result.put("message", skippedMessage);
         } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            result.put("success", false);
+            result.put("message", e.getMessage());
         } catch (JsonProcessingException e) {
-            redirectAttributes.addFlashAttribute("error", "스케줄 데이터 형식이 올바르지 않습니다.");
+            result.put("success", false);
+            result.put("message", "스케줄 데이터 형식이 올바르지 않습니다.");
         }
-        return "redirect:/owner/staff";
+        return result;
     }
 
     // 화면에 묶여 보이는 연속 날짜 그룹을 통째로 초기화 — 그룹에 속한 schedule_id 전부를 hidden input들로 받는다

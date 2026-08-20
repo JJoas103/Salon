@@ -16,6 +16,7 @@
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
         <result column="closed_at" property="closedAt" />
+        <result column="activation_status" property="activationStatus" />
         <result column="latitude" property="latitude" />
         <result column="longitude" property="longitude" />
         <result column="owner_name" property="ownerName" />
@@ -39,6 +40,7 @@
         <result column="salon_name" property="salonName" />
     </resultMap>
 
+    <!-- 손님 노출용 전체 목록 — 2차 승인 전(preparing) 매장은 완전히 뺀다 -->
     <select id="findAllWithMinimumPrice" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
@@ -46,17 +48,20 @@
                s.latitude, s.longitude
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
+        WHERE s.activation_status = 'active'
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
                  s.created_at, s.updated_at
         ORDER BY s.average_rating DESC, s.salon_id DESC
     </select>
 
+    <!-- 점주 자신의 매장(준비중 포함)도 봐야 하는 화면들이 같이 쓰므로 여기서는 활성상태로 거르지 않는다 -->
     <select id="findById" resultMap="salonResultMap">
         SELECT s.salon_id, s.owner_id, s.salon_name, s.address,
                s.phone_number, s.description, s.average_rating, s.image_url,
                s.latitude, s.longitude,
-               MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at
+               MIN(se.price) AS minimum_price, s.created_at, s.updated_at, u.user_name, closed_at,
+               s.activation_status
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
         join Users u on u.user_id = s.owner_id
@@ -64,7 +69,7 @@
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
                  s.latitude, s.longitude,
-                 s.created_at, s.updated_at, s.closed_at
+                 s.created_at, s.updated_at, s.closed_at, s.activation_status
     </select>
 
     <select id="findServicesBySalonId" resultMap="serviceResultMap">
@@ -146,8 +151,9 @@
                s.latitude, s.longitude
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
-        WHERE s.salon_name LIKE CONCAT('%', #{keyword}, '%')
-           OR s.address    LIKE CONCAT('%', #{keyword}, '%')
+        WHERE s.activation_status = 'active'
+          AND (s.salon_name LIKE CONCAT('%', #{keyword}, '%')
+           OR s.address    LIKE CONCAT('%', #{keyword}, '%'))
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
                  s.created_at, s.updated_at
@@ -168,7 +174,7 @@
                 and s.closed_at is not null
             </when>
             <otherwise>
-                and s.closed_at is null
+                and s.closed_at is null and s.activation_status = 'active'
             </otherwise>
         </choose>
         <if test="keyword != null and keyword != ''">
@@ -191,7 +197,7 @@
                 and s.closed_at is not null
             </when>
             <otherwise>
-                and s.closed_at is null
+                and s.closed_at is null and s.activation_status = 'active'
             </otherwise>
         </choose>
         <if test="keyword != null and keyword != ''">
@@ -203,7 +209,7 @@
 
     <!-- 관리자 대시보드 통계카드용 -->
     <select id="countActiveSalons" resultType="int">
-        select count(*) from Salons where closed_at is null
+        select count(*) from Salons where closed_at is null and activation_status = 'active'
     </select>
 
     <select id="countNewSalonsThisMonth" resultType="int">
@@ -234,11 +240,30 @@
 
     <!-- 점주 승격 승인 시 매장 신규 생성. 주소 등 세부정보는 아직 없어 빈 값으로 두고,
          이후 점주가 매장정보 관리 화면에서 직접 채워넣는다 (updateSalonInfo). -->
+    <!-- 새 매장은 항상 preparing으로 시작 — 2차 승인(activateSalon) 전까지 손님에겐 안 보인다 -->
     <insert id="insertSalon" parameterType="com.soldesk.vo.SalonVO"
             useGeneratedKeys="true" keyProperty="salonId">
-        insert into Salons (owner_id, salon_name, address, phone_number, description)
-        values (#{ownerId}, #{salonName}, #{address}, #{phoneNumber}, #{description})
+        insert into Salons (owner_id, salon_name, address, phone_number, description, activation_status)
+        values (#{ownerId}, #{salonName}, #{address}, #{phoneNumber}, #{description}, 'preparing')
     </insert>
+
+    <!-- 관리자 2차 승인: 손님에게 정상 노출 -->
+    <update id="activateSalon" parameterType="int">
+        update Salons set activation_status = 'active'
+        where salon_id = #{salonId} and activation_status = 'preparing'
+    </update>
+
+    <!-- 관리자 "심사 대기" 큐 — 2차 승인을 기다리는 매장 전체 -->
+    <select id="findPreparingSalons" resultMap="salonResultMap">
+        SELECT s.salon_id, s.owner_id, s.salon_name, s.address, s.phone_number,
+               s.description, s.average_rating, s.image_url,
+               s.created_at, s.updated_at, s.activation_status,
+               u.user_name AS owner_name
+        FROM Salons s
+        LEFT JOIN Users u ON u.user_id = s.owner_id
+        WHERE s.activation_status = 'preparing'
+        ORDER BY s.created_at
+    </select>
 
     <!--
         새 매장 기본 영업시간 — 월~토 동일 시간, 일요일은 휴무로 비워둔다.
@@ -253,6 +278,22 @@
             SELECT '월' AS dow UNION ALL SELECT '화' UNION ALL SELECT '수'
             UNION ALL SELECT '목' UNION ALL SELECT '금' UNION ALL SELECT '토'
         ) AS d
+    </insert>
+
+    <select id="findAllOperatingHours" resultType="com.soldesk.vo.SalonOperatingHourVO">
+        SELECT hour_id AS hourId, salon_id AS salonId, day_of_week AS dayOfWeek,
+               open_time AS openTime, close_time AS closeTime
+        FROM Salon_Operating_Hours
+        WHERE salon_id = #{salonId}
+    </select>
+
+    <delete id="deleteOperatingHours">
+        DELETE FROM Salon_Operating_Hours WHERE salon_id = #{salonId}
+    </delete>
+
+    <insert id="insertOperatingHour" parameterType="com.soldesk.vo.SalonOperatingHourVO">
+        INSERT INTO Salon_Operating_Hours (salon_id, day_of_week, open_time, close_time)
+        VALUES (#{salonId}, #{dayOfWeek}, #{openTime}, #{closeTime})
     </insert>
 
     <!--

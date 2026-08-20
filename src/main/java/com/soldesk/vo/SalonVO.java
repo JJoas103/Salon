@@ -17,6 +17,7 @@ public class SalonVO {
     private String createdAt; // created_at
     private String updatedAt; // updated_at
     private String closedAt; // 폐업일시 (null이면 운영중)
+    private String activationStatus; // preparing(2차승인 대기, 손님에겐 안 보임) / active (activation_status)
     private java.math.BigDecimal latitude;  //위도
     private java.math.BigDecimal longitude; //경도
     private String ownerName; // 점주 이름 (Users LEFT JOIN, 관리자 매장목록 전용)
@@ -55,6 +56,8 @@ public class SalonVO {
     public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
     public String getClosedAt() { return closedAt; }
     public void setClosedAt(String closedAt) { this.closedAt = closedAt; }
+    public String getActivationStatus() { return activationStatus; }
+    public void setActivationStatus(String activationStatus) { this.activationStatus = activationStatus; }
 
     public java.math.BigDecimal getLatitude() {
         return this.latitude;

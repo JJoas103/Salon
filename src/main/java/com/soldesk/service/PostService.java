@@ -9,7 +9,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 public interface PostService {
 
-    List<PostVO> getPostList(String category, String sort);
+    List<PostVO> getPostList(String category, String sort, int page, int size);
+
+    int getPostListCount(String category);
 
     PostVO getPost(int postId);
 
@@ -25,13 +27,18 @@ public interface PostService {
 
     void removeComment(int commentId, int userId);
 
+    // 내 글에 달린 남의 댓글 삭제 -- 게시글이 이미 삭제/블라인드된 경우에만 허용(마이페이지 로그 정리용)
+    void removeCommentAsPostOwner(int commentId, int userId);
+
     List<SalonVO> getSalonList();
 
     void react(int postId, int userId, String type);
 
     String getUserReaction(int postId, int userId);
 
-    List<PostVO> searchPosts(String searchType, String keyword, String sort);
+    List<PostVO> searchPosts(String searchType, String keyword, String sort, int page, int size);
+
+    int getSearchCount(String searchType, String keyword);
 
     void reportPost(int postId, int userId, String reason, String reasonDetail);
 
@@ -62,4 +69,13 @@ public interface PostService {
     void approveDeleteCommentWithSanction(int commentId, String sanctionType, String adminReason);
 
     void dismissCommentReport(int commentId);
+
+    // 마이페이지 "내 커뮤니티 활동" 탭
+    List<PostVO> getMyPosts(int userId);
+
+    List<CommentVO> getMyComments(int userId);
+
+    List<CommentVO> getRepliesToMyPosts(int userId);
+
+    int countRepliesToMyPosts(int userId);
 }

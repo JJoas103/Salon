@@ -64,11 +64,20 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostVO> getPostList(String category, String sort) {
+    public List<PostVO> getPostList(String category, String sort, int page, int size) {
+        int offset = (page - 1) * size;
         if (category == null || category.isEmpty()) {
-            return postMapper.findAll(sort);
+            return postMapper.findAll(sort, offset, size);
         }
-        return postMapper.findByCategory(category, sort);
+        return postMapper.findByCategory(category, sort, offset, size);
+    }
+
+    @Override
+    public int getPostListCount(String category) {
+        if (category == null || category.isEmpty()) {
+            return postMapper.countAll();
+        }
+        return postMapper.countByCategory(category);
     }
 
     @Override
@@ -118,12 +127,13 @@ public class PostServiceImpl implements PostService {
         deletePostCascade(post);
     }
 
-    // removePost()와 approveDelete()가 공유하는 삭제 로직 -- 댓글/신고 캐스케이드 + 이미지 파일 정리
+    // removePost()와 approveDelete()가 공유하는 삭제 로직
+    // 댓글은 지우지 않는다 -- 마이페이지 "내가 쓴 댓글"/"내 글에 달린 댓글" 탭에 로그로 남겨야 하므로
+    // 글은 하드 삭제 대신 소프트 삭제(status='deleted')해서 댓글이 참조하는 행을 보존한다
     private void deletePostCascade(PostVO post) {
-        commentMapper.deleteByPostId(post.getPostId());
         postReportMapper.deleteByPostId(post.getPostId());
         postLikeMapper.deleteByPostId(post.getPostId());
-        postMapper.delete(post.getPostId());
+        postMapper.softDelete(post.getPostId());
         fileService.deleteFile(post.getImageUrl());
     }
 
@@ -144,6 +154,22 @@ public class PostServiceImpl implements PostService {
         CommentVO comment = commentMapper.findById(commentId);
         if (comment == null || comment.getUserId() != userId) {
             throw new AccessDeniedException("본인이 작성한 댓글만 삭제할 수 있습니다.");
+        }
+        commentMapper.delete(commentId);
+    }
+
+    @Override
+    @Transactional
+    public void removeCommentAsPostOwner(int commentId, int userId) {
+        CommentVO comment = commentMapper.findById(commentId);
+        if (comment == null) return; // 이미 삭제된 경우 -- 조용히 무시
+        PostVO post = postMapper.findByIdAny(comment.getPostId());
+        if (post == null || post.getUserId() != userId) {
+            throw new AccessDeniedException("본인 게시글의 댓글만 삭제할 수 있습니다.");
+        }
+        if ("visible".equals(post.getStatus())) {
+            // 마이페이지 X 버튼은 게시글이 죽은 경우에만 노출되지만, 서버에서도 동일 규칙을 강제한다
+            throw new AccessDeniedException("게시글이 삭제된 경우에만 댓글 기록을 정리할 수 있습니다.");
         }
         commentMapper.delete(commentId);
     }
@@ -184,8 +210,14 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
-    public List<PostVO> searchPosts(String searchType, String keyword, String sort) {
-        return postMapper.search(searchType, "%" + keyword + "%", sort);
+    public List<PostVO> searchPosts(String searchType, String keyword, String sort, int page, int size) {
+        int offset = (page - 1) * size;
+        return postMapper.search(searchType, "%" + keyword + "%", sort, offset, size);
+    }
+
+    @Override
+    public int getSearchCount(String searchType, String keyword) {
+        return postMapper.countSearch(searchType, "%" + keyword + "%");
     }
 
     @Override
@@ -341,5 +373,25 @@ public class PostServiceImpl implements PostService {
     public void dismissCommentReport(int commentId) {
         commentReportMapper.deleteByCommentId(commentId);
         // 댓글은 자동 블라인드가 없으므로 상태 복구 로직 불필요 -- 신고 기록만 지우면 목록에서 자연히 사라짐
+    }
+
+    @Override
+    public List<PostVO> getMyPosts(int userId) {
+        return postMapper.findByUserId(userId);
+    }
+
+    @Override
+    public List<CommentVO> getMyComments(int userId) {
+        return commentMapper.findByUserId(userId);
+    }
+
+    @Override
+    public List<CommentVO> getRepliesToMyPosts(int userId) {
+        return commentMapper.findRepliesToUserPosts(userId);
+    }
+
+    @Override
+    public int countRepliesToMyPosts(int userId) {
+        return commentMapper.countRepliesToUserPosts(userId);
     }
 }

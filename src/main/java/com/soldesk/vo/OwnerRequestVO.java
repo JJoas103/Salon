@@ -15,6 +15,8 @@ public class OwnerRequestVO {
     private String requestedAt; // requested_at
     private String processedAt; // processed_at
     private Integer processedBy; // processed_by
+    private String applicantName; // Users.user_name (조회 전용, join 결과에만 채워짐)
+    private String applicantEmail; // Users.email (조회 전용, join 결과에만 채워짐)
 
     public int getRequestId() { return requestId; }
     public void setRequestId(int requestId) { this.requestId = requestId; }
@@ -36,4 +38,8 @@ public class OwnerRequestVO {
     public void setProcessedAt(String processedAt) { this.processedAt = processedAt; }
     public Integer getProcessedBy() { return processedBy; }
     public void setProcessedBy(Integer processedBy) { this.processedBy = processedBy; }
+    public String getApplicantName() { return applicantName; }
+    public void setApplicantName(String applicantName) { this.applicantName = applicantName; }
+    public String getApplicantEmail() { return applicantEmail; }
+    public void setApplicantEmail(String applicantEmail) { this.applicantEmail = applicantEmail; }
 }

@@ -1,5 +1,6 @@
 package com.soldesk.controller;
 
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -32,6 +35,7 @@ import com.soldesk.service.ChatService;
 import com.soldesk.service.CouponService;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.PointService;
+import com.soldesk.service.PostService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.ReviewService;
 import com.soldesk.service.AdvertisementService;
@@ -91,9 +95,11 @@ public class CommonController {
     @Autowired
     private SalonNoticeService salonNoticeService;
 
-    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 생성
-    private final ObjectMapper objectMapper =
-            new ObjectMapper();
+    @Autowired
+    private PostService postService;
+
+    // 지도 마커용 미용실 목록을 JSP 안에서 JS 배열로 쓰기 위해 직접 만들어 쓴다 (빈으로 등록된 ObjectMapper 는 없다)
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${kakaoMapApiKey}")
     private String kakaoMapApiKey;
@@ -167,8 +173,45 @@ public class CommonController {
         model.addAttribute("reviewCount", reviewService.countUserReviews(user.getUserId()));
         model.addAttribute("pointBalance", pointService.getBalance(user.getUserId()));
         model.addAttribute("couponCount", couponService.countAvailable(user.getUserId()));
+        model.addAttribute("communityReplyCount", postService.countRepliesToMyPosts(user.getUserId()));
 
         return "common/mypage";
+    }
+
+    /** 내 커뮤니티 활동(작성 글/댓글, 받은 댓글) — 마이페이지의 커뮤니티 활동 카드에서 들어온다 */
+    @GetMapping("/my-community")
+    public String myCommunity(@RequestParam(required = false, defaultValue = "posts") String tab,
+                              Authentication authentication, Model model) {
+
+        UserVO user = userService.getUser(authentication.getName());
+        int userId = user.getUserId();
+
+        if ("replies".equals(tab)) {
+            userService.markReplyCheck(userId); // 안읽음 배지를 0으로 되돌린다
+        }
+
+        model.addAttribute("tab", tab);
+        model.addAttribute("myPosts", postService.getMyPosts(userId));
+        model.addAttribute("myComments", postService.getMyComments(userId));
+        model.addAttribute("myReplies", postService.getRepliesToMyPosts(userId));
+
+        return "common/my-community";
+    }
+
+    /** 내 커뮤니티 활동 - "내가 쓴 댓글" 탭에서 삭제된 게시글의 죽은 기록 정리 (본인 댓글만) */
+    @PostMapping("/my-community/comments/{commentId}/delete")
+    public String deleteMyComment(@PathVariable int commentId, Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        postService.removeComment(commentId, user.getUserId());
+        return "redirect:/common/my-community?tab=comments";
+    }
+
+    /** 내 커뮤니티 활동 - "내 글에 달린 댓글" 탭에서 삭제된 게시글의 죽은 기록 정리 (내 글 주인일 때만) */
+    @PostMapping("/my-community/replies/{commentId}/delete")
+    public String deleteReplyOnMyPost(@PathVariable int commentId, Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        postService.removeCommentAsPostOwner(commentId, user.getUserId());
+        return "redirect:/common/my-community?tab=replies";
     }
 
     /** 쿠폰함 — 마이페이지의 쿠폰 카드에서 들어온다 */
@@ -183,6 +226,30 @@ public class CommonController {
         model.addAttribute("today", java.time.LocalDate.now().toString());
 
         return "common/coupons";
+    }
+
+    /**
+     * 쿠폰 코드 등록 — 마이페이지의 코드 입력 폼에서 들어온다.
+     *
+     * 성공/실패 모두 마이페이지로 돌려보낸다. 폼이 그 화면에 있으므로 결과도 같은 자리에서 보여야
+     * 하고, 성공 시 "보유 활성 쿠폰" 카드 숫자가 바로 올라간 것이 함께 보인다.
+     */
+    @PostMapping("/coupons/redeem")
+    public String redeemCoupon(Authentication authentication,
+            @RequestParam(required = false) String couponCode,
+            RedirectAttributes redirectAttributes) {
+
+        UserVO user = userService.getUser(authentication.getName());
+
+        try {
+            String couponName = couponService.redeemByCode(user.getUserId(), couponCode);
+            redirectAttributes.addFlashAttribute("couponRedeemSuccess",
+                    "'" + couponName + "' 쿠폰이 발급되었습니다.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("couponRedeemError", e.getMessage());
+        }
+
+        return "redirect:/common/mypage";
     }
 
     /** 적립금 내역 — 마이페이지의 적립금 카드에서 들어온다 */
@@ -206,6 +273,12 @@ public class CommonController {
             @ModelAttribute("changePassword")
             PasswordChangeVO changePassword,
             BindingResult result) {
+        // 소셜(구글/네이버) 계정은 로컬 비밀번호가 없다. 화면에서 버튼을 숨기는 것과 별개로,
+        // 요청을 직접 보내는 경우까지 막기 위해 서버에서도 한 번 더 확인한다.
+        UserVO currentUser = userService.getUser(authentication.getName());
+        if (!"local".equals(currentUser.getProvider())) {
+            result.rejectValue("currentPassword", "provider.notLocal", "소셜 로그인 계정은 비밀번호를 변경할 수 없습니다.");
+        }
 
         if (!result.hasErrors()) {
 
@@ -247,6 +320,43 @@ public class CommonController {
                 "success", true);
     }
 
+    /** 사이드바 "내 정보" 모달이 열릴 때 AJAX로 부르는 현재 회원 정보. 페이지마다 user 모델을 안 채워도 되게 하려고 분리함 */
+    @GetMapping("/mypage/whoami")
+    @ResponseBody
+    public Map<String, Object> whoami(Authentication authentication) {
+        UserVO user = userService.getUser(authentication.getName());
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("userName", user.getUserName());
+        result.put("phoneNumber", user.getPhoneNumber());
+        result.put("email", user.getEmail());
+        result.put("createdAt", user.getCreatedAt());
+        result.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        result.put("notificationsEnabled", user.isNotificationsEnabled());
+        return result;
+    }
+
+    /** 알림 설정 on/off 토글 — 마이페이지에서 AJAX로 호출, 바뀐 뒤 값을 돌려준다 */
+    @PostMapping("/mypage/notifications")
+    @ResponseBody
+    public Map<String, Object> toggleNotifications(Authentication authentication) {
+        boolean enabled = userService.toggleNotifications(authentication.getName());
+        return Map.of("enabled", enabled);
+    }
+
+    /** 내 정보(이름·전화번호·프로필사진) 변경 — 마이페이지 모달에서 AJAX로 호출. 이메일은 정책상 여기서 안 받음 */
+    @PostMapping("/mypage/info")
+    @ResponseBody
+    public Map<String, Object> infoSubmit(Authentication authentication,
+            @RequestParam String userName, @RequestParam String phoneNumber,
+            @RequestParam(required = false) MultipartFile profileImage) {
+        try {
+            userService.updateProfile(authentication.getName(), userName, phoneNumber, profileImage);
+        } catch (IllegalArgumentException | IOException e) {
+            return Map.of("success", false, "message", e.getMessage());
+        }
+        UserVO updated = userService.getUser(authentication.getName());
+        return Map.of("success", true, "profileImageUrl", updated.getProfileImageUrl() == null ? "" : updated.getProfileImageUrl());
+    }
 
     /* =========================================================
        점주 승격 요청 페이지
@@ -457,18 +567,14 @@ public class CommonController {
             @RequestParam String salonName,
             @RequestParam String salonPhone,
             @RequestParam String message,
-            Model model) {
-
-        UserVO user =
-                userService.getUser(
-                        authentication.getName());
-
-        ownerRequestService.submit(
-                user.getUserId(),
-                salonName,
-                salonPhone,
-                message);
-
+            RedirectAttributes redirectAttributes) {
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            ownerRequestService.submit(user.getUserId(), salonName, salonPhone, message);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/common/owner-request";
+        }
         return "redirect:/common/owner-request?submitted=true";
     }
 

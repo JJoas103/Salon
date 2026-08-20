@@ -72,16 +72,21 @@ USE salu;
 CREATE TABLE Users (
     user_id INT AUTO_INCREMENT PRIMARY KEY,               -- 사용자 고유 식별자
     email VARCHAR(255) UNIQUE NOT NULL,                   -- 이메일 (로그인 ID)
-    password VARCHAR(255) NOT NULL,                       -- 비밀번호
+    password VARCHAR(255) NULL,                           -- 비밀번호 (소셜 전용 계정은 NULL)
     user_name VARCHAR(100),
     phone_number VARCHAR(20),
     user_type ENUM('customer', 'owner', 'admin') NOT NULL, -- 사용자 유형 (고객, 점주, 관리자)
+    provider ENUM('local', 'google', 'naver') NOT NULL DEFAULT 'local', -- 로그인 수단
+    provider_id VARCHAR(255) NULL,                        -- 소셜 로그인 제공자가 발급한 사용자 식별자
     status ENUM('active', 'suspended', 'banned') DEFAULT 'active', -- 커뮤니티 이용 제한 상태
     suspended_until DATETIME NULL,                          -- 정지 만료 시각 (영구정지면 NULL)
     point_balance INT NOT NULL DEFAULT 0,                 -- 보유 포인트 (원장은 Point_Transactions)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    deleted_at DATETIME NULL DEFAULT NULL                 -- 탈퇴 일시 (NULL 이면 활성 회원. 행을 지우지 않는 soft delete)
+    deleted_at DATETIME NULL DEFAULT NULL,                -- 탈퇴 일시 (NULL 이면 활성 회원. 행을 지우지 않는 soft delete)
+    point_balance INT NOT NULL DEFAULT 0,                 -- 포인트 잔액
+    last_reply_check_at DATETIME NULL,                    -- 마이페이지 "내 글에 달린 댓글" 탭 마지막 확인 시각 (안읽음 배지용)
+    UNIQUE KEY uq_users_provider_id (provider, provider_id) -- NULL끼리는 유니크 충돌로 안 보므로 로컬 계정끼리는 무관
 );
 
 -- ---------- Salons (미용실) ----------
@@ -382,7 +387,7 @@ CREATE TABLE Posts (
     like_count INT DEFAULT 0,                            -- 좋아요 수
     dislike_count INT DEFAULT 0,                         -- 별로예요 수
     report_count INT DEFAULT 0,                          -- 누적 신고 수
-    status ENUM('visible', 'blinded') DEFAULT 'visible', -- 노출 상태 (자동 블라인드 여부)
+    status ENUM('visible', 'blinded', 'deleted') DEFAULT 'visible', -- 노출 상태 (자동 블라인드 여부)
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES Users(user_id),
@@ -471,4 +476,66 @@ CREATE TABLE Advertisements (
     INDEX idx_advertisements_exposure (active, start_at, end_at, display_order),
     CONSTRAINT chk_advertisements_period
         CHECK (end_at IS NULL OR start_at IS NULL OR end_at >= start_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- Coupons (쿠폰 정책) ----------
+CREATE TABLE Coupons (
+    coupon_id        INT AUTO_INCREMENT PRIMARY KEY,
+    promotion_id     INT NULL,                              -- 이 쿠폰을 광고하는 프로모션(선택)
+    salon_id         INT NULL,                              -- NULL = 전 매장 공통
+    service_id       INT NULL,                              -- NULL = 전 시술 공통
+    coupon_name      VARCHAR(100) NOT NULL,
+    coupon_code      VARCHAR(50) UNIQUE,                    -- NULL = 코드 입력형이 아님
+    discount_type    ENUM('percent','amount') NOT NULL,
+    discount_value   DECIMAL(10,2) NOT NULL,                -- percent 면 10.00 = 10%
+    max_discount     DECIMAL(10,2) NULL,                    -- percent 형의 상한 (NULL = 무제한)
+    min_order_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+    valid_from       DATE NOT NULL,
+    valid_until      DATE NOT NULL,
+    issue_type       VARCHAR(20) NOT NULL,                  -- signup / admin / code ...
+    once_per_user    TINYINT(1) NOT NULL DEFAULT 0,         -- 1이면 한 회원에게 한 번만 발급
+    is_active        TINYINT(1) NOT NULL DEFAULT 1,
+    created_at       DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at       DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (promotion_id) REFERENCES Promotions(promotion_id),
+    FOREIGN KEY (salon_id)     REFERENCES Salons(salon_id),
+    FOREIGN KEY (service_id)   REFERENCES Services(service_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---------- User_Coupons (사용자가 보유한 쿠폰) ----------
+CREATE TABLE User_Coupons (
+    user_coupon_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id        INT NOT NULL,
+    coupon_id      INT NOT NULL,
+    status         ENUM('available','reserved','used','expired') NOT NULL DEFAULT 'available',
+    reservation_id INT NULL,                                -- reserved/used 일 때 어느 예약에 묶였는지
+    issued_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+    expires_at     DATETIME NOT NULL,                       -- 발급 시점에 Coupons.valid_until 을 복사
+    used_at        DATETIME NULL,
+    FOREIGN KEY (user_id)        REFERENCES Users(user_id),
+    FOREIGN KEY (coupon_id)      REFERENCES Coupons(coupon_id),
+    FOREIGN KEY (reservation_id) REFERENCES Reservations(reservation_id),
+    INDEX idx_user_status (user_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Payments.user_coupon_id 는 User_Coupons 정의 이전에 만들어졌으므로 FK 는 여기서 붙인다.
+ALTER TABLE Payments
+    ADD CONSTRAINT fk_payments_user_coupon
+    FOREIGN KEY (user_coupon_id) REFERENCES User_Coupons(user_coupon_id);
+
+-- ---------- Point_Transactions (포인트 적립/사용 원장) ----------
+CREATE TABLE Point_Transactions (
+    point_tx_id    INT AUTO_INCREMENT PRIMARY KEY,
+    user_id        INT NOT NULL,
+    reservation_id INT NULL,
+    tx_type        ENUM('earn','use','restore','revoke','expire','admin') NOT NULL,
+    amount         INT NOT NULL,          -- 부호 있음: 적립 +, 사용 -
+    balance_after  INT NOT NULL,
+    description    VARCHAR(255),
+    expires_at     DATETIME NULL,
+    created_at     DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id)        REFERENCES Users(user_id),
+    FOREIGN KEY (reservation_id) REFERENCES Reservations(reservation_id),
+    INDEX idx_user_created (user_id, created_at),
+    UNIQUE KEY uq_reservation_tx (reservation_id, tx_type) -- 같은 예약에 같은 종류의 원장이 두 번 쌓이지 않음
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

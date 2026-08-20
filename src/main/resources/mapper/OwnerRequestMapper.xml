@@ -14,6 +14,8 @@
         <result column="requested_at"  property="requestedAt" />
         <result column="processed_at"  property="processedAt" />
         <result column="processed_by"  property="processedBy" />
+        <result column="applicant_name"  property="applicantName" />
+        <result column="applicant_email" property="applicantEmail" />
     </resultMap>
 
     <!-- 점주 승격 요청 등록. requestType 이 비어있으면 기존과 같은 '고객→점주 승격' -->
@@ -35,6 +37,27 @@
     <!-- 대기중인 요청 수 -->
     <select id="countPending" resultType="int">
         select count(*) from OwnerRequests where status = 'pending'
+    </select>
+
+    <!-- 종류별 대기중인 요청 수 -->
+    <select id="countPendingByType" parameterType="string" resultType="int">
+        select count(*) from OwnerRequests where status = 'pending' and request_type = #{requestType}
+    </select>
+
+    <!-- 종류별 대기중인 요청 목록 (신청자 이름/이메일 포함) — 매장관리 "매장 추가 요청" 탭용 -->
+    <select id="findPendingByType" parameterType="string" resultMap="ownerRequestResultMap">
+        select r.request_id, r.user_id, r.salon_name, r.salon_phone, r.message, r.request_type, r.status,
+               r.requested_at, r.processed_at, r.processed_by,
+               u.user_name as applicant_name, u.email as applicant_email
+        from OwnerRequests r
+        join Users u on u.user_id = r.user_id
+        where r.status = 'pending' and r.request_type = #{requestType}
+        order by r.requested_at asc
+    </select>
+
+    <!-- 이 회원의 대기중인 요청 수 (승격/매장추가 종류 상관없이) -->
+    <select id="countPendingByUserId" parameterType="int" resultType="int">
+        select count(*) from OwnerRequests where user_id = #{userId} and status = 'pending'
     </select>
 
     <!-- 승인 -->

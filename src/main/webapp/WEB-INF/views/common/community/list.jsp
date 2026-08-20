@@ -55,7 +55,7 @@
       <c:if test="${not empty keyword}">
         <p class="post-search-result">
           <strong>"<c:out value="${keyword}" />"</strong> 검색 결과
-          <strong>${fn:length(posts)}</strong>건
+          <strong>${totalCount}</strong>건
         </p>
       </c:if>
 
@@ -147,6 +147,22 @@
           </c:otherwise>
         </c:choose>
       </div>
+
+      <%-- 페이지네이션 --%>
+      <c:if test="${totalPages > 1}">
+        <div class="board-pagination">
+          <c:forEach var="p" begin="1" end="${totalPages}">
+            <c:url var="pageUrl" value="/common/community">
+              <c:param name="category" value="${category}"/>
+              <c:param name="keyword" value="${keyword}"/>
+              <c:param name="searchType" value="${searchType}"/>
+              <c:param name="sort" value="${sort}"/>
+              <c:param name="page" value="${p}"/>
+            </c:url>
+            <a href="${pageUrl}" class="board-page ${p == page ? 'is-active' : ''}">${p}</a>
+          </c:forEach>
+        </div>
+      </c:if>
 
     </main>
   </div>

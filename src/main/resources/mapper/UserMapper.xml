@@ -10,7 +10,10 @@
         <result column="password"     property="password" />
         <result column="user_name"    property="userName" />
         <result column="phone_number" property="phoneNumber" />
+        <result column="profile_image_url" property="profileImageUrl" />
         <result column="user_type"    property="userType" />
+        <result column="provider"     property="provider" />
+        <result column="provider_id"  property="providerId" />
         <result column="created_at"   property="createdAt" />
         <result column="updated_at"   property="updatedAt" />
         <result column="deleted_at"   property="deletedAt" />
@@ -22,6 +25,7 @@
         <result column="pending_request_type" property="pendingRequestType" />
         <result column="status"          property="status" />
         <result column="suspended_until" property="suspendedUntil" />
+        <result column="notifications_enabled" property="notificationsEnabled" />
     </resultMap>
 
     <!-- 회원가입 -->
@@ -33,11 +37,33 @@
 
     <!-- 이메일로 회원 조회 -->
     <select id="findByEmail" parameterType="string" resultMap="userResultMap">
-        select user_id, email, password, user_name, phone_number, user_type, created_at, updated_at,
-               status, suspended_until
+        <!-- provider/provider_id 를 빼면 UserVO.provider 가 null 이 되어 CustomUserDetails 가
+             모든 계정에 SOCIAL_ACCOUNT 권한을 붙인다(= 전원 점주요청·비밀번호변경 차단). 반드시 함께 조회한다. -->
+        select user_id, email, password, user_name, phone_number, profile_image_url, user_type,
+               provider, provider_id,
+               created_at, updated_at, status, suspended_until, notifications_enabled
         from Users
         where email = #{email}
     </select>
+
+    <!-- 마이페이지 "알림 설정" on/off 토글 -->
+    <update id="toggleNotifications" parameterType="int">
+        update Users set notifications_enabled = 1 - notifications_enabled where user_id = #{userId}
+    </update>
+
+    <!-- 소셜 로그인 최초 가입 -->
+    <insert id="insertOAuthUser" parameterType="com.soldesk.vo.UserVO"
+            useGeneratedKeys="true" keyProperty="userId">
+        insert into Users (email, password, user_name, phone_number, user_type, provider, provider_id)
+        values (#{email}, null, #{userName}, #{phoneNumber}, #{userType}, #{provider}, #{providerId})
+    </insert>
+
+    <!-- 기존 로컬 계정에 소셜 로그인 수단 연동 (이메일이 같으면 자동 연동) -->
+    <update id="linkProvider">
+        update Users
+        set provider = #{provider}, provider_id = #{providerId}
+        where email = #{email}
+    </update>
 
     <!-- user_id(PK)로 회원 조회 (탈퇴/강등 처리 전 최신 상태 재확인용) -->
     <select id="findById" parameterType="int" resultMap="userResultMap">
@@ -56,7 +82,8 @@
         update Users
         set password = #{password},
             user_name = #{userName},
-            phone_number = #{phoneNumber}
+            phone_number = #{phoneNumber},
+            profile_image_url = #{profileImageUrl}
         where email = #{email}
     </update>
 
@@ -89,7 +116,7 @@
         </if>
         <choose>
             <when test="userType == 'ownerRequest'">
-                and r.status = 'pending'
+                and r.status = 'pending' and r.request_type = 'promotion'
             </when>
             <when test="userType != null and userType != ''">
                 and u.user_type = #{userType}
@@ -119,7 +146,7 @@
         </if>
         <choose>
             <when test="userType == 'ownerRequest'">
-                and r.status = 'pending'
+                and r.status = 'pending' and r.request_type = 'promotion'
             </when>
             <when test="userType != null and userType != ''">
                 and u.user_type = #{userType}
@@ -176,6 +203,12 @@
     <update id="updateSuspension">
         update Users
         set status = #{status}, suspended_until = #{suspendedUntil}
+        where user_id = #{userId}
+    </update>
+
+    <update id="updateLastReplyCheckAt">
+        update Users
+        set last_reply_check_at = NOW()
         where user_id = #{userId}
     </update>
 
