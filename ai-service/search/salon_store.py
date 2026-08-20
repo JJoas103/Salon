@@ -1,8 +1,7 @@
 """매장 자체를 고르는 질문에 쓰는 salons 인덱스 조회
 
-시술 인덱스(salon-services-agent)에는 평점도 주소도 없어서 "어디가 잘해요" 같은 질문에
-답할 수 없음 — 그건 매장 검색 기능이 쓰는 salons 인덱스에 들어있음
-같은 ES 인스턴스의 다른 인덱스라 클라이언트는 그대로 재사용함
+시술 인덱스에는 평점도 주소도 없어서 "어디가 잘해요" 에 답할 수 없음
+같은 ES 인스턴스의 다른 인덱스라 클라이언트는 재사용함
 """
 
 from typing import Any
@@ -11,7 +10,7 @@ from search.elasticsearch_store import client, ensure_elasticsearch
 
 SALON_INDEX = 'salons'
 
-# 매장 문서에서 상담에 쓸 필드만 추림 — 좌표는 지금 화면에 안 쓰므로 뺌
+# 상담에 쓸 필드만 추림 (좌표는 안 씀)
 _FIELDS = ['salonId', 'salonName', 'address', 'phoneNumber',
            'description', 'averageRating', 'minimumPrice']
 
@@ -37,7 +36,7 @@ def search_salons(
     else:
         query = {'match_all': {}}
 
-    # 평점은 높은 순, 가격은 낮은 순이 자연스러움
+    # 평점은 높은 순, 가격은 낮은 순
     if sort_by == 'minimumPrice':
         sort = [{'minimumPrice': {'order': 'asc'}}]
     else:
@@ -54,11 +53,8 @@ def search_salons(
 
 
 def salon_find_hint(question: str, count: int = 5) -> str | None:
-    """SALON_FIND 인텐트일 때 첫 턴에 붙일 매장 목록 문자열
-
-    LLM 에게 도구를 고르게 하지 않고 결과를 미리 쥐여줌 — 9B 는 도구 선택을 자주 건너뜀
-    """
-    # "저렴한/싼" 이 들어가면 가격 기준, 그 외에는 평점 기준으로 봄
+    """SALON_FIND 인텐트일 때 첫 턴에 붙일 매장 목록 — 9B 는 도구 선택을 자주 건너뜀"""
+    # "저렴한/싼" 이면 가격 기준, 아니면 평점 기준
     sort_by = 'minimumPrice' if any(k in question for k in ('저렴', '싼', '가격', '저가')) else 'averageRating'
 
     try:

@@ -219,8 +219,7 @@
 </script>
 </sec:authorize>
 
-<%-- AI 시술 추천 챗봇 위젯 — 개인 예약이력을 다루는 상담이라 로그인 사용자에게만 노출
-     (/api/chat 은 permitAll 목록에 없어 비로그인 호출은 어차피 401) --%>
+<%-- AI 시술 추천 챗봇 위젯 — 개인 예약이력을 다루므로 로그인 사용자에게만 노출 --%>
 <sec:authorize access="isAuthenticated()">
 <button type="button" id="aiChatFab" class="ai-chat-fab" aria-label="AI 시술 추천 상담">
   <i class="fas fa-wand-magic-sparkles"></i>
@@ -236,10 +235,10 @@
       <%-- pre-wrap 이라 줄바꿈이 그대로 보임. 한 줄로 유지 --%>
       <div class="ai-chat-msg bot">안녕하세요! 시술 추천과 매장 안내를 도와드려요. 최근 완료하신 시술 이력(최근 5건)도 함께 참고합니다.<c:if test="${not empty salon.salonId}"> 지금 보고 계신 <c:out value="${salon.salonName}"/> 시술을 먼저 찾아드립니다.</c:if> 고민이나 궁금한 점을 말씀해주세요.</div>
     </div>
+    <%-- 칩 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
+         첫 질문을 보내면 .is-compact 로 접힘 --%>
     <div class="ai-chat-suggestions" id="aiChatSuggestions">
-      <%-- 버튼 하나가 인텐트 갈래 하나씩을 태움 (chat/intent.py)
-           service_search / catalog_list / salon_find / salon_menu 순서이고
-           마지막은 예약이력 기반 개인화라 로그인 사용자에게만 의미가 있음 --%>
+      <p class="ai-chat-suggestions-label">이런 걸 물어보실 수 있어요. 눌러보시거나 직접 입력해 주세요.</p>
       <button type="button" class="ai-chat-suggestion-chip">손상모 케어 시술 추천해줘</button>
       <button type="button" class="ai-chat-suggestion-chip">제일 저렴한 시술이 뭐야?</button>
       <button type="button" class="ai-chat-suggestion-chip">평점 좋은 매장 추천해줘</button>
@@ -270,7 +269,7 @@
   // ai-service 는 매장 id 와 이름만 주므로 주소는 여기서 조립함
   var reserveUrl = '<c:url value="/common/reserve"/>';
 
-  // 세션ID는 브라우저 탭(sessionStorage) 단위 — MCP 쪽이 이 값으로 대화 맥락을 이어간다
+  // 세션ID는 브라우저 탭 단위 — MCP 가 이 값으로 대화 맥락을 이어감
   var sessionId = sessionStorage.getItem('aiChatSessionId');
   if (!sessionId) {
     sessionId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now() + '-' + Math.random().toString(16).slice(2));
@@ -316,10 +315,11 @@
     messages.scrollTop = messages.scrollHeight;
   }
 
-  // 예시 질문 버튼과 직접 입력이 같은 전송 경로를 타도록 공용 함수로 뺀다
+  // 예시 질문 버튼과 직접 입력이 같은 경로를 타도록 공용 함수로 뺌
   function sendQuestion(question) {
     if (!question) return;
-    if (suggestions) { suggestions.remove(); suggestions = null; }
+    // 지우지 않고 접음 — 다른 갈래를 이어서 눌러보는 흐름이 많음
+    if (suggestions) suggestions.classList.add('is-compact');
 
     appendMessage(question, 'user');
     input.value = '';

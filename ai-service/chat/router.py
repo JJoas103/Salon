@@ -16,12 +16,11 @@ async def chat(
     session_id = payload.session_id
 
     try:
-        # 세션ID와 질문을 Mcp 서버에 전달해 답변을 반환
         chat_service: McpChatService = request.app.state.chat_service
         answer, salons = await chat_service.ask(
             session_id, question, payload.user_context, payload.salon_id
         )
-        
+
     except Exception as error:
         # 예외 문자열에 ES 주소가 들어있어 브라우저로 내보내지 않음
         logger.exception("MCP 상품 상담 요청에 실패했습니다")
@@ -32,7 +31,7 @@ async def chat(
                 "ElasticSearch와 LLM 설정을 확인하세요."
             ),
         ) from error
-    
+
     return ChatResponse(
         answer = answer,
         source = "mcp",

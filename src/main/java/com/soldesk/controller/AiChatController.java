@@ -30,14 +30,13 @@ import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
-/** ai-service(FastAPI) 로 시술 추천 채팅을 중계하는 컨트롤러.
- *  개인 예약이력을 다루는 상담이라 인증이 필요 — SecurityConfig 의 기본 규칙
- *  (permitAll 목록에 없는 요청은 anyRequest().authenticated()) 을 그대로 따른다. */
+/** ai-service(FastAPI) 로 시술 추천 채팅을 중계하는 컨트롤러
+ *  개인 예약이력을 다루므로 인증이 필요 — SecurityConfig 의 기본 규칙을 그대로 따름 */
 @Controller
 @RequestMapping("/api")
 public class AiChatController {
 
-    /** 개인화 컨텍스트에 넣는 완료된 시술 이력 최대 개수. 프롬프트가 너무 길어지지 않게 최근 것만 */
+    /** 개인화 컨텍스트에 넣는 완료된 시술 이력 최대 개수 */
     private static final int MAX_HISTORY_ITEMS = 5;
 
     private final RestTemplate restTemplate;
@@ -71,7 +70,7 @@ public class AiChatController {
                     request.getSessionId()));
         }
 
-        // 클라이언트가 보낸 값은 신뢰하지 않고, 로그인 사용자 본인의 예약이력으로 서버가 직접 채운다
+        // 클라이언트가 보낸 값은 믿지 않고 로그인 사용자 본인의 예약이력으로 서버가 채움
         request.setUserContext(buildUserContext(authentication));
         request.setSalonId(resolveSalonId(request.getSalonId()));
 
@@ -106,8 +105,7 @@ public class AiChatController {
         return salonId;
     }
 
-    /** 로그인 사용자가 완료한 시술 이력을 "시술명(카테고리)" 형태로 최근 순 요약
-     *  같은 시술명이 반복되면 한 번만 남기고, ai-service 쪽 프롬프트에 그대로 얹을 문자열을 만든다 */
+    /** 완료한 시술 이력을 최근 순으로 요약 — 같은 시술명은 한 번만 남김 */
     private String buildUserContext(Authentication authentication) {
         UserVO user = userService.getUser(authentication.getName());
         List<ReservationVO> history = reservationService.getRevList(user.getUserId());
@@ -129,9 +127,8 @@ public class AiChatController {
         return summarized.stream().collect(Collectors.joining(", "));
     }
 
-    /** 예약 이력 한 건을 "여성컷(컷, 라움헤어)" 형태로 조립함
-     *  매장명까지 넘기지 않으면 LLM 이 어느 매장이었는지 추측해서 답함
-     *  salon_name 은 getRevList 가 이미 조인해오므로 추가 조회는 없음 */
+    /** 예약 이력 한 건을 "여성컷(컷, 라움헤어)" 형태로 조립
+     *  매장명을 안 넘기면 LLM 이 어느 매장이었는지 추측함. salon_name 은 getRevList 가 조인해옴 */
     private String formatHistoryItem(ReservationVO r) {
         List<String> detail = new ArrayList<>();
         if (r.getCategory() != null && !r.getCategory().isBlank()) {
