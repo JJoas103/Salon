@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+elasticsearch>=8.15,<9
+requests
+sentence-transformers
+langchain
+langchain-ollama
+langchain-mcp-adapters
+mcp
+python-dotenv
+# LLM_PROVIDER=openai 로 쓸 때만 필요
+# langchain-openai

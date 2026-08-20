@@ -24,15 +24,20 @@
         
     </resultMap>
 
+    <!-- salon_name 은 findAllServices 의 Salons 조인 결과일 때만 채워진다.
+         다른 쿼리는 그 컬럼을 select 하지 않으므로 자동으로 null 로 남는다. -->
     <resultMap id="serviceResultMap" type="com.soldesk.vo.ServiceVO">
         <id column="service_id" property="serviceId" />
         <result column="salon_id" property="salonId" />
         <result column="service_name" property="serviceName" />
+        <result column="category" property="category" />
         <result column="price" property="price" />
         <result column="duration_minutes" property="durationMinutes" />
         <result column="description" property="description" />
+        <result column="concern" property="concern" />
         <result column="created_at" property="createdAt" />
         <result column="updated_at" property="updatedAt" />
+        <result column="salon_name" property="salonName" />
     </resultMap>
 
     <!-- 손님 노출용 전체 목록 — 2차 승인 전(preparing) 매장은 완전히 뺀다 -->
@@ -68,29 +73,42 @@
     </select>
 
     <select id="findServicesBySalonId" resultMap="serviceResultMap">
-        SELECT service_id, salon_id, service_name, price, duration_minutes,
-               description, created_at, updated_at
+        SELECT service_id, salon_id, service_name, category, price, duration_minutes,
+               description, concern, created_at, updated_at
         FROM Services
         WHERE salon_id = #{salonId}
         ORDER BY price, service_id
     </select>
 
     <select id="findServiceById" resultMap="serviceResultMap" parameterType="int">
-        SELECT service_id, salon_id, service_name, price, duration_minutes,
-               description, created_at, updated_at
+        SELECT service_id, salon_id, service_name, category, price, duration_minutes,
+               description, concern, created_at, updated_at
         FROM Services
         WHERE service_id = #{serviceId}
     </select>
 
+    <!-- AI 시술 추천 챗봇(ai-service)이 /api/services 로 가져갈 전체 카탈로그.
+         salon_name 을 같이 내려줘야 챗봇이 "어느 매장의 시술인지" 답할 수 있어 Salons 조인.
+         폐업 매장(closed_at) 은 제외 — 안 그러면 챗봇이 문 닫은 매장 시술을 추천한다. -->
+    <select id="findAllServices" resultMap="serviceResultMap">
+        SELECT se.service_id, se.salon_id, se.service_name, se.category, se.price,
+               se.duration_minutes, se.description, se.concern, se.created_at, se.updated_at,
+               sal.salon_name
+        FROM Services se
+        JOIN Salons sal ON sal.salon_id = se.salon_id
+        WHERE sal.closed_at IS NULL
+        ORDER BY se.salon_id, se.service_id
+    </select>
+
     <insert id="insertService" parameterType="com.soldesk.vo.ServiceVO">
-        insert into Services (salon_id, service_name, price, duration_minutes, description)
-        values (#{salonId}, #{serviceName}, #{price}, #{durationMinutes}, #{description})
+        insert into Services (salon_id, service_name, category, price, duration_minutes, description, concern)
+        values (#{salonId}, #{serviceName}, #{category}, #{price}, #{durationMinutes}, #{description}, #{concern})
     </insert>
 
     <update id="updateService" parameterType="com.soldesk.vo.ServiceVO">
         update Services
-        set service_name = #{serviceName}, price = #{price},
-            duration_minutes = #{durationMinutes}, description = #{description}
+        set service_name = #{serviceName}, category = #{category}, price = #{price},
+            duration_minutes = #{durationMinutes}, description = #{description}, concern = #{concern}
         where service_id = #{serviceId}
     </update>
 

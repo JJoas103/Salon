@@ -39,3 +39,9 @@ payment.properties
 docs/checkout-handoff.md
 docs/checkout-todo.md
 sql/migration_2026-08-04_consolidated.sql
+
+# ai-service 이식 작업용 개인 메모(강사 실습본 참조 내용 포함, 팀 공유 문서 아님)
+docs/ai-chatbot-todo.md
+
+# ai-service 추가 아이디어 메모 — 아직 결정된 계획 아니라 팀 공유 문서 아님
+docs/ai-service-ideas.txt

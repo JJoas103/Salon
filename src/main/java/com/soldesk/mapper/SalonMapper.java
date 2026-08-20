@@ -16,6 +16,9 @@ public interface SalonMapper {
 
     List<ServiceVO> findServicesBySalonId(int salonId);
 
+    /** 매장 구분 없는 전체 시술 카탈로그. AI 시술 추천 챗봇(ai-service)의 /api/services 호출용 */
+    List<ServiceVO> findAllServices();
+
     /** 점주 시술 메뉴 등록 */
     void insertService(ServiceVO service);
 

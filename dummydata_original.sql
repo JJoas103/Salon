@@ -20,7 +20,6 @@ INSERT INTO Users (email, password, user_name, phone_number, user_type) values
 ('owner2@salu.com', '$2a$10$uyZ84UlxDOh4sVVoKVoSTue0pi8txpiMtaC3Ae6jWJaYVII2DodLK', '박원장', '010-2000-0002', 'owner'), -- user_id 9
 ('owner3@salu.com', '$2a$10$uyZ84UlxDOh4sVVoKVoSTue0pi8txpiMtaC3Ae6jWJaYVII2DodLK', '최원장', '010-2000-0003', 'owner'), -- user_id 10
 ('owner4@salu.com', '$2a$10$uyZ84UlxDOh4sVVoKVoSTue0pi8txpiMtaC3Ae6jWJaYVII2DodLK', '정원장', '010-2000-0004', 'owner'); -- user_id 11
-select * from users;
 -- ---------- 2. Salons (owner_id: 8~11 참조) ----------
 INSERT INTO Salons (owner_id, salon_name, address, phone_number, description, average_rating, image_url) VALUES
 (8,  '라움헤어',       '서울 강남구 논현동 123-4',   '02-511-1001', '트렌디한 커트와 컬러 전문 살롱',        4.5, NULL), -- salon_id 1
@@ -33,22 +32,21 @@ INSERT INTO Salons (owner_id, salon_name, address, phone_number, description, av
 (11, '컬러플레이 헤어', '서울 마포구 연남동 23-4',   '02-511-1008', '탈염/컬러 특화 살롱',                  4.6, NULL), -- salon_id 8
 (8,  '에디트헤어',     '서울 용산구 이태원동 67-8',  '02-511-1009', '남녀 커트 및 펌 전문',                 4.1, NULL), -- salon_id 9
 (9,  '뮤즈헤어살롱',   '인천 미추홀구 주안동 90-1',  '032-511-1010', '20년 경력 원장님이 직접 시술',        4.9, NULL); -- salon_id 10
-select * from salons;
 -- ---------- 3. Services (salon_id 1~10 참조) ----------
-INSERT INTO Services (salon_id, service_name, price, duration_minutes, description) VALUES
-(1,  '여성컷',           25000,  40,  '디자이너 커트 (샴푸 포함)'),   -- service_id 1
-(1,  '남성컷',           18000,  30,  '남성 스타일 커트'),           -- service_id 2
-(2,  '볼륨매직',        120000, 150, '자연스러운 볼륨 매직 스트레이트'), -- service_id 3
-(2,  '뿌리염색',         60000,  90,  '새치 커버 뿌리염색'),         -- service_id 4
-(3,  '히피펌',           90000, 120, '내추럴 웨이브 히피펌'),        -- service_id 5
-(4,  '여성컷',           22000,  40,  '디자이너 커트'),              -- service_id 6
-(4,  '클리닉트리트먼트', 70000,  60,  '손상모 집중 케어'),           -- service_id 7
-(5,  '남성컷',           20000,  30,  '남성 클리닉 커트'),           -- service_id 8
-(6,  '발레아쥬',        150000, 180, '자연스러운 그라데이션 염색'),   -- service_id 9
-(7,  '여성컷',           23000,  40,  '디자이너 커트'),              -- service_id 10
-(8,  '셋팅펌',          110000, 150, '내추럴 셋팅펌'),               -- service_id 11
-(9,  '남성컷',           19000,  30,  '남성 스타일 커트'),           -- service_id 12
-(10, '여성컷',           24000,  40,  '디자이너 커트');              -- service_id 13
+INSERT INTO Services (salon_id, service_name, category, price, duration_minutes, description, concern) VALUES
+(1,  '여성컷',           '컷',   25000,  40,  '디자이너 커트 (샴푸 포함)',       '일상 손질 편한 커트, 얼굴형 커버'),        -- service_id 1
+(1,  '남성컷',           '컷',   18000,  30,  '남성 스타일 커트',               '짧고 깔끔한 스타일, 이미지 변신'),        -- service_id 2
+(2,  '볼륨매직',        '펌',   120000, 150, '자연스러운 볼륨 매직 스트레이트', '곱슬머리, 부스스한 모발, 매끈한 볼륨'),    -- service_id 3
+(2,  '뿌리염색',         '염색', 60000,  90,  '새치 커버 뿌리염색',             '새치 커버, 뿌리 탈색'),                   -- service_id 4
+(3,  '히피펌',           '펌',   90000, 120, '내추럴 웨이브 히피펌',            '밋밋한 머리, 볼륨 다운, 웨이브 연출'),     -- service_id 5
+(4,  '여성컷',           '컷',   22000,  40,  '디자이너 커트',                  '일상 손질 편한 커트, 얼굴형 커버'),        -- service_id 6
+(4,  '클리닉트리트먼트', '클리닉', 70000,  60,  '손상모 집중 케어',             '손상모, 갈라짐, 푸석함 완화'),             -- service_id 7
+(5,  '남성컷',           '컷',   20000,  30,  '남성 클리닉 커트',               '짧고 깔끔한 스타일, 두피 케어'),          -- service_id 8
+(6,  '발레아쥬',        '염색', 150000, 180, '자연스러운 그라데이션 염색',      '칙칙한 톤, 그라데이션 염색, 분위기 전환'), -- service_id 9
+(7,  '여성컷',           '컷',   23000,  40,  '디자이너 커트',                  '일상 손질 편한 커트, 얼굴형 커버'),        -- service_id 10
+(8,  '셋팅펌',          '펌',   110000, 150, '내추럴 셋팅펌',                   '볼륨 부족, 힘없는 모발, 자연스러운 웨이브'), -- service_id 11
+(9,  '남성컷',           '컷',   19000,  30,  '남성 스타일 커트',               '짧고 깔끔한 스타일, 이미지 변신'),        -- service_id 12
+(10, '여성컷',           '컷',   24000,  40,  '디자이너 커트',                  '일상 손질 편한 커트, 얼굴형 커버');        -- service_id 13
 
 -- ---------- 4. Stylists (salon_id 1~10 참조) ----------
 INSERT INTO Stylists (salon_id, stylist_name, phone_number, description, image_url) VALUES
@@ -92,7 +90,6 @@ INSERT INTO Reservations (user_id, salon_id, stylist_id, service_id, reservation
 (3, 8,  10, 11, '2026-07-16 14:30:00', 'completed'),  -- reservation_id 10
 (4, 9,  11, 12, '2026-07-28 11:30:00', 'pending'),    -- reservation_id 11
 (5, 10, 12, 13, '2026-07-21 09:00:00', 'cancelled');  -- reservation_id 12
-select * from services s  ;
 -- ---------- 7. Payments (reservation_id UNIQUE, 금액은 해당 service 가격과 일치) ----------
 INSERT INTO Payments (reservation_id, user_id, amount, payment_method, payment_status, transaction_id) VALUES
 (1,  1, 25000,  '신용카드', 'completed', 'TXN-0001'),

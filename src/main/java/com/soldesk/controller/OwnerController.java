@@ -172,6 +172,7 @@ public class OwnerController {
     @PostMapping("/store/service/register")
     public String registerService(Authentication authentication, HttpSession session,
             @RequestParam String serviceName,
+            @RequestParam(required = false) String category,
             @RequestParam java.math.BigDecimal price,
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) String description,
@@ -185,6 +186,7 @@ public class OwnerController {
         com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
         service.setSalonId(salonId);
         service.setServiceName(serviceName);
+        service.setCategory(category);
         service.setPrice(price);
         if (durationMinutes != null) {
             service.setDurationMinutes(durationMinutes);
@@ -201,6 +203,7 @@ public class OwnerController {
     @PostMapping("/store/service/{serviceId}/update")
     public String updateService(@PathVariable int serviceId, Authentication authentication,
             @RequestParam String serviceName,
+            @RequestParam(required = false) String category,
             @RequestParam java.math.BigDecimal price,
             @RequestParam(required = false) Integer durationMinutes,
             @RequestParam(required = false) String description,
@@ -209,6 +212,7 @@ public class OwnerController {
         com.soldesk.vo.ServiceVO service = new com.soldesk.vo.ServiceVO();
         service.setServiceId(serviceId);
         service.setServiceName(serviceName);
+        service.setCategory(category);
         service.setPrice(price);
         if (durationMinutes != null) {
             service.setDurationMinutes(durationMinutes);

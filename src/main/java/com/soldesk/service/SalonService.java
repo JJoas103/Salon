@@ -2,9 +2,14 @@ package com.soldesk.service;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
 
 import com.soldesk.mapper.SalonMapper;
 import com.soldesk.vo.SalonOperatingHourVO;
@@ -15,11 +20,19 @@ import com.soldesk.vo.ServiceVO;
 @Service
 public class SalonService {
 
+    private static final Logger log = LoggerFactory.getLogger(SalonService.class);
+
     @Autowired
     private SalonSearchService salonSearchService;
 
     @Autowired
     private SalonMapper salonMapper;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${fastapi.url}")
+    private String fastApiUrl;
 
     @Transactional(readOnly = true)
     public List<SalonVO> getSalons() {
@@ -35,6 +48,12 @@ public class SalonService {
     public List<ServiceVO> getServices(int salonId) {
         return salonMapper.findServicesBySalonId(salonId);
     }// ID로 시술정보 가져오기
+
+    /** 매장 구분 없는 전체 시술 카탈로그. AI 시술 추천 챗봇(ai-service)의 /api/services 호출용 */
+    @Transactional(readOnly = true)
+    public List<ServiceVO> getAllServices() {
+        return salonMapper.findAllServices();
+    }
 
     @Transactional(readOnly = true)
     public List<SalonVO> getSalonByOwner(int ownerId) {
@@ -142,6 +161,7 @@ public class SalonService {
     public void registerService(int ownerId, ServiceVO service) {
         assertOwnsSalon(service.getSalonId(), ownerId);
         salonMapper.insertService(service);
+        triggerAiReindex();
     }// 점주 시술 메뉴 등록 (소유 검증)
 
     @Transactional
@@ -153,6 +173,7 @@ public class SalonService {
         assertOwnsSalon(existing.getSalonId(), ownerId);
         service.setSalonId(existing.getSalonId());
         salonMapper.updateService(service);
+        triggerAiReindex();
     }// 점주 시술 메뉴 수정 (소유 검증)
 
     @Transactional
@@ -163,6 +184,7 @@ public class SalonService {
         }
         assertOwnsSalon(existing.getSalonId(), ownerId);
         salonMapper.deleteService(serviceId);
+        triggerAiReindex();
     }// 점주 시술 메뉴 삭제 (소유 검증)
 
     @Transactional(readOnly = true)
@@ -199,4 +221,14 @@ public class SalonService {
             throw new IllegalArgumentException("이미 활성화되었거나 승인 대기 상태가 아닙니다.");
         }
     }// 관리자 2차 승인 — 손님에게 정상 노출
+    /** 시술 메뉴가 바뀔 때마다 ai-service 의 검색 인덱스를 즉시 새로고침한다.
+     *  ai-service 가 꺼져 있어도 점주의 메뉴 등록/수정/삭제 자체는 막으면 안 되므로 예외를 삼킨다 —
+     *  다음 CRUD 나 ai-service 재기동 시 어차피 최신 상태로 다시 맞춰진다. */
+    private void triggerAiReindex() {
+        try {
+            restTemplate.postForEntity(fastApiUrl + "/api/reindex", null, Void.class);
+        } catch (RestClientException e) {
+            log.warn("ai-service 재색인 요청 실패 (ai-service 가 꺼져 있을 수 있음): {}", e.getMessage());
+        }
+    }
 }

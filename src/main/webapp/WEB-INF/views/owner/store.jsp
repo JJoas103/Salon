@@ -51,21 +51,59 @@
               <label style="font-size: 13px; font-weight: 700;">매장명</label>
               <input type="text" name="salonName" class="modern-input" value="${salon.salonName}" required>
             </div>
-            <div>
-              <label style="font-size: 13px; font-weight: 700; color: var(--text-sub);">매장 소개</label>
-              <textarea name="description" class="modern-input" style="height: 100px; resize: none;">${salon.description}</textarea>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-              <div>
-                <label style="font-size: 13px; font-weight: 700;">주소</label>
-                <%-- 직접 입력을 막고 우편번호 검색으로만 채운다. 검증된 도로명주소여야
-                     나중에 좌표 변환(카카오 Geocoder)이 실패하지 않는다. --%>
-                <div class="address-field">
-                  <input type="text" name="address" id="salonAddress" class="modern-input"
-                         value="<c:out value='${salon.address}'/>" placeholder="주소 검색을 눌러주세요" readonly>
-                  <button type="button" class="btn-modern btn-outline" id="searchAddressBtn">
-                    <i class="fas fa-magnifying-glass"></i> 주소 검색
-                  </button>
+            <div><label style="font-size: 13px; font-weight: 700;">연락처</label><input type="text" name="phoneNumber" class="modern-input" value="${salon.phoneNumber}" placeholder="02-1234-5678"></div>
+          </div>
+
+          <%-- 주소 검색이 채우는 좌표. 저장된 값으로 초기화해 두므로, 주소를 건드리지 않고
+               저장해도 원래 좌표가 그대로 돌아간다 (updateSalonInfo 가 매번 덮어쓴다). --%>
+          <input type="hidden" name="latitude"  id="salonLatitude"  value="${salon.latitude}">
+          <input type="hidden" name="longitude" id="salonLongitude" value="${salon.longitude}">
+
+          <div>
+            <label style="font-size: 13px; font-weight: 700;">지도 위치</label>
+            <p class="address-map-hint" id="addressMapHint">주소를 검색하면 지도에 위치가 표시됩니다.</p>
+            <div class="address-map" id="salonAddressMap"></div>
+          </div>
+
+          <button type="submit" class="btn-modern btn-primary">정보 저장</button>
+        </form>
+      </div>
+      <div class="modern-card">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+          <h3>시술 메뉴 관리</h3>
+          <button type="button" class="btn-modern btn-outline" id="openRegisterServiceBtn"><i class="fas fa-plus"></i> 메뉴 추가</button>
+        </div>
+        <c:choose>
+          <c:when test="${empty services}">
+            <p style="font-size:13px; color:var(--text-sub);">등록된 메뉴가 없습니다. "메뉴 추가"로 첫 시술 메뉴를 등록해보세요.</p>
+          </c:when>
+          <c:otherwise>
+            <div class="menu-grid">
+              <c:forEach var="svc" items="${services}">
+                <div class="menu-card">
+                  <h4 style="margin-bottom: 8px;">
+                    <c:out value="${svc.serviceName}" />
+                    <c:if test="${not empty svc.category}"> <span class="tag">${svc.category}</span></c:if>
+                  </h4>
+                  <p style="color: var(--accent); font-weight: 700; margin-bottom: 4px;"><fmt:formatNumber value="${svc.price}" pattern="#,##0" />원</p>
+                  <p class="tag" style="margin-bottom: 12px;">
+                    <c:choose>
+                      <c:when test="${svc.durationMinutes > 0}">${svc.durationMinutes}분 소요</c:when>
+                      <c:otherwise>소요시간 미등록</c:otherwise>
+                    </c:choose>
+                  </p>
+                  <div style="display: flex; gap: 5px;">
+                    <button type="button" class="btn-modern btn-outline edit-service-btn" style="flex: 1;"
+                            data-service-id="${svc.serviceId}" data-service-name="${svc.serviceName}"
+                            data-service-category="${svc.category}"
+                            data-service-price="${svc.price}" data-service-duration="${svc.durationMinutes}"
+                            data-service-description="${svc.description}"
+                            data-service-concern="${svc.concern}">수정</button>
+                    <form action="${ctx}/owner/store/service/${svc.serviceId}/delete" method="post"
+                          onsubmit="return confirm('이 메뉴를 삭제하시겠습니까?')" style="display:inline;">
+                      <button type="submit" class="btn-modern btn-danger"><i class="fas fa-trash"></i></button>
+                    </form>
+                  </div>
                 </div>
               </div>
               <div><label style="font-size: 13px; font-weight: 700;">연락처</label><input type="text" name="phoneNumber" class="modern-input" value="${salon.phoneNumber}" placeholder="02-1234-5678" pattern="[0-9-]{9,13}" title="숫자와 하이픈(-)만 입력해주세요." required></div>
@@ -237,12 +275,23 @@
       <form action="${ctx}/owner/store/service/register" method="post">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">메뉴명</label>
         <input type="text" name="serviceName" class="modern-input" required>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">카테고리</label>
+        <select name="category" class="modern-input">
+          <option value="">미분류</option>
+          <option value="컷">컷</option>
+          <option value="펌">펌</option>
+          <option value="염색">염색</option>
+          <option value="클리닉">클리닉</option>
+          <option value="세트">세트</option>
+        </select>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">가격(원)</label>
         <input type="number" name="price" class="modern-input" min="0" step="100" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">소요시간(분)</label>
         <input type="number" name="durationMinutes" class="modern-input" min="0" step="5" placeholder="예: 60">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">설명</label>
         <textarea name="description" class="modern-input" style="height:80px; resize:none;"></textarea>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">추천 고민 (선택)</label>
+        <input type="text" name="concern" class="modern-input" placeholder="예: 곱슬머리, 손상모, 볼륨 다운">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">등록하기</button>
       </form>
     </div>
@@ -257,12 +306,23 @@
       <form id="editServiceForm" method="post">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin-bottom:8px;">메뉴명</label>
         <input type="text" name="serviceName" id="editServiceName" class="modern-input" required>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">카테고리</label>
+        <select name="category" id="editServiceCategory" class="modern-input">
+          <option value="">미분류</option>
+          <option value="컷">컷</option>
+          <option value="펌">펌</option>
+          <option value="염색">염색</option>
+          <option value="클리닉">클리닉</option>
+          <option value="세트">세트</option>
+        </select>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">가격(원)</label>
         <input type="number" name="price" id="editServicePrice" class="modern-input" min="0" step="100" required>
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">소요시간(분)</label>
         <input type="number" name="durationMinutes" id="editServiceDuration" class="modern-input" min="0" step="5">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">설명</label>
         <textarea name="description" id="editServiceDescription" class="modern-input" style="height:80px; resize:none;"></textarea>
+        <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">추천 고민 (선택)</label>
+        <input type="text" name="concern" id="editServiceConcern" class="modern-input" placeholder="예: 곱슬머리, 손상모, 볼륨 다운">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">저장하기</button>
       </form>
     </div>
@@ -413,9 +473,11 @@
       btn.addEventListener('click', function () {
         document.getElementById('editModalServiceName').textContent = btn.dataset.serviceName;
         document.getElementById('editServiceName').value = btn.dataset.serviceName;
+        document.getElementById('editServiceCategory').value = btn.dataset.serviceCategory || '';
         document.getElementById('editServicePrice').value = btn.dataset.servicePrice;
         document.getElementById('editServiceDuration').value = btn.dataset.serviceDuration;
         document.getElementById('editServiceDescription').value = btn.dataset.serviceDescription;
+        document.getElementById('editServiceConcern').value = btn.dataset.serviceConcern || '';
         editServiceForm.action = ctx + '/owner/store/service/' + btn.dataset.serviceId + '/update';
         editServiceModal.classList.add('active');
       });
