@@ -45,3 +45,13 @@ docs/ai-chatbot-todo.md
 
 # ai-service 추가 아이디어 메모 — 아직 결정된 계획 아니라 팀 공유 문서 아님
 docs/ai-service-ideas.txt
+
+# 강의자료 zip 이 병합 중에 딸려 들어온 적이 있어 통째로 막아둔다.
+# (그 안에 강사 계정 OpenAI 키가 들어있었다)
+*.zip
+
+# ai-service 의 llm.py 는 저장소 루트 .env 도 읽는다.
+# ai-service/.gitignore 는 그 폴더 안만 막으므로 여기에도 규칙이 필요하다.
+.env
+.env.*
+!.env.example
