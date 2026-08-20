@@ -3,6 +3,7 @@ package com.soldesk.controller;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,6 +122,51 @@ public class OwnerController {
             model.addAttribute("notices", List.of());
         }
         return "owner/store";
+    }
+
+    /**
+     * 준비중 매장의 필수정보 체크리스트 상태 — 사이드바는 모든 점주 화면에 떠 있어서
+     * (기본정보/영업시간/시술메뉴/직원관리처럼 서로 다른 컨트롤러가 각자 모델을 채우는) 페이지마다
+     * 이 값을 채워주는 대신, 사이드바 JS가 이 엔드포인트를 한 번 불러서 직접 채운다.
+     */
+    @GetMapping("/store/prep-status")
+    @ResponseBody
+    public Map<String, Object> prepStatus(Authentication authentication, HttpSession session) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("isPreparing", false);
+        Integer salonId = (Integer) session.getAttribute("selectedSalonId");
+        if (salonId == null) {
+            return result;
+        }
+        UserVO user = userService.getUser(authentication.getName());
+        try {
+            SalonVO salon = salonService.getSalonForOwner(salonId, user.getUserId());
+            if (!"preparing".equals(salon.getActivationStatus())) {
+                return result;
+            }
+            boolean addrOk = salon.getAddress() != null && !salon.getAddress().isBlank();
+            boolean hoursOk = !salonService.getOperatingHours(salonId).isEmpty();
+            boolean menuOk = !salonService.getServices(salonId).isEmpty();
+            boolean stylistOk = !staffService.getStylists(salonId, user.getUserId()).isEmpty();
+
+            List<String> missingLabels = new ArrayList<>();
+            if (!addrOk) missingLabels.add("주소");
+            if (!hoursOk) missingLabels.add("영업시간");
+            if (!menuOk) missingLabels.add("시술메뉴");
+            if (!stylistOk) missingLabels.add("디자이너");
+
+            result.put("isPreparing", true);
+            result.put("totalCount", 4);
+            result.put("doneCount", 4 - missingLabels.size());
+            result.put("missingLabels", missingLabels);
+            result.put("addrOk", addrOk);
+            result.put("hoursOk", hoursOk);
+            result.put("menuOk", menuOk);
+            result.put("stylistOk", stylistOk);
+        } catch (IllegalArgumentException e) {
+            // 세션의 selectedSalonId가 본인 소유가 아니면 isPreparing=false 그대로 반환
+        }
+        return result;
     }
 
     // 요일 키(영문, 폼 파라미터용) ↔ DB ENUM('월'~'일') 매핑

@@ -19,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.soldesk.service.OwnerRequestService;
 import com.soldesk.service.PostService;
 import com.soldesk.service.SalonService;
+import com.soldesk.service.StylistService;
 import com.soldesk.service.UserService;
 import com.soldesk.vo.OwnerRequestVO;
 import com.soldesk.vo.PostVO;
@@ -41,6 +42,9 @@ public class AdminController {
 
     @Autowired
     private PostService postService;
+
+    @Autowired
+    private StylistService stylistService;
 
     private int currentAdminId(Authentication authentication){
         return userService.getUser(authentication.getName()).getUserId();
@@ -78,18 +82,21 @@ public class AdminController {
             // 심사 대기 큐 — 2차 승인 전이라 보통 몇 건 안 돼서 검색/페이지네이션 없이 전체를 보여준다
             List<SalonVO> preparing = salonService.getPreparingSalons();
             model.addAttribute("salons", preparing);
-            // 체크리스트(주소/영업시간/시술메뉴)는 매장마다 직접 조회 — 대기 큐가 커봐야 수십 건이라 N+1이어도 무방
+            // 체크리스트(주소/영업시간/시술메뉴/디자이너)는 매장마다 직접 조회 — 대기 큐가 커봐야 수십 건이라 N+1이어도 무방
             Map<Integer, Boolean> hasAddress = new HashMap<>();
             Map<Integer, Integer> hoursCount = new HashMap<>();
             Map<Integer, Integer> serviceCount = new HashMap<>();
+            Map<Integer, Integer> stylistCount = new HashMap<>();
             for (SalonVO salon : preparing) {
                 hasAddress.put(salon.getSalonId(), salon.getAddress() != null && !salon.getAddress().isBlank());
                 hoursCount.put(salon.getSalonId(), salonService.getOperatingHours(salon.getSalonId()).size());
                 serviceCount.put(salon.getSalonId(), salonService.getServices(salon.getSalonId()).size());
+                stylistCount.put(salon.getSalonId(), stylistService.findBySalonId(salon.getSalonId()).size());
             }
             model.addAttribute("hasAddress", hasAddress);
             model.addAttribute("hoursCount", hoursCount);
             model.addAttribute("serviceCount", serviceCount);
+            model.addAttribute("stylistCount", stylistCount);
             model.addAttribute("totalCount", preparing.size());
             model.addAttribute("totalPages", 1);
         } else if ("requests".equals(status)) {
