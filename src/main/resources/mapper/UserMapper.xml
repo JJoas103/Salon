@@ -67,7 +67,8 @@
 
     <!-- user_id(PK)로 회원 조회 (탈퇴/강등 처리 전 최신 상태 재확인용) -->
     <select id="findById" parameterType="int" resultMap="userResultMap">
-        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at
+        select user_id, email, user_name, phone_number, user_type, created_at, updated_at, deleted_at,
+               notifications_enabled
         from Users
         where user_id = #{userId}
     </select>

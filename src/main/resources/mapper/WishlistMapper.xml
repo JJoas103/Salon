@@ -18,6 +18,9 @@
     <select id="findSalonIdsByUserId" parameterType="int" resultType="int">
         SELECT salon_id FROM Wishlists WHERE user_id = #{userId}
     </select>
+    <select id="findUserIdsBySalonId" parameterType="int" resultType="int">
+        SELECT user_id FROM Wishlists WHERE salon_id = #{salonId}
+    </select>
     <select id="findSalonsByUserId" parameterType="int" resultType="com.soldesk.vo.SalonVO">
         SELECT s.salon_id AS salonId, s.owner_id AS ownerId,
                s.salon_name AS salonName, s.address, s.phone_number AS phoneNumber,

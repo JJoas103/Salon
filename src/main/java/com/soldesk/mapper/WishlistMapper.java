@@ -11,4 +11,5 @@ public interface WishlistMapper {
     int countByUserId(int userId);
     List<Integer> findSalonIdsByUserId(int userId);
     List<SalonVO> findSalonsByUserId(int userId);
+    List<Integer> findUserIdsBySalonId(int salonId);
 }
