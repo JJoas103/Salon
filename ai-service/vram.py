@@ -1,10 +1,11 @@
-"""VRAM 에 모델이 한 번에 하나만 올라가도록 순서를 잡는 중재자
+"""상담과 이미지가 같은 GPU 를 동시에 쓰지 않게 순서를 잡는 중재자
 
-16GB 에 상담 모델(qwen3.5:9b 6.6GB)과 이미지 모델(Q4 기준 14GB)이 같이 안 들어감
-둘 중 하나를 내리고 들어가야 해서, 내리는 시점을 여기 한 군데로 모음
+6800XT 16GB 기준 실측 — 512 편집이 7.6GB, 상담 모델(qwen3.5:9b)이 6.6GB
+합이 14.2GB 라 상주는 되지만, 둘의 연산 버퍼가 동시에 뜨면 그때 넘침
 
-내려도 GGUF 는 OS 페이지 캐시에 남아 다시 올릴 때 디스크를 다시 읽지 않음 —
-왕복 비용이 첫 로딩보다 훨씬 싼 이유가 이것
+sd-server 는 한 번 올린 가중치를 내리는 엔드포인트가 없어 이미지 쪽은 비켜줄 수 없음
+그래서 기본 동작은 순서를 지키는 것까지고, 공존이 실제로 안 되는 것으로 확인되면
+SDCPP_UNLOAD_CHAT=1 로 상담 모델을 내려가며 씀
 
 IMAGE_PROVIDER 가 openai 면 이미지가 VRAM 을 안 쓰므로 아무것도 하지 않음
 """
@@ -29,8 +30,8 @@ def _ollama_base() -> str:
     return os.getenv("OLLAMA_BASE_URL", "http://localhost:11434").rstrip("/")
 
 
-def _comfy_base() -> str:
-    return os.getenv("COMFY_BASE_URL", "http://localhost:8188").rstrip("/")
+def _unload_chat_enabled() -> bool:
+    return os.getenv("SDCPP_UNLOAD_CHAT", "0").strip() == "1"
 
 
 def _unload_ollama() -> None:
@@ -62,24 +63,9 @@ def _unload_ollama() -> None:
             logger.warning("Ollama 모델을 내리지 못했습니다: %s", name)
 
 
-def _unload_comfy() -> None:
-    try:
-        requests.post(
-            f"{_comfy_base()}/free",
-            json={"unload_models": True, "free_memory": True},
-            timeout=_UNLOAD_TIMEOUT,
-        )
-        logger.info("ComfyUI 모델을 내렸습니다")
-    except Exception:
-        logger.warning("ComfyUI 모델을 내리지 못했습니다: %s", _comfy_base())
-
-
 @asynccontextmanager
 async def image_turn(provider: str, wait_seconds: float):
-    """이미지 생성이 GPU 를 잡는 구간
-
-    들어갈 때 상담 모델을 내리고, 나올 때 이미지 모델을 내려 상담이 바로 올라오게 함
-    """
+    """이미지 생성이 GPU 차례를 잡는 구간"""
     local = provider not in ("openai", "none")
 
     try:
@@ -88,19 +74,17 @@ async def image_turn(provider: str, wait_seconds: float):
         raise TimeoutError("GPU 를 쓰고 있는 다른 작업이 끝나지 않았습니다")
 
     try:
-        if local:
+        if local and _unload_chat_enabled():
+            # 다음 상담 요청이 알아서 다시 올리므로 되돌리는 처리는 없음
             await asyncio.to_thread(_unload_ollama)
         yield
     finally:
-        if local:
-            await asyncio.to_thread(_unload_comfy)
         _gpu_lock.release()
 
 
 async def acquire_gpu(wait_seconds: float) -> None:
     """상담이 GPU 차례를 잡음
 
-    이미지 쪽이 나갈 때 자기 모델을 내리므로 여기서는 순서만 기다리면 됨
     잡는 순서는 항상 상담 락 → 이 락 — 반대로 잡는 경로를 만들면 교착이 생김
     """
     try:
