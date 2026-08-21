@@ -16,10 +16,26 @@
     .preview-panel textarea, .preview-panel input[type="file"] {
       width: 100%; border: 1px solid var(--border); border-radius: var(--radius-md);
       background: var(--white); color: var(--text-main); font: inherit; }
-    .preview-panel textarea { min-height: 150px; padding: 12px 14px; resize: vertical; line-height: 1.6; }
+    .preview-panel textarea { min-height: 84px; padding: 12px 14px; resize: vertical; line-height: 1.6; }
     .preview-panel input[type="file"] { padding: 10px; }
     .preview-panel textarea:focus, .preview-panel input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
     .preview-help { margin: -8px 0 0; color: var(--text-sub); font-size: 12px; line-height: 1.6; }
+    .preview-field { display: grid; gap: 11px; }
+    .preview-field-title { font-size: 14px; font-weight: 700; color: var(--text-main); }
+    .preview-group { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 8px; align-items: start; }
+    .preview-group-label { padding-top: 8px; color: var(--text-light); font-size: 12px; font-weight: 700; }
+    .preview-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+    .preview-chip { padding: 7px 12px; border: 1px solid var(--border); border-radius: 999px;
+                    background: var(--white); color: var(--text-sub); font: inherit; font-size: 13px;
+                    cursor: pointer; }
+    .preview-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .preview-chip.is-active { border-color: var(--accent); background: var(--accent); color: var(--white); }
+    .preview-echo { margin: 0; padding: 9px 12px; border-radius: var(--radius-md); background: var(--bg-sub);
+                    color: var(--text-sub); font-size: 12px; line-height: 1.6; word-break: keep-all; }
+    .preview-echo b { color: var(--text-main); }
+    .preview-link { justify-self: start; padding: 0; border: 0; background: none; color: var(--accent);
+                    font: inherit; font-size: 13px; text-decoration: underline; cursor: pointer; }
+    .preview-panel textarea[hidden] { display: none; }
     .preview-status { min-height: 24px; margin: 16px 0 0; color: var(--text-sub); font-size: 13px; line-height: 1.6; }
     .preview-status.error { color: var(--danger); }
     .preview-status.success { color: var(--success); }
@@ -60,17 +76,61 @@
           </label>
           <p class="preview-help">PNG, JPG, JPEG · 최대 5MB</p>
 
-          <label>
-            바꾸고 싶은 내용
-            <textarea id="prompt" name="prompt" maxlength="1000"
-                      placeholder="예: 얼굴과 배경은 그대로 두고 머리만 단발 레이어드컷으로 바꿔 줘"
-                      required></textarea>
-          </label>
-          <p class="preview-help">유지할 부분과 바꿀 부분을 나눠서 적으면 결과가 안정적입니다.</p>
+          <div class="preview-field">
+            <span class="preview-field-title">바꾸고 싶은 스타일</span>
+
+            <div class="preview-group">
+              <span class="preview-group-label">컷</span>
+              <div class="preview-chips">
+                <button type="button" class="preview-chip">레이어드컷</button>
+                <button type="button" class="preview-chip">허쉬컷</button>
+                <button type="button" class="preview-chip">샤기컷</button>
+                <button type="button" class="preview-chip">히메컷</button>
+                <button type="button" class="preview-chip">단발</button>
+                <button type="button" class="preview-chip">숏컷</button>
+                <button type="button" class="preview-chip">투블럭컷</button>
+                <button type="button" class="preview-chip">스포츠컷</button>
+              </div>
+            </div>
+
+            <div class="preview-group">
+              <span class="preview-group-label">펌</span>
+              <div class="preview-chips">
+                <button type="button" class="preview-chip">히피펌</button>
+                <button type="button" class="preview-chip">셋팅펌</button>
+                <button type="button" class="preview-chip">디지털펌</button>
+                <button type="button" class="preview-chip">보브펌</button>
+                <button type="button" class="preview-chip">가르마펌</button>
+                <button type="button" class="preview-chip">앞머리펌</button>
+                <button type="button" class="preview-chip">볼륨매직</button>
+              </div>
+            </div>
+
+            <div class="preview-group">
+              <span class="preview-group-label">색</span>
+              <div class="preview-chips">
+                <button type="button" class="preview-chip">애쉬브라운</button>
+                <button type="button" class="preview-chip">애쉬그레이</button>
+                <button type="button" class="preview-chip">밀크브라운</button>
+                <button type="button" class="preview-chip">블론드</button>
+                <button type="button" class="preview-chip">핑크</button>
+                <button type="button" class="preview-chip">레드</button>
+                <button type="button" class="preview-chip">발레아쥬</button>
+                <button type="button" class="preview-chip">투톤</button>
+                <button type="button" class="preview-chip">새치커버</button>
+              </div>
+            </div>
+
+            <p id="promptEcho" class="preview-echo">고르면 여기에 보낼 내용이 표시됩니다.</p>
+            <button id="freeToggle" type="button" class="preview-link">직접 입력</button>
+            <textarea id="prompt" maxlength="1000" hidden aria-label="직접 입력"
+                      placeholder="위에 없는 시술명만 짧게 — 모르는 말은 반영되지 않습니다"></textarea>
+          </div>
+          <p class="preview-help">고른 것을 합쳐 보냅니다. 얼굴·옷·배경은 그대로 두고 머리만 바꿉니다.</p>
 
           <button id="generateButton" class="btn btn-primary" type="submit">미리보기 만들기</button>
         </form>
-        <p id="status" class="preview-status" aria-live="polite">사진과 문구를 입력해 주세요.</p>
+        <p id="status" class="preview-status" aria-live="polite">사진을 올리고 스타일을 골라 주세요.</p>
       </section>
 
       <section class="preview-panel preview-results" aria-label="이미지 생성 결과">
@@ -98,6 +158,59 @@
   var referenceBox = document.getElementById('referenceBox');
   var generatedBox = document.getElementById('generatedBox');
   var downloadLink = document.getElementById('downloadLink');
+
+  // 칩 이름은 ai-service 사전의 표제어와 글자까지 같아야 함 — 어긋나면 한글이 그대로 나가 무시됨
+  var chipGroups = form.querySelectorAll('.preview-chips');
+  var promptEcho = document.getElementById('promptEcho');
+  var freeToggle = document.getElementById('freeToggle');
+
+  function composePrompt() {
+    var picked = [];
+    Array.prototype.forEach.call(chipGroups, function (group) {
+      var active = group.querySelector('.preview-chip.is-active');
+      if (active) picked.push(active.textContent);
+    });
+    // 사전이 한 문장에서 여러 개를 잡아내므로 이어 붙이기만 하면 됨
+    var free = promptInput.hidden ? '' : promptInput.value.trim();
+    if (free) picked.push(free);
+    return picked.join(' ');
+  }
+
+  function refreshEcho() {
+    var composed = composePrompt();
+    if (composed) {
+      promptEcho.textContent = '보낼 내용: ';
+      var strong = document.createElement('b');
+      strong.textContent = composed;
+      promptEcho.appendChild(strong);
+    } else {
+      promptEcho.textContent = '고르면 여기에 보낼 내용이 표시됩니다.';
+    }
+  }
+
+  Array.prototype.forEach.call(chipGroups, function (group) {
+    group.addEventListener('click', function (event) {
+      var chip = event.target.closest('.preview-chip');
+      if (!chip) return;
+
+      // 한 줄에서 하나만 고름 — 고른 것을 다시 누르면 해제됨
+      var wasActive = chip.classList.contains('is-active');
+      Array.prototype.forEach.call(group.querySelectorAll('.preview-chip'), function (other) {
+        other.classList.remove('is-active');
+      });
+      if (!wasActive) chip.classList.add('is-active');
+      refreshEcho();
+    });
+  });
+
+  freeToggle.addEventListener('click', function () {
+    promptInput.hidden = !promptInput.hidden;
+    freeToggle.textContent = promptInput.hidden ? '직접 입력' : '직접 입력 닫기';
+    if (!promptInput.hidden) promptInput.focus();
+    refreshEcho();
+  });
+
+  promptInput.addEventListener('input', refreshEcho);
   var referenceUrl = null;
 
   imageFile.addEventListener('change', function () {
@@ -119,8 +232,14 @@
     event.preventDefault();
 
     var file = imageFile.files[0];
-    var cleanPrompt = promptInput.value.trim();
-    if (!file || !cleanPrompt || generateButton.disabled) return;
+    if (!file || generateButton.disabled) return;
+
+    var cleanPrompt = composePrompt();
+    if (!cleanPrompt) {
+      status.className = 'preview-status error';
+      status.textContent = '바꾸고 싶은 스타일을 하나 이상 골라 주세요.';
+      return;
+    }
 
     var body = new FormData();
     body.append('prompt', cleanPrompt);

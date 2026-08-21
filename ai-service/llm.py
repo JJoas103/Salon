@@ -19,7 +19,7 @@ DEFAULT_NUM_CTX = 16384
 # 안 주면 이 PC, 다른 주소를 주면 그 PC 가 대신 추론함
 DEFAULT_BASE_URL = "http://localhost:11434"
 
-DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_MODEL = "gpt-5-nano"
 TEMPERATURE = 0.3
 
 
@@ -91,10 +91,8 @@ def _openai_llm(temperature: float = TEMPERATURE, max_tokens: int | None = None)
     )
 
 
-# 이미지 편집은 OpenAI Responses API 의 image_generation 툴에만 있음
-# Ollama 는 텍스트 전용이라 여기서는 대체되지 않음 — 로컬로 돌리려면 ComfyUI 같은 별도 런타임이 필요함
-# 아래 기본값은 강의자료에서 그대로 가져온 값이고 키가 없어 아직 확인하지 못함
-IMAGE_MODEL_NAME = os.getenv("OPENAI_IMAGE_MODEL", "gpt-5.4-mini")
+# 여기 거는 모델은 image_generation 툴을 부르기만 하고 그림은 GPT Image 계열이 그림
+IMAGE_MODEL_NAME = os.getenv("OPENAI_IMAGE_MODEL", "gpt-5-nano")
 
 # low / medium / high — 올릴수록 느려지고 비쌈
 IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "low")

@@ -14,9 +14,7 @@ logger = logging.getLogger(__name__)
 
 def get_provider() -> str:
     """none(기본) | openai | sdcpp
-
-    상담용 LLM_PROVIDER 와 분리함 — 상담 모델을 GPT 로 바꾼다고 유료 이미지 API 까지
-    같이 켜지면 안 되고, 반대로 Ollama 는 이미지를 아예 생성하지 못함
+    상담용 LLM_PROVIDER 와 분리
     """
     return os.getenv("IMAGE_PROVIDER", "none").strip().lower()
 
@@ -76,15 +74,8 @@ def _openai_edit(
 
 
 # ── 로컬 백엔드 (stable-diffusion.cpp sd-server) ──────────────────────────────
-#
-# 6800XT/Vulkan 실측 — 512 편집 23초, 1024 는 163초라 512 로 고정함
-# Navi21 에 행렬 가속 유닛이 없어(matrix cores: none) 해상도를 올리면 급격히 느려짐
-#
-# 서버는 --offload-to-cpu 로 띄울 것 — 512/4스텝에서는 PCIe 전송이 계산에 가려져
-# 시간이 그대로인데(23.11 → 22.19초) VRAM 만 7.6GB → 4.7GB 로 내려감
-# 1024 에서도 공짜인지는 재보지 않았음
 
-# 512 는 실측으로 고른 값이라 올릴 때는 다시 재야 함
+# 해상도를 올리면 생성 시간이 몇 배로 뜀
 SDCPP_EDGE = int(os.getenv("SDCPP_IMAGE_EDGE", "512"))
 
 # FLUX.2 Klein 은 4스텝 증류 모델이라 더 줘도 나아지지 않음
@@ -97,26 +88,135 @@ SDCPP_DISTILLED_GUIDANCE = 3.5
 SDCPP_POLL_INTERVAL = 1.0
 SDCPP_TIMEOUT_SECONDS = int(os.getenv("SDCPP_TIMEOUT_SECONDS", "180"))
 
-# 첫 요청은 7.2GB 를 VRAM 으로 올리는 시간이 붙음
+# 첫 요청에는 가중치를 VRAM 으로 올리는 시간이 붙음
 SDCPP_HTTP_TIMEOUT = 60
+
+# 연결까지 이 시간을 넘기면 서버가 죽은 것
+SDCPP_CONNECT_TIMEOUT = 3
+_TIMEOUT = (SDCPP_CONNECT_TIMEOUT, SDCPP_HTTP_TIMEOUT)
 
 # 색 얘기가 없어도 검정 머리가 갈색으로 바뀌는 현상이 3회 전부 재현됨
 _COLOR_WORDS = ("색", "컬러", "염색", "탈색", "블리치", "color", "dye", "blond", "brown")
 
+_LEAD = "keep original image"
+_ACT_STYLE = "change hairstyle"
+_ACT_COLOR = "change hair color"
+_QUALITY = "detailed hair texture"
 _PRESERVE = ("keep the same person, same face, same skin tone, "
              "same clothing and same background")
+# 컬러 시술에까지 hairstyle only 를 붙이면 색을 바꾸지 말라는 말이 되어 서로 부딪힘
+_ONLY_STYLE = "just change hairstyle only"
+_ONLY_HAIR = "just change the hair only"
 _KEEP_COLOR = "keep the original hair color"
+
+_STYLE_TERMS = (
+    ("히메컷", "hime cut hairstyle, straight hair, blunt bangs"),
+    ("레이어드컷", "layered cut hairstyle, soft layers"),
+    ("허쉬컷", "hush cut hairstyle, wolf cut, wispy layered ends"),
+    ("샤기컷", "shaggy cut hairstyle, choppy textured layers"),
+    ("투블럭컷", "two block haircut, undercut sides"),
+    ("스포츠컷", "buzz cut, very short hair"),
+    ("댄디컷", "dandy cut, neat side parted short hair"),
+    ("픽시컷", "pixie cut hairstyle, very short crop"),
+    ("숏컷", "short pixie cut hairstyle"),
+    ("보브펌", "bob cut hairstyle with soft curls, chin length hair"),
+    ("보브", "bob cut hairstyle, chin length hair"),
+    ("단발", "short bob hairstyle, shoulder length hair"),
+    ("긴머리", "long hair down past the shoulders"),
+    ("장발", "long hair down past the shoulders"),
+    ("생머리", "straight hair, no curls"),
+    ("웨이브", "wavy hair, soft waves"),
+    ("곱슬", "curly hair"),
+    ("울프컷", "wolf cut hairstyle, shaggy layers"),
+    ("태슬컷", "tassel cut, blunt short bob with straight ends"),
+    ("포니테일", "ponytail hairstyle, hair tied back"),
+    ("반삭", "buzz cut, very short hair"),
+    ("삭발", "shaved head"),
+    ("업스타일", "updo hairstyle, hair tied up in an elegant bun"),
+    ("시스루뱅", "see through bangs, thin wispy fringe"),
+    ("앞머리펌", "with soft curled side swept bangs"),
+    ("앞머리", "with straight bangs, fringe"),
+    ("히피펌", "hippie perm, wavy curly hair, beach waves"),
+    ("셋팅펌", "setting perm, large soft curls"),
+    ("디지털펌", "digital perm, loose curls at the ends"),
+    ("가르마펌", "side part perm, side swept volume at the roots"),
+    ("물결펌", "wavy perm, soft s curl waves"),
+    ("볼륨매직", "sleek straight hair with root volume"),
+    ("매직", "sleek straight hair"),
+    ("다운펌", "flat hair pressed down, no volume"),
+)
+
+_COLOR_TERMS = (
+    ("애쉬브라운", "ash brown hair color"),
+    ("애쉬그레이", "ash grey hair color"),
+    ("밀크브라운", "milk brown hair color, light warm brown"),
+    ("새치커버", "dark brown hair color, no gray hair"),
+    ("뿌리염색", "root touch up, dark roots"),
+    ("발레아쥬", "balayage hair color, gradient highlights"),
+    ("옴브레", "ombre hair color, dark roots fading to light ends"),
+    ("블론드", "blonde hair color"),
+    ("금발", "blonde hair color"),
+    ("블리치", "bleached blonde hair"),
+    ("탈색", "bleached blonde hair"),
+    ("투톤", "two tone hair color"),
+    ("브라운", "brown hair color"),
+    ("블랙", "jet black hair color"),
+    ("레드", "red hair color"),
+    ("핑크", "pink hair color"),
+    ("보라", "purple hair color"),
+)
+
+# 긴 것부터 봐야 '보브펌' 이 '보브' 로 먼저 잡히지 않음
+_TERMS_SORTED = tuple(sorted(
+    [(korean, english, False) for korean, english in _STYLE_TERMS]
+    + [(korean, english, True) for korean, english in _COLOR_TERMS],
+    key=lambda term: -len(term[0]),
+))
 
 
 def _sdcpp_base() -> str:
     return os.getenv("SDCPP_BASE_URL", "http://localhost:1234").rstrip("/")
 
 
+def _match_terms(text: str) -> tuple[list[str], list[str]]:
+    """한글 시술명을 영어 태그로 바꿈 — 걸리는 게 없으면 빈 목록"""
+    packed = text.replace(" ", "")
+    styles: list[str] = []
+    colors: list[str] = []
+
+    for korean, english, is_color in _TERMS_SORTED:
+        if korean in packed:
+            # 지우지 않으면 '보브펌' 이 '보브' 로 한 번 더 잡힘
+            packed = packed.replace(korean, "")
+            (colors if is_color else styles).append(english)
+
+    return styles, colors
+
+
 def _sdcpp_prompt(prompt: str) -> str:
     """얼굴이 다른 사람으로 밀리는 것과 머리색이 새는 것을 문구로 막음"""
-    parts = [prompt.strip(), _PRESERVE]
-    if not any(word in prompt.lower() for word in _COLOR_WORDS):
-        parts.append(_KEEP_COLOR)
+    text = prompt.strip()
+    styles, colors = _match_terms(text)
+
+    wants_color = bool(colors) or any(word in text.lower() for word in _COLOR_WORDS)
+    # 색만 고른 요청에 change hairstyle 을 붙이면 시키지도 않은 컷까지 바뀜
+    # 아무것도 안 걸리면 컷 요청으로 봄 — 이 화면에서 들어오는 대부분이 그쪽임
+    wants_style = bool(styles) or not wants_color
+
+    actions = []
+    if wants_style:
+        actions.append(_ACT_STYLE)
+    if wants_color:
+        actions.append(_ACT_COLOR)
+
+    tags = styles + colors
+    # 사전에 걸리는 게 없으면 적은 것을 그대로 씀 — 영어로 적었을 수 있음
+    parts = [_LEAD, *actions, ", ".join(tags) if tags else text, _QUALITY, _PRESERVE]
+
+    if wants_color:
+        parts.append(_ONLY_HAIR)
+    else:
+        parts += [_ONLY_STYLE, _KEEP_COLOR]
     return ", ".join(parts)
 
 
@@ -165,7 +265,7 @@ def _sdcpp_edit(prompt: str, reference_bytes: bytes) -> tuple[str, str]:
     }
 
     accepted = requests.post(f"{base}/sdcpp/v1/img_gen", json=payload,
-                             timeout=SDCPP_HTTP_TIMEOUT)
+                             timeout=_TIMEOUT)
     accepted.raise_for_status()
     job = accepted.json()
 
@@ -180,7 +280,7 @@ def _sdcpp_wait(base: str, job_id: str) -> tuple[str, str]:
     """완료될 때까지 폴링함
 
     sd-server 는 202 만 주고 끝나므로 여기서 기다려 스프링에는 동기로 보이게 함
-    512 기준 23초라 이 방식으로 버틸 수 있고, 해상도를 올리면 성립하지 않음
+    512 가 20초대라 버티는 것이고, 해상도를 올리면 성립하지 않음
     """
     deadline = time.monotonic() + SDCPP_TIMEOUT_SECONDS
 
@@ -190,7 +290,7 @@ def _sdcpp_wait(base: str, job_id: str) -> tuple[str, str]:
             raise TimeoutError(f"sd-server 작업이 {SDCPP_TIMEOUT_SECONDS}초 안에 끝나지 않았습니다")
 
         polled = requests.get(f"{base}/sdcpp/v1/jobs/{job_id}",
-                              timeout=SDCPP_HTTP_TIMEOUT)
+                              timeout=_TIMEOUT)
         polled.raise_for_status()
         state = polled.json()
         status = state.get("status")
@@ -210,6 +310,6 @@ def _sdcpp_wait(base: str, job_id: str) -> tuple[str, str]:
 def _sdcpp_cancel(base: str, job_id: str) -> None:
     """안 지우면 우리가 포기한 뒤에도 GPU 를 계속 붙잡고 있음"""
     try:
-        requests.post(f"{base}/sdcpp/v1/jobs/{job_id}/cancel", timeout=SDCPP_HTTP_TIMEOUT)
+        requests.post(f"{base}/sdcpp/v1/jobs/{job_id}/cancel", timeout=_TIMEOUT)
     except Exception:
         logger.warning("sd-server 작업을 취소하지 못했습니다: %s", job_id)
