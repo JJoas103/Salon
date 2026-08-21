@@ -690,8 +690,6 @@ public class ReservationService {
         if (resvMapper.cancelReservation(reservationId, userId) == 0) {
             throw new IllegalArgumentException("취소할 수 없는 예약입니다.");
         }
-
-        ReservationVO reservation = resvMapper.findById(reservationId);
         notificationService.create(
                 userId, "RESERVATION", "예약이 취소되었습니다",
                 reservation.getSalonName() + " · " + reservation.getReservationTime(),

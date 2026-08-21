@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
-
+    
 import com.soldesk.service.CheckoutService;
 import com.soldesk.service.ReservationService;
 import com.soldesk.service.SalonService;
