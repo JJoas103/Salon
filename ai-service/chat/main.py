@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
 from chat.intent import (Intent, classify, needs_history,
                          no_history_answer, out_of_scope_answer)
+from vram import acquire_gpu, release_gpu
 from chat.gate import is_in_domain, off_domain_answer
 from chat.links import reservation_links, salon_link
 from time import monotonic
@@ -23,8 +24,9 @@ MCP_SERVER_MODULE = "mcp_chat.mcp_product_server"   #MCP 서버 모듈 경로
 RESOURCE_URI = "catalog://salon/search-guide"      #리소스 경로
 
 # 상한이 없으면 요청 하나가 멈출 때 _invoke_lock 이 안 풀려 서비스 전체가 잠김
-# 둘의 합은 Spring readTimeout(120초) 미만이어야 함
-LOCK_WAIT_SECONDS = 25      # 앞 사람 답변을 기다리는 시간
+# 셋의 합은 Spring readTimeout(120초) 미만이어야 함
+LOCK_WAIT_SECONDS = 20      # 앞 사람 답변을 기다리는 시간
+GPU_WAIT_SECONDS = 5        # 이미지 생성이 GPU 를 놓기를 기다리는 시간
 AGENT_TIMEOUT_SECONDS = 90  # 한 건이 LLM·도구에 쓸 수 있는 시간
 
 # 규칙이 갈래를 확정한 질문은 게이트를 건너뜀
@@ -305,6 +307,14 @@ class McpChatService:
             return ("지금 다른 상담을 처리하고 있어 답변이 늦어지고 있습니다. "
                     "잠시 후 다시 여쭤봐 주세요."), []
 
+        # 상담 락 → GPU 락 순서를 지킴. 반대로 잡는 경로를 만들면 교착이 생김
+        try:
+            await acquire_gpu(GPU_WAIT_SECONDS)
+        except (asyncio.TimeoutError, TimeoutError):
+            self._invoke_lock.release()
+            return ("지금 이미지를 만드는 중이라 잠시 뒤에 답변할 수 있습니다. "
+                    "조금 뒤에 다시 여쭤봐 주세요."), []
+
         try:
             now = monotonic()   # 시간측정
             self._remove_expired_sessions(now)
@@ -373,6 +383,7 @@ class McpChatService:
             # 답변이 매장을 언급 안 해도 매장 페이지에서 물었으면 그 매장으로 이어줌
             return answer, (reservation_links(answer) or salon_link(salon_id))
         finally:
+            release_gpu()
             self._invoke_lock.release()
 
     def _remove_expired_sessions(self, now: float)-> None:

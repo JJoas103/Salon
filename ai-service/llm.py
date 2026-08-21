@@ -89,3 +89,41 @@ def _openai_llm(temperature: float = TEMPERATURE, max_tokens: int | None = None)
         temperature=temperature,
         max_tokens=max_tokens,
     )
+
+
+# 이미지 편집은 OpenAI Responses API 의 image_generation 툴에만 있음
+# Ollama 는 텍스트 전용이라 여기서는 대체되지 않음 — 로컬로 돌리려면 ComfyUI 같은 별도 런타임이 필요함
+# 아래 기본값은 강의자료에서 그대로 가져온 값이고 키가 없어 아직 확인하지 못함
+IMAGE_MODEL_NAME = os.getenv("OPENAI_IMAGE_MODEL", "gpt-5.4-mini")
+
+# low / medium / high — 올릴수록 느려지고 비쌈
+IMAGE_QUALITY = os.getenv("OPENAI_IMAGE_QUALITY", "low")
+
+
+@lru_cache(maxsize=1)
+def get_image_llm():
+    """이미지 편집 전용 인스턴스
+
+    상담용 get_llm() 과 섞지 않음 — 모달리티가 다르고 LLM_PROVIDER 와도 무관하게 움직여야 함
+    """
+    try:
+        from langchain_openai import ChatOpenAI
+    except ImportError as exc:
+        raise RuntimeError(
+            "langchain-openai 가 설치되어 있지 않습니다. "
+            "pip install langchain-openai 후 다시 시도하세요"
+        ) from exc
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "OPENAI_API_KEY 가 없습니다. "
+            "ai-service/.env 또는 환경변수에 키를 설정하세요"
+        )
+
+    # temperature 를 주면 image_generation 툴 호출이 거부됨
+    return ChatOpenAI(
+        model=IMAGE_MODEL_NAME,
+        api_key=api_key,
+        use_responses_api=True,
+    )

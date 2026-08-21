@@ -264,6 +264,12 @@ public class CommonController {
         return "common/points";
     }
 
+    /** 스타일 미리보기 화면 — 실제 생성은 AiImageController 가 ai-service 로 중계함 */
+    @GetMapping("/style-preview")
+    public String stylePreview() {
+        return "common/image";
+    }
+
     /** 비밀번호 변경 (마이페이지 모달에서 AJAX로 호출) */
     @PostMapping("/mypage/password")
     @ResponseBody
