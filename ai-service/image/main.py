@@ -77,8 +77,12 @@ def _openai_edit(
 
 # ── 로컬 백엔드 (stable-diffusion.cpp sd-server) ──────────────────────────────
 #
-# 6800XT/Vulkan 실측 — 512 편집 23초에 VRAM 7.6GB, 1024 는 163초라 512 로 고정함
+# 6800XT/Vulkan 실측 — 512 편집 23초, 1024 는 163초라 512 로 고정함
 # Navi21 에 행렬 가속 유닛이 없어(matrix cores: none) 해상도를 올리면 급격히 느려짐
+#
+# 서버는 --offload-to-cpu 로 띄울 것 — 512/4스텝에서는 PCIe 전송이 계산에 가려져
+# 시간이 그대로인데(23.11 → 22.19초) VRAM 만 7.6GB → 4.7GB 로 내려감
+# 1024 에서도 공짜인지는 재보지 않았음
 
 # 512 는 실측으로 고른 값이라 올릴 때는 다시 재야 함
 SDCPP_EDGE = int(os.getenv("SDCPP_IMAGE_EDGE", "512"))
@@ -105,7 +109,7 @@ _KEEP_COLOR = "keep the original hair color"
 
 
 def _sdcpp_base() -> str:
-    return os.getenv("SDCPP_BASE_URL", "http://localhost:8080").rstrip("/")
+    return os.getenv("SDCPP_BASE_URL", "http://localhost:1234").rstrip("/")
 
 
 def _sdcpp_prompt(prompt: str) -> str:
@@ -117,7 +121,7 @@ def _sdcpp_prompt(prompt: str) -> str:
 
 
 def _normalize_reference(reference_bytes: bytes) -> str:
-    """참고 이미지를 SDCPP_EDGE 정사각 PNG 로 맞춰 base64 로 돌려줌
+    """참고 이미지를 SDCPP_EDGE 정사각 PNG 로 맞춰 data URL 로 돌려줌
 
     잘라내지 않고 여백을 채움 — 전신 사진이 들어오면 가운데를 자를 때 머리가 통째로
     날아가는데, 바꿔 보려는 게 머리라 그쪽 실패가 훨씬 나쁨
@@ -133,7 +137,8 @@ def _normalize_reference(reference_bytes: bytes) -> str:
 
     buffer = io.BytesIO()
     canvas.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode("utf-8")
+    # sd-server 는 순수 base64 가 아니라 data URL 을 받음
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("utf-8")
 
 
 def _sdcpp_edit(prompt: str, reference_bytes: bytes) -> tuple[str, str]:
@@ -150,9 +155,9 @@ def _sdcpp_edit(prompt: str, reference_bytes: bytes) -> tuple[str, str]:
         "sample_params": {
             "sample_method": "euler",
             "sample_steps": SDCPP_STEPS,
+            "scheduler": "default",
             "guidance": {
                 "txt_cfg": SDCPP_TXT_CFG,
-                "img_cfg": SDCPP_TXT_CFG,
                 "distilled_guidance": SDCPP_DISTILLED_GUIDANCE,
             },
         },
