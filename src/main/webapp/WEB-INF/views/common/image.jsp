@@ -41,7 +41,7 @@
   </style>
 </head>
 <body>
-  <jsp:include page="../includes/sidebar_common.jsp"><jsp:param name="menu" value="mypage"/></jsp:include>
+  <jsp:include page="../includes/sidebar_common.jsp"><jsp:param name="menu" value="stylePreview"/></jsp:include>
   <div class="app-container"><main class="app-content">
 
     <div class="my-review-header">

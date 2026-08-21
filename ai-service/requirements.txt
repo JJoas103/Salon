@@ -11,4 +11,4 @@ python-dotenv
 # IMAGE_PROVIDER=sdcpp 일 때 참고 이미지를 512 정사각으로 맞추는 데 씀
 Pillow
 # LLM_PROVIDER=openai 또는 IMAGE_PROVIDER=openai 로 쓸 때만 필요
-# langchain-openai
+langchain-openai
