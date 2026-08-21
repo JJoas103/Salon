@@ -18,6 +18,9 @@ public class CouponService {
     @Autowired
     private CouponMapper couponMapper;
 
+    @Autowired
+    private NotificationService notificationService;
+
     @Transactional
     public void reserve(int userCouponId, int userId, int reservationId){
         if(couponMapper.reserveCoupon(userCouponId, userId, reservationId) == 0){
@@ -77,6 +80,10 @@ public class CouponService {
     @Transactional
     public void issueTo(int userId, int couponId){
         if (couponMapper.issueCoupon(userId, couponId) == 1) {
+            CouponVO coupon = couponMapper.findCouponById(couponId);
+            notificationService.create(
+                    userId, "COUPON", "쿠폰이 발급되었습니다",
+                    coupon.getCouponName(), "/common/mypage", couponId);
             return;
         }
         if (couponMapper.countOwnedByUser(userId, couponId) > 0) {
@@ -177,7 +184,11 @@ public class CouponService {
     @Transactional
     public void issueByType(int userId, String issueType){
         for(CouponVO coupon : couponMapper.findByIssueType(issueType)){
-            couponMapper.issueCoupon(userId, coupon.getCouponId());
+            if (couponMapper.issueCoupon(userId, coupon.getCouponId()) == 1) {
+                notificationService.create(
+                        userId, "COUPON", "쿠폰이 발급되었습니다",
+                        coupon.getCouponName(), "/common/mypage", coupon.getCouponId());
+            }
         }
     }
 }

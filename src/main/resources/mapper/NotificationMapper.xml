@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.soldesk.mapper.NotificationMapper">
+
+    <!-- DB 컬럼(snake_case) ↔ VO 프로퍼티(camelCase) 매핑 -->
+    <resultMap id="notificationResultMap" type="com.soldesk.vo.NotificationVO">
+        <id     column="notification_id" property="notificationId" />
+        <result column="user_id"         property="userId" />
+        <result column="type"            property="type" />
+        <result column="title"           property="title" />
+        <result column="message"         property="message" />
+        <result column="link_url"        property="linkUrl" />
+        <result column="ref_id"          property="refId" />
+        <result column="is_read"         property="read" />
+        <result column="created_at"      property="createdAt" />
+    </resultMap>
+
+    <insert id="insert" parameterType="com.soldesk.vo.NotificationVO"
+            useGeneratedKeys="true" keyProperty="notificationId">
+        INSERT INTO Notifications (user_id, type, title, message, link_url, ref_id)
+        VALUES (#{userId}, #{type}, #{title}, #{message}, #{linkUrl}, #{refId})
+    </insert>
+
+    <select id="findRecentByUser" resultMap="notificationResultMap">
+        SELECT notification_id, user_id, type, title, message, link_url, ref_id, is_read, created_at
+        FROM Notifications
+        WHERE user_id = #{userId}
+        ORDER BY created_at DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countUnread" parameterType="int" resultType="int">
+        SELECT COUNT(*) FROM Notifications WHERE user_id = #{userId} AND is_read = 0
+    </select>
+
+    <update id="markRead">
+        UPDATE Notifications SET is_read = 1
+        WHERE notification_id = #{notificationId} AND user_id = #{userId}
+    </update>
+
+    <update id="markAllRead" parameterType="int">
+        UPDATE Notifications SET is_read = 1 WHERE user_id = #{userId} AND is_read = 0
+    </update>
+
+</mapper>

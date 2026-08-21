@@ -27,6 +27,13 @@
   // 사이드바 - 모든 페이지에 있다
   var navBadge = document.getElementById('navUnread');
 
+  // 고객 사이드바는 notifications.js 가 이 배지를 통합 알림 카운트로 관리한다.
+  // window.NotifBridge 는 notifications.js 가 초기화를 끝까지 마쳤을 때만 세팅되므로
+  // (sidebar_common.jsp 에서 notifications.js 를 chat.js 보다 먼저 로드한다),
+  // 그 스크립트가 404/에러로 못 뜨거나 아직 없는 점주 사이드바에서는 자동으로
+  // 예전처럼 chat.js 가 이 배지를 계속 관리한다 — 알림함 장애가 배지 전체를 죽이지 않는다.
+  var badgeOwnedByNotifCenter = !!window.NotifBridge;
+
   var stompClient = null;
   var reconnectTimer = null;
   var reconnectDelay = 1000;          // 실패할수록 늘린다 (서버가 죽었을 때 재연결 폭주 방지)
@@ -41,18 +48,18 @@
   // ---------------- 사이드바 알림 배지 ----------------
 
   function renderNavBadge(count) {
-    if (!navBadge) return;
+    if (!navBadge || badgeOwnedByNotifCenter) return;
     navBadge.dataset.count = count;
     navBadge.textContent = count > 99 ? '99+' : count;
   }
 
   function bumpNavBadge() {
-    if (!navBadge) return;
+    if (!navBadge || badgeOwnedByNotifCenter) return;
     renderNavBadge(Number(navBadge.dataset.count || 0) + 1);
   }
 
   function loadNavBadge() {
-    if (!navBadge) return;
+    if (!navBadge || badgeOwnedByNotifCenter) return;
     fetch(config.unreadCountUrl, { credentials: 'same-origin' })
       .then(function (res) { return res.json(); })
       .then(function (data) { renderNavBadge(data.count); })
@@ -179,6 +186,14 @@
   }
 
   function handleEvent(payload) {
+
+    // 알림함(예약/쿠폰/채팅/공지) 새 알림 — notifications.js 가 있으면 그쪽으로 넘긴다.
+    // 이 소켓 연결은 채팅 것 하나뿐이라, 알림 종류를 늘릴 때도 새 연결을 만들지 않고
+    // 여기서 분기만 늘린다 (SocketEventMessage 설계 의도 그대로).
+    if (payload.event === 'newNotification') {
+      if (window.NotifBridge) window.NotifBridge.onNotification(payload.data);
+      return;
+    }
 
     // 상대가 내 메시지를 읽었다는 통지
     if (payload.event === 'messagesRead') {

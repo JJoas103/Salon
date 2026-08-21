@@ -8,12 +8,24 @@
   <div class="sidebar-brand">
     <i class="fas fa-scissors" style="color: var(--accent);"></i><span>HAIR RESERVE</span>
     <sec:authorize access="isAuthenticated()">
-      <a href="<c:url value='/common/chat'/>" class="sidebar-notif-bell" title="알림 (1:1 상담 채팅)">
+      <button type="button" id="notifBellBtn" class="sidebar-notif-bell" title="알림함">
         <i class="fas fa-bell"></i>
         <span id="navUnread" class="sidebar-notif-badge" data-count="0"></span>
-      </a>
+      </button>
     </sec:authorize>
   </div>
+
+  <sec:authorize access="isAuthenticated()">
+    <div class="notif-panel" id="notifPanel" style="display:none;">
+      <div class="notif-panel-head">
+        <div class="notif-panel-title">알림</div>
+        <button type="button" class="notif-panel-readall" id="notifReadAllBtn">모두 읽음</button>
+      </div>
+      <div class="notif-list" id="notifList">
+        <div class="notif-empty"><i class="fas fa-bell-slash"></i>새로운 알림이 없습니다</div>
+      </div>
+    </div>
+  </sec:authorize>
   <ul class="sidebar-menu">
     <li class="sidebar-item ${menu == 'home' ? 'active' : ''}"><a href="<c:url value='/common/home'/>"><i class="fas fa-home"></i> 홈 메인</a></li>
     <li class="sidebar-item ${menu == 'search' ? 'active' : ''}" data-protected="true"><a href="<c:url value='/common/salonmap'/>"><i class="fas fa-search"></i> 헤어샵 검색/예약</a></li>
@@ -58,10 +70,19 @@
       currentUserId: <sec:authentication property="principal.userId"/>,
       chatId: ${empty chatId ? 'null' : chatId}
     };
+    window.NOTIF_CONFIG = {
+      baseUrl: '<c:url value="/common/notifications"/>',
+      unreadCountUrl: '<c:url value="/common/notifications/unread-count"/>',
+      readAllUrl: '<c:url value="/common/notifications/read-all"/>'
+    };
   </script>
   <%-- defer: 사이드바는 body 앞쪽이라 그대로 두면 아래 대화창 DOM 이 아직 없다 --%>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js" defer></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js" defer></script>
+  <%-- notifications.js 를 먼저 둔다. chat.js 는 window.NotifBridge 존재 여부로
+       배지 소유권을 판단하는데, 이 순서가 바뀌면(혹은 notifications.js 가 404/에러로
+       못 뜨면) chat.js 가 항상 자기 배지 관리로 되돌아가 안전하게 동작한다. --%>
+  <script src="/resources/js/notifications.js" defer></script>
   <script src="/resources/js/chat.js" defer></script>
   <jsp:include page="info_modal.jsp" />
 </sec:authorize>
