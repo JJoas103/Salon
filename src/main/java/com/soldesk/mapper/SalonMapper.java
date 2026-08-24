@@ -74,10 +74,6 @@ public interface SalonMapper {
      */
     void insertSalon(SalonVO salon);
 
-    /** 신규 매장 기본 영업시간(월~토) 생성. 일요일은 휴무로 비워둠 — insertSalon 직후 salon_id 를 가지고 호출한다 */
-    void insertDefaultOperatingHours(@Param("salonId") int salonId,
-            @Param("openTime") String openTime, @Param("closeTime") String closeTime);
-
     /** 점주가 매장정보 관리에서 직접 조정하는 영업시간 전체 조회 (요일 없는 행 = 휴무) */
     List<SalonOperatingHourVO> findAllOperatingHours(int salonId);
 

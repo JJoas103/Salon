@@ -142,7 +142,8 @@ public class StaffService {
     }
 
     @Transactional
-    public void updateStylist(int ownerId, StylistVO stylist, MultipartFile imageFile) throws IOException {
+    public void updateStylist(int ownerId, StylistVO stylist, String dayOffDays, boolean dayOffChanged,
+            MultipartFile imageFile) throws IOException {
         StylistVO current = assertOwnsStylist(stylist.getStylistId(), ownerId);
         assertValidName(current.getSalonId(), stylist.getStylistName(), stylist.getStylistId());
         assertValidPhone(stylist.getPhoneNumber());
@@ -155,6 +156,14 @@ public class StaffService {
             stylist.setImageUrl(current.getImageUrl());
         }
         stylistMapper.updateStylist(stylist);
+        // 등록 때와 똑같이, 휴무 요일 변경도 실제 예약 가능 시간대에 반영한다.
+        // 이번 수정에서 휴무 요일을 실제로 건드린 경우에만 자동 생성분을 지우고 다시 만든다 —
+        // 안 건드렸는데도 매번 지우고 다시 만들면 dayOffDays 가 빈 값으로 넘어올 때
+        // 기존 휴무 스케줄이 조용히 사라지는 회귀가 생긴다.
+        if (dayOffChanged) {
+            scheduleMapper.deleteAutoDayOffSchedules(stylist.getStylistId());
+            generateDayOffSchedules(stylist.getStylistId(), dayOffDays);
+        }
     }
 
     @Transactional
@@ -184,9 +193,29 @@ public class StaffService {
     }
 
     // 연속된 날짜가 시작/종료시간·예약가능여부까지 전부 같으면 한 그룹으로 묶어서 목록에 보여준다 (스케줄 설정 모달의 표시 방식과 동일)
+    //
+    // 휴무 요일 선택으로 자동 생성된 행(00:00~23:59, is_available=0, deleteAutoDayOffSchedules와 같은
+    // 패턴)은 이 목록에서 제외한다 — 매주 하루씩이라 날짜가 연속되지 않아 그룹으로 안 묶이고 1년치가
+    // 낱개 줄로 죽 나열되어 버린다. 실제 예약 차단(Stylist_Schedules 행 자체)에는 손대지 않고, 점주가
+    // 보는 이 화면에서만 숨긴다 — 휴무 요일 관리는 "휴무일" 체크박스로, 이 목록은 점주가 직접 잡은
+    // 스케줄만 보여주기 위함.
+    private static final String DAYOFF_AUTO_START = "00:00:00";
+    private static final String DAYOFF_AUTO_END = "23:59:00";
+
+    private boolean isAutoDayOffRow(StylistScheduleVO s) {
+        return !s.getIsAvailable()
+                && DAYOFF_AUTO_START.equals(s.getStartTime())
+                && DAYOFF_AUTO_END.equals(s.getEndTime());
+    }
+
     @Transactional
     public List<Map<String, Object>> getScheduleGroups(int stylistId, int ownerId) {
-        List<StylistScheduleVO> schedules = getSchedules(stylistId, ownerId);
+        List<StylistScheduleVO> schedules = new ArrayList<>();
+        for (StylistScheduleVO s : getSchedules(stylistId, ownerId)) {
+            if (!isAutoDayOffRow(s)) {
+                schedules.add(s);
+            }
+        }
         List<Map<String, Object>> groups = new ArrayList<>();
         int i = 0;
         while (i < schedules.size()) {

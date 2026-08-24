@@ -80,7 +80,8 @@
                   </c:otherwise>
                 </c:choose>
                 <button type="button" class="btn-modern btn-outline schedule-btn" style="width: 100%;"
-                        data-stylist-id="${stylist.stylistId}" data-stylist-name="${stylist.stylistName}">스케줄 설정</button>
+                        data-stylist-id="${stylist.stylistId}" data-stylist-name="${stylist.stylistName}"
+                        data-stylist-description="${fn:escapeXml(stylist.description)}">스케줄 설정</button>
                 <form action="${ctx}/owner/staff/${stylist.stylistId}/delete" method="post"
                       onsubmit="return confirm('이 디자이너를 삭제하시겠습니까?')" style="margin-top:8px;">
                   <button type="submit" class="btn-modern btn-danger" style="width: 100%;">삭제</button>
@@ -118,7 +119,7 @@
           <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="토">토</label>
           <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="일">일</label>
         </div>
-        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택한 요일은 스케줄에도 휴무로 반영됩니다. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
+        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택한 요일은 스케줄에도 휴무로 반영되며, 스케줄 설정 화면에서 이 요일은 선택할 수 없습니다. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
         <input type="hidden" name="description" id="registerDescriptionInput">
         <input type="hidden" name="dayOffDays" id="registerDayOffDaysInput">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">프로필 사진</label>
@@ -153,8 +154,10 @@
           <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="토">토</label>
           <label class="dayoff-chip"><input type="checkbox" class="dayoff-check" value="일">일</label>
         </div>
-        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
+        <small style="display:block; font-size:12px; color:var(--text-sub); margin-top:6px;">쉬는 요일을 선택해주세요. 선택한 요일은 스케줄에도 휴무로 반영되며, 스케줄 설정 화면에서 이 요일은 선택할 수 없습니다. 선택하지 않으면 '휴무일 미등록'으로 표시됩니다.</small>
         <input type="hidden" name="description" id="editDescriptionInput">
+        <input type="hidden" name="dayOffDays" id="editDayOffDaysInput">
+        <input type="hidden" name="dayOffChanged" id="editDayOffChangedInput" value="false">
         <label style="display:block; font-size:13px; font-weight:700; color:var(--text-sub); margin:14px 0 8px;">프로필 사진 (변경 시에만 선택)</label>
         <input type="file" name="imageFile" accept="image/jpeg,image/png,image/gif,image/webp" class="modern-input">
         <button type="submit" class="btn-modern btn-primary" style="width:100%; margin-top:16px;">저장하기</button>
@@ -184,6 +187,7 @@
           </div>
           <div class="mini-cal-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div>
           <div class="mini-cal-grid" id="calGrid"></div>
+          <p style="font-size:11px; color:var(--text-sub); margin-top:6px;">회색으로 비활성화된 날짜는 이 디자이너의 평소 휴무 요일이라 선택할 수 없습니다.</p>
           <p style="font-size:11.5px; color:var(--text-sub); margin-top:8px;" id="calHint">시작일을 클릭한 뒤 종료일을 클릭하세요.</p>
         </div>
 
@@ -313,6 +317,23 @@
     var calendarMode = 'range'; // 'range' | 'single'
     var rangeStart = null; // range 모드에서 시작일 클릭 후 종료일 클릭 대기 중일 때만 값이 있음
     var scheduleEntries = {}; // { 'YYYY-MM-DD': { startTime, endTime, isAvailable } }
+    // 이 디자이너의 휴무 요일(등록/수정에서 저장한 description 문구를 다시 파싱) — 스케줄을
+    // 미리 만들어두지 않으므로, 실제로 예약을 막으려면 점주가 여기서 그 날짜를 직접 저장해야 한다.
+    // 대신 이 요일에 해당하는 달력 칸은 기본값을 휴무로 미리 잡아줘서 손이 덜 가게 한다.
+    var scheduleModalDayOffDays = []; // 예: ['화', '목']
+    var CAL_WEEKDAY_NAMES = ['일', '월', '화', '수', '목', '금', '토']; // Date.getDay(): 0=일
+
+    function parseDayOffDays(description) {
+      var text = description || '';
+      return ['월', '화', '수', '목', '금', '토', '일'].filter(function (d) {
+        return text.indexOf(d + '요일') !== -1;
+      });
+    }
+
+    function isDayOffWeekday(dateStr) {
+      var dow = CAL_WEEKDAY_NAMES[new Date(dateStr + 'T00:00:00').getDay()];
+      return scheduleModalDayOffDays.indexOf(dow) !== -1;
+    }
 
     function formatDate(d) {
       var mm = String(d.getMonth() + 1).padStart(2, '0');
@@ -346,6 +367,10 @@
         if (dateStr < todayStr) {
           cell.disabled = true;
           cell.classList.add('is-past');
+        } else if (isDayOffWeekday(dateStr)) {
+          // 이 디자이너가 평소 쉬는 요일 — 지난 날짜와 똑같이 아예 클릭 자체가 안 되게 막는다.
+          cell.disabled = true;
+          cell.classList.add('is-dayoff');
         } else {
           if (dateStr === todayStr) cell.classList.add('is-today');
           if (scheduleEntries[dateStr]) cell.classList.add('is-selected');
@@ -390,7 +415,13 @@
           var cur = new Date(start + 'T00:00:00');
           var endD = new Date(end + 'T00:00:00');
           while (cur <= endD) {
-            scheduleEntries[formatDate(cur)] = { startTime: bulkStart, endTime: bulkEnd, isAvailable: bulkAvail };
+            var curStr = formatDate(cur);
+            // 휴무 요일은 범위 중간에 끼어 있어도 건너뛴다 — 시작/종료로는 아예 못 고르지만,
+            // 예를 들어 월요일~금요일 범위를 잡으면 그 사이 화요일까지 자동으로 함께 선택되는
+            // 문제가 있어 범위를 채우는 시점에도 한 번 더 걸러준다.
+            if (!isDayOffWeekday(curStr)) {
+              scheduleEntries[curStr] = { startTime: bulkStart, endTime: bulkEnd, isAvailable: bulkAvail };
+            }
             cur.setDate(cur.getDate() + 1);
           }
           rangeStart = null;
@@ -549,6 +580,7 @@
         document.getElementById('scheduleModalStylistName').textContent = btn.dataset.stylistName;
         scheduleForm.action = ctx + '/owner/staff/' + stylistId + '/schedule';
         scheduleFormError.style.display = 'none';
+        scheduleModalDayOffDays = parseDayOffDays(btn.dataset.stylistDescription);
         // 모달은 디자이너 공용이라 이전 선택 상태를 초기화한다 (기본 모드: 범위 선택)
         var today = new Date();
         calendarState.year = today.getFullYear();
@@ -591,9 +623,16 @@
     // 실패해도 모달이 닫히지 않도록 fetch로 보내고, 서버는 리다이렉트 대신 JSON으로 응답한다.
     editForm.addEventListener('submit', function (e) {
       e.preventDefault();
-      document.getElementById('editDescriptionInput').value = editForm.dataset.dayoffDirty === 'true'
+      var dayoffDirty = editForm.dataset.dayoffDirty === 'true';
+      document.getElementById('editDescriptionInput').value = dayoffDirty
         ? buildDayOffDescription(editDayOffPicker)
         : editForm.dataset.originalDescription;
+      // 건드리지 않았으면 dayOffDays 는 비워서 보내고, dayOffChanged=false 로 서버가
+      // 기존 휴무 스케줄을 그대로 두게 한다 — 안 만진 필드 때문에 스케줄이 지워지는 것을 막는다.
+      document.getElementById('editDayOffDaysInput').value = dayoffDirty
+        ? getCheckedDayOffValues(editDayOffPicker).join(',')
+        : '';
+      document.getElementById('editDayOffChangedInput').value = dayoffDirty ? 'true' : 'false';
       editFormError.style.display = 'none';
       editPhoneError.style.display = 'none';
       fetch(editForm.action, { method: 'POST', body: new FormData(editForm) })
