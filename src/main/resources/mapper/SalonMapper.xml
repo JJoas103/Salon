@@ -48,7 +48,7 @@
                s.latitude, s.longitude
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
-        WHERE s.activation_status = 'active'
+        WHERE s.activation_status = 'active' AND s.closed_at IS NULL
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
                  s.created_at, s.updated_at

@@ -106,6 +106,8 @@ public class SalonService {
             throw new IllegalArgumentException("이미 폐업 처리된 매장입니다.");
         }
         salonMapper.closeSalon(salonId);
+        // 폐업하면 검색에서도 빠져야 한다 (indexSalon 이 미노출 매장을 색인에서 지운다)
+        salonSearchService.indexSalon(salonId);
     }// 매장 폐업 처리: 존재하지 않거나 이미 폐업된 매장 재처리 방지
 
     @Transactional
@@ -118,6 +120,8 @@ public class SalonService {
             throw new IllegalArgumentException("이미 운영중인 매장입니다.");
         }
         salonMapper.reopenSalon(salonId);
+        // 재개하면 다시 검색에 나타나야 한다 (active 상태였다면 indexSalon 이 색인에 넣는다)
+        salonSearchService.indexSalon(salonId);
     }// 매장 폐업 취소(재개): 존재하지 않거나 이미 운영중인 매장 재처리 방지
 
     @Transactional
@@ -220,6 +224,8 @@ public class SalonService {
         if (salonMapper.activateSalon(salonId) == 0) {
             throw new IllegalArgumentException("이미 활성화되었거나 승인 대기 상태가 아닙니다.");
         }
+        // 승인되는 순간 검색에도 나타나야 한다 (다음 재기동까지 기다리지 않도록)
+        salonSearchService.indexSalon(salonId);
     }// 관리자 2차 승인 — 손님에게 정상 노출
     /** 시술 메뉴가 바뀔 때마다 ai-service 의 검색 인덱스를 즉시 새로고침한다.
      *  ai-service 가 꺼져 있어도 점주의 메뉴 등록/수정/삭제 자체는 막으면 안 되므로 예외를 삼킨다 —

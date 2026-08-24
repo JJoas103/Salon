@@ -18,6 +18,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.elasticsearch.indices.CreateIndexRequest;
+import co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 
 @Service
@@ -61,7 +62,19 @@ public class SalonSearchService implements InitializingBean{
             
     }
 
+    /**
+     * 기동 시 전체 재색인. 인덱스를 통째로 지우고 새로 만든 뒤 다시 채운다.
+     *
+     * upsert 만 하면 DB 에서 사라진 매장(스키마 재생성·폐업 등)이 색인에 유령으로 남아
+     * 검색에 계속 나온다. 매번 새로 만들어야 색인이 DB 를 정확히 따라간다.
+     * 색인 대상은 findAllWithMinimumPrice 가 active + 미폐업만 돌려주므로,
+     * 검색 쿼리에서 다시 거를 필요 없이 인덱스 자체에 노출 대상만 담긴다.
+     */
     public void reindexAll() throws Exception{
+        elasticsearchClient.indices().delete(
+            DeleteIndexRequest.of(d -> d.index(indexName).ignoreUnavailable(true)));
+        createIndexIfNotExists();
+
         List<SalonVO> salons = salonMapper.findAllWithMinimumPrice();
             for(SalonVO salon : salons){
                 elasticsearchClient.index(index -> index
@@ -73,8 +86,13 @@ public class SalonSearchService implements InitializingBean{
     }
 
     /**
-     * 매장 한 건만 색인을 다시 쓴다. 매장정보가 바뀔 때마다 불러야 검색 결과가 DB 를 따라간다
-     * (reindexAll 은 기동 시 한 번뿐이라, 이게 없으면 재기동 전까지 옛 주소·좌표가 검색에 남는다).
+     * 매장 한 건의 색인을 DB 상태에 맞춘다. 정보 수정·2차 승인·폐업 등 매장 상태가
+     * 바뀔 때마다 불러야 검색 결과가 DB 를 따라간다 (reindexAll 은 기동 시 한 번뿐이라,
+     * 이게 없으면 재기동 전까지 옛 상태가 검색에 남는다).
+     *
+     * 손님에게 노출되는 매장(active + 미폐업)만 색인에 두고, 그 외(preparing·폐업)는
+     * 색인에서 지운다. 이 판정을 한 곳에 모아, 승인 시 검색에 나타나고 폐업 시 사라지는
+     * 동작이 호출부와 무관하게 일관되게 유지된다.
      *
      * 넘겨받은 VO 를 쓰지 않고 salonId 로 다시 읽는 이유: 점주 수정 폼은 이름/주소/연락처/소개만
      * 담은 VO 를 만들어 오므로, 그대로 색인하면 평점·최저가·이미지가 문서에서 사라진다.
@@ -85,7 +103,14 @@ public class SalonSearchService implements InitializingBean{
     public void indexSalon(int salonId) {
         try {
             SalonVO salon = salonMapper.findById(salonId);
-            if (salon == null) {
+            boolean visible = salon != null
+                    && "active".equals(salon.getActivationStatus())
+                    && salon.getClosedAt() == null;
+
+            if (!visible) {
+                // 준비중·폐업·삭제된 매장은 검색에서 빠져야 한다. 없는 문서를 지워도 예외가 아니다.
+                elasticsearchClient.delete(d -> d.index(indexName).id(String.valueOf(salonId)));
+                log.debug("ElasticSearch 색인 제외: salonId={}", salonId);
                 return;
             }
             elasticsearchClient.index(index -> index
@@ -101,7 +126,7 @@ public class SalonSearchService implements InitializingBean{
     @Override
     public void afterPropertiesSet() throws Exception {
         try {
-            createIndexIfNotExists();
+            // reindexAll 이 인덱스 삭제→생성→적재까지 한다
             reindexAll();
         } catch (Exception e) {
             log.warn("ElasticSearch 초기화 실패 - 검색 기능 제한", e);
