@@ -32,6 +32,11 @@ def _unload_chat_enabled() -> bool:
     return os.getenv("SDCPP_UNLOAD_CHAT", "0").strip() == "1"
 
 
+def _uses_local_chat() -> bool:
+    """상담이 이 프로세스의 GPU(VRAM)를 쓰는지 여부."""
+    return os.getenv("LLM_PROVIDER", "ollama").strip().lower() != "openai"
+
+
 def _unload_ollama() -> None:
     """올라와 있는 모델을 전부 내림
 
@@ -63,8 +68,12 @@ def _unload_ollama() -> None:
 
 @asynccontextmanager
 async def image_turn(provider: str, wait_seconds: float):
-    """이미지 생성이 GPU 차례를 잡는 구간"""
-    local = provider not in ("openai", "none")
+    """로컬 이미지 생성일 때만 GPU 차례를 잡는 구간."""
+    local = provider.strip().lower() not in ("openai", "none")
+    if not local:
+        # OpenAI/비활성 이미지는 이 PC의 VRAM을 쓰지 않으므로 상담을 막지 않음
+        yield
+        return
 
     try:
         await asyncio.wait_for(_gpu_lock.acquire(), wait_seconds)
@@ -98,6 +107,12 @@ def release_gpu() -> None:
 
 @asynccontextmanager
 async def chat_turn(wait_seconds: float):
+    """로컬 Ollama 상담일 때만 GPU 차례를 잡는 구간."""
+    if not _uses_local_chat():
+        # OpenAI API 호출은 로컬 GPU와 무관하므로 이미지 생성과 병렬 처리 가능
+        yield
+        return
+
     await acquire_gpu(wait_seconds)
     try:
         yield

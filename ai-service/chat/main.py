@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from llm import get_llm
 from chat.intent import (Intent, classify, needs_history,
                          no_history_answer, out_of_scope_answer)
-from vram import acquire_gpu, release_gpu
+from vram import chat_turn
 from chat.gate import is_in_domain, off_domain_answer
 from chat.links import reservation_links, salon_link
 from time import monotonic
@@ -307,83 +307,79 @@ class McpChatService:
             return ("지금 다른 상담을 처리하고 있어 답변이 늦어지고 있습니다. "
                     "잠시 후 다시 여쭤봐 주세요."), []
 
-        # 상담 락 → GPU 락 순서를 지킴. 반대로 잡는 경로를 만들면 교착이 생김
+        # 상담 락 → GPU 락 순서를 지킴. OpenAI API 상담은 GPU 락을 건너뜀.
         try:
-            await acquire_gpu(GPU_WAIT_SECONDS)
+            async with chat_turn(GPU_WAIT_SECONDS):
+                now = monotonic()   # 시간측정
+                self._remove_expired_sessions(now)
+                self._make_session_space(session_id)     # 세션 공간 생성
+
+                history = self._messages_by_session.get(session_id, []) # 세션별 대화 기록 가져오기
+
+                request_messages = [
+                    *self._base_messages,
+                    *history,
+                ]
+                # 예약이력은 첫 턴에만 — 이후 턴은 대화기록에 남아 있음
+                if not history and user_context:
+                    request_messages.append(HumanMessage(
+                        content=f"[사용자 예약 이력] 완료한 시술: {user_context}"
+                    ))
+                    hint = self._salon_catalog_hint(user_context)
+                    if hint:
+                        request_messages.append(HumanMessage(content=hint))
+
+                # 같은 탭에서 매장을 옮겨도 세션은 그대로라 매장이 바뀐 턴에만 넣음
+                if salon_id is not None and self._salon_by_session.get(session_id) != salon_id:
+                    current_hint = self._current_salon_hint(salon_id)
+                    if current_hint:
+                        request_messages.append(HumanMessage(content=current_hint))
+                        self._salon_by_session[session_id] = salon_id
+
+                # 매장 고르기는 시술 인덱스로 못 답함
+                # 컨텍스트가 빨리 차므로 이 인텐트일 때만
+                if intent is Intent.SALON_FIND:
+                    salon_hint = self._salon_find_hint(question)
+                    if salon_hint:
+                        request_messages.append(HumanMessage(content=salon_hint))
+                request_messages.append(HumanMessage(content=question))
+
+                current_turn_start = len(self._base_messages) + len(history)
+
+                try:
+                    result = await asyncio.wait_for(
+                        self._agent.ainvoke(
+                            {"messages" : request_messages},
+                            # 12 로는 도구 호출이 중간에 끊겼음
+                            config = {"recursion_limit" : 20}
+                        ),
+                        AGENT_TIMEOUT_SECONDS,
+                    )
+                except (asyncio.TimeoutError, TimeoutError):
+                    # MCP 세션이 어긋났을 수 있음 — 버리지 않으면 이후 요청도 전부 90초씩 까먹음
+                    self._agent = None
+                    self._client = None
+                    self._exit_stack = None
+                    self._base_messages = []
+                    return ("답변이 너무 오래 걸려 중단했습니다. "
+                            "질문을 조금 더 짧고 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
+                result_messages = list(result["messages"])
+
+                history = result_messages[len(self._base_messages):]
+                self._messages_by_session[session_id] = self._trim_history(history)
+                self._last_access_by_session[session_id] = now
+                answer = _strip_internal(_strip_markdown(self._final_answer(result_messages)))
+                if not answer:
+                    # 답을 못 만들었거나 내부 이야기뿐이었던 것 — 빈 말풍선을 띄우지 않음
+                    return ("답변을 정리하지 못했습니다. "
+                            "질문을 조금 더 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
+
+                # 답변이 매장을 언급 안 해도 매장 페이지에서 물었으면 그 매장으로 이어줌
+                return answer, (reservation_links(answer) or salon_link(salon_id))
         except (asyncio.TimeoutError, TimeoutError):
-            self._invoke_lock.release()
             return ("지금 이미지를 만드는 중이라 잠시 뒤에 답변할 수 있습니다. "
                     "조금 뒤에 다시 여쭤봐 주세요."), []
-
-        try:
-            now = monotonic()   # 시간측정
-            self._remove_expired_sessions(now)
-            self._make_session_space(session_id)     # 세션 공간 생성
-
-            history = self._messages_by_session.get(session_id, []) # 세션별 대화 기록 가져오기
-
-            request_messages = [
-                *self._base_messages,
-                *history,
-            ]
-            # 예약이력은 첫 턴에만 — 이후 턴은 대화기록에 남아 있음
-            if not history and user_context:
-                request_messages.append(HumanMessage(
-                    content=f"[사용자 예약 이력] 완료한 시술: {user_context}"
-                ))
-                hint = self._salon_catalog_hint(user_context)
-                if hint:
-                    request_messages.append(HumanMessage(content=hint))
-
-            # 같은 탭에서 매장을 옮겨도 세션은 그대로라 매장이 바뀐 턴에만 넣음
-            if salon_id is not None and self._salon_by_session.get(session_id) != salon_id:
-                current_hint = self._current_salon_hint(salon_id)
-                if current_hint:
-                    request_messages.append(HumanMessage(content=current_hint))
-                    self._salon_by_session[session_id] = salon_id
-
-            # 매장 고르기는 시술 인덱스로 못 답함
-            # 컨텍스트가 빨리 차므로 이 인텐트일 때만
-            if intent is Intent.SALON_FIND:
-                salon_hint = self._salon_find_hint(question)
-                if salon_hint:
-                    request_messages.append(HumanMessage(content=salon_hint))
-            request_messages.append(HumanMessage(content=question))
-
-            current_turn_start = len(self._base_messages) + len(history)
-
-            try:
-                result = await asyncio.wait_for(
-                    self._agent.ainvoke(
-                        {"messages" : request_messages},
-                        # 12 로는 도구 호출이 중간에 끊겼음
-                        config = {"recursion_limit" : 20}
-                    ),
-                    AGENT_TIMEOUT_SECONDS,
-                )
-            except (asyncio.TimeoutError, TimeoutError):
-                # MCP 세션이 어긋났을 수 있음 — 버리지 않으면 이후 요청도 전부 90초씩 까먹음
-                self._agent = None
-                self._client = None
-                self._exit_stack = None
-                self._base_messages = []
-                return ("답변이 너무 오래 걸려 중단했습니다. "
-                        "질문을 조금 더 짧고 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
-            result_messages = list(result["messages"])
-
-            history = result_messages[len(self._base_messages):]
-            self._messages_by_session[session_id] = self._trim_history(history)
-            self._last_access_by_session[session_id] = now
-            answer = _strip_internal(_strip_markdown(self._final_answer(result_messages)))
-            if not answer:
-                # 답을 못 만들었거나 내부 이야기뿐이었던 것 — 빈 말풍선을 띄우지 않음
-                return ("답변을 정리하지 못했습니다. "
-                        "질문을 조금 더 구체적으로 적어 주시면 다시 찾아보겠습니다."), []
-
-            # 답변이 매장을 언급 안 해도 매장 페이지에서 물었으면 그 매장으로 이어줌
-            return answer, (reservation_links(answer) or salon_link(salon_id))
         finally:
-            release_gpu()
             self._invoke_lock.release()
 
     def _remove_expired_sessions(self, now: float)-> None:
