@@ -169,6 +169,15 @@
 
                 <div class="salon-detail-primary-actions">
                   <button type="button" class="btn-modern btn-accent btn-reserve" id="btn-reserve">예약하기</button>
+                  <%-- 예약 전에도 문의할 수 있어야 하므로 예약하기 옆에 둔다.
+                       방 생성은 상태를 바꾸는 일이라 GET 이 아니라 POST 로 보낸다
+                       (ChatService.openRoom 이 방이 없으면 만들고 있으면 재사용한 뒤 그 방으로 리다이렉트한다). --%>
+                  <form id="detail-chat-form" method="post" action="<c:url value='/common/chat/room'/>">
+                    <input type="hidden" name="salonId" id="detail-chat-salon-id" value="">
+                    <button type="submit" class="btn-modern btn-outline btn-chat" id="btn-chat" disabled>
+                      <i class="far fa-comment-dots"></i> 1:1 문의
+                    </button>
+                  </form>
                 </div>
               </div>
             </div>
@@ -647,6 +656,8 @@
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
       document.getElementById('btn-reserve').disabled = false;
+      document.getElementById('detail-chat-salon-id').value = String(salon.salonId);
+      document.getElementById('btn-chat').disabled = false;
       showTab('info');
       loadNotices(salon.salonId);
       loadReviews(salon.salonId);
@@ -666,6 +677,8 @@
       document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = '-';
       document.getElementById('btn-reserve').disabled = true;
+      document.getElementById('detail-chat-salon-id').value = '';
+      document.getElementById('btn-chat').disabled = true;
       showTab('info');
       showNoticeList();
       noticeListElement.replaceChildren();

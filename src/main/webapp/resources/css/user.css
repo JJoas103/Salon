@@ -276,6 +276,7 @@ body {
 .salon-detail-card .btn-reserve { width: 100%; margin-top: 18px; padding: 16px; font-size: 16px; }
 .salon-detail-primary-actions { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 18px; }
 .salon-detail-primary-actions .btn-reserve { width: 100%; margin-top: 0; padding: 16px; font-size: 16px; }
+.salon-detail-primary-actions .btn-chat { width: 100%; margin-top: 0; padding: 14px; font-size: 15px; }
 
 /* ---- 좁은 화면: 지도 아래로 상세 카드 ---- */
 @media (max-width: 1280px) {
