@@ -582,6 +582,8 @@ public class OwnerController {
             @RequestParam String stylistName,
             @RequestParam(required = false) String phoneNumber,
             @RequestParam(required = false) String description,
+            @RequestParam(required = false) String dayOffDays,
+            @RequestParam(required = false, defaultValue = "false") boolean dayOffChanged,
             @RequestParam(required = false) MultipartFile imageFile) {
         Map<String, Object> result = new HashMap<>();
         UserVO user = userService.getUser(authentication.getName());
@@ -591,7 +593,7 @@ public class OwnerController {
         stylist.setPhoneNumber(phoneNumber);
         stylist.setDescription(description);
         try {
-            staffService.updateStylist(user.getUserId(), stylist, imageFile);
+            staffService.updateStylist(user.getUserId(), stylist, dayOffDays, dayOffChanged, imageFile);
             result.put("success", true);
         } catch (IllegalArgumentException | IOException e) {
             result.put("success", false);
