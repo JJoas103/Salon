@@ -319,6 +319,61 @@ CALL salu_add_column('Services', 'category', 'category VARCHAR(20) NULL AFTER se
 -- ============================================================
 CALL salu_add_column('Services', 'concern', 'concern VARCHAR(255) NULL AFTER description');
 
+-- ============================================================
+--  2026-08-14  migration_oauth_login.sql
+-- ============================================================
+ALTER TABLE Users MODIFY COLUMN password VARCHAR(255) NULL;
+CALL salu_add_column('Users', 'provider',
+    "provider ENUM('local', 'google', 'naver') NOT NULL DEFAULT 'local' AFTER user_type");
+CALL salu_add_column('Users', 'provider_id', 'provider_id VARCHAR(255) NULL AFTER provider');
+CALL salu_add_constraint('Users', 'uq_users_provider_id', 'UNIQUE KEY (provider, provider_id)');
+
+-- ============================================================
+--  2026-08-16  migration_salon_activation.sql
+-- ============================================================
+CALL salu_add_column('Salons', 'activation_status',
+    "activation_status ENUM('preparing','active') NOT NULL DEFAULT 'active' AFTER closed_at");
+
+-- ============================================================
+--  2026-08-18  migration_owner_request_type.sql
+-- ============================================================
+CALL salu_add_column('OwnerRequests', 'request_type',
+    "request_type ENUM('promotion','additional_salon') NOT NULL DEFAULT 'promotion' AFTER message");
+
+-- ============================================================
+--  2026-08-19  migration_profile_image.sql
+-- ============================================================
+CALL salu_add_column('Users', 'profile_image_url',
+    'profile_image_url VARCHAR(255) NULL DEFAULT NULL AFTER phone_number');
+
+-- ============================================================
+--  2026-08-20  migration_my_community.sql / migration_comment_log.sql
+-- ============================================================
+CALL salu_add_column('Users', 'last_reply_check_at',
+    'last_reply_check_at DATETIME NULL AFTER point_balance');
+ALTER TABLE Posts
+    MODIFY COLUMN status ENUM('visible', 'blinded', 'deleted') DEFAULT 'visible';
+
+-- ============================================================
+--  2026-08-21  migration_notifications.sql (+ _enabled)
+-- ============================================================
+CALL salu_add_column('Users', 'notifications_enabled',
+    'notifications_enabled TINYINT(1) NOT NULL DEFAULT 1 AFTER status');
+
+CREATE TABLE IF NOT EXISTS Notifications (
+    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id      INT NOT NULL,
+    type         ENUM('RESERVATION','COUPON','CHAT','NOTICE') NOT NULL,
+    title        VARCHAR(100) NOT NULL,
+    message      VARCHAR(255) NOT NULL,
+    link_url     VARCHAR(255),
+    ref_id       INT,
+    is_read      TINYINT(1) NOT NULL DEFAULT 0,
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id),
+    INDEX idx_user_unread (user_id, is_read, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---------- 헬퍼 정리 ----------
 DROP PROCEDURE IF EXISTS salu_add_column;
 DROP PROCEDURE IF EXISTS salu_add_constraint;

@@ -48,7 +48,7 @@
                s.latitude, s.longitude
         FROM Salons s
         LEFT JOIN Services se ON se.salon_id = s.salon_id
-        WHERE s.activation_status = 'active'
+        WHERE s.activation_status = 'active' AND s.closed_at IS NULL
         GROUP BY s.salon_id, s.owner_id, s.salon_name, s.address,
                  s.phone_number, s.description, s.average_rating, s.image_url,
                  s.created_at, s.updated_at
@@ -271,15 +271,6 @@
         findOperatingHour 가 이 행이 없으면 휴무로 보기 때문에, 이걸 안 넣으면
         점주가 직원/스케줄을 다 등록해도 예약 가능한 시간대가 하나도 안 뜬다.
     -->
-    <insert id="insertDefaultOperatingHours">
-        INSERT INTO Salon_Operating_Hours (salon_id, day_of_week, open_time, close_time)
-        SELECT #{salonId}, d.dow, #{openTime}, #{closeTime}
-        FROM (
-            SELECT '월' AS dow UNION ALL SELECT '화' UNION ALL SELECT '수'
-            UNION ALL SELECT '목' UNION ALL SELECT '금' UNION ALL SELECT '토'
-        ) AS d
-    </insert>
-
     <select id="findAllOperatingHours" resultType="com.soldesk.vo.SalonOperatingHourVO">
         SELECT hour_id AS hourId, salon_id AS salonId, day_of_week AS dayOfWeek,
                open_time AS openTime, close_time AS closeTime

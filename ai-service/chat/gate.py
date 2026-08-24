@@ -14,6 +14,7 @@ import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from llm import get_gate_llm
+from vram import chat_turn
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,10 @@ def _verdict(content) -> str:
     return str(content).strip().upper()
 
 
+# 게이트는 4토큰짜리라 오래 기다릴 이유가 없음 — 못 잡으면 판정을 포기하고 통과시킴
+GATE_GPU_WAIT_SECONDS = 3
+
+
 async def is_in_domain(question: str) -> bool:
     """미용실 상담으로 다룰 수 있는 질문인지 — 판정이 안 되면 통과시킴"""
     text = (question or "").strip()
@@ -47,13 +52,15 @@ async def is_in_domain(question: str) -> bool:
         return True
 
     try:
-        answer = await asyncio.wait_for(
-            get_gate_llm().ainvoke([
-                SystemMessage(content=GATE_PROMPT),
-                HumanMessage(content=text),
-            ]),
-            GATE_TIMEOUT_SECONDS,
-        )
+        # 이미지 생성이 GPU 를 쥐고 있으면 여기서 TimeoutError 가 나고 아래 except 가 통과시킴
+        async with chat_turn(GATE_GPU_WAIT_SECONDS):
+            answer = await asyncio.wait_for(
+                get_gate_llm().ainvoke([
+                    SystemMessage(content=GATE_PROMPT),
+                    HumanMessage(content=text),
+                ]),
+                GATE_TIMEOUT_SECONDS,
+            )
     except Exception:
         logger.exception("도메인 게이트 판정 실패 — 질문을 통과시킴")
         return True

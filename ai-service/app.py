@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from health.router import router as health_router
 from chat.router import router as chat_router
 from catalog.router import router as catalog_router
+from image.router import router as image_router
 from chat.main import McpChatService
 import config
 import logging
@@ -23,6 +24,7 @@ app.state.chat_service = chat_service
 app.include_router(health_router)
 app.include_router(chat_router)
 app.include_router(catalog_router)
+app.include_router(image_router)
 
 # 서버 기동 시 MCP 연결 및 에이전트 미리 준비
 async def init_chat_service() -> None:

@@ -50,4 +50,13 @@
         delete from Stylist_Schedules where schedule_id = #{scheduleId}
     </delete>
 
+    <!-- 등록 시 요일 선택으로 자동 생성된 휴무 행만 대상 (00:00~23:59, is_available=0, 오늘 이후) -->
+    <delete id="deleteAutoDayOffSchedules">
+        delete from Stylist_Schedules
+        where stylist_id = #{stylistId}
+          and date &gt;= CURDATE()
+          and start_time = '00:00:00' and end_time = '23:59:00'
+          and is_available = 0
+    </delete>
+
 </mapper>

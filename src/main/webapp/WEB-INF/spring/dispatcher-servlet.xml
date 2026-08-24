@@ -76,7 +76,19 @@
         <property name="connectTimeout" value="3000" />
         <property name="readTimeout" value="120000" />
     </bean>
-    <bean class="org.springframework.web.client.RestTemplate">
+    <bean id="restTemplate" class="org.springframework.web.client.RestTemplate" primary="true">
         <constructor-arg ref="fastApiRequestFactory" />
+    </bean>
+
+    <!-- 이미지 편집용. 채팅과 분리한 이유는 걸리는 시간이 자릿수부터 달라서임
+         채팅 쪽 readTimeout 을 같이 올리면 FastAPI 가 멈췄을 때 채팅 요청도 5분씩 잡혀 있게 됨
+         sd-server 의 작업 폴링은 ai-service 안에서 끝내므로 여기는 동기 한 방으로 둠 -->
+    <bean id="imageRequestFactory"
+          class="org.springframework.http.client.SimpleClientHttpRequestFactory">
+        <property name="connectTimeout" value="3000" />
+        <property name="readTimeout" value="300000" />
+    </bean>
+    <bean id="imageRestTemplate" class="org.springframework.web.client.RestTemplate">
+        <constructor-arg ref="imageRequestFactory" />
     </bean>
 </beans>

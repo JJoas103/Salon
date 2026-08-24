@@ -326,6 +326,10 @@
 .mini-cal-day.is-off { background: var(--border); color: var(--text-light); cursor: default; }
 .mini-cal-day.is-off:hover { background: var(--border); }
 
+/* 디자이너의 평소 휴무 요일 — 지난 날짜(is-past)와 똑같이 아예 선택할 수 없다. */
+.mini-cal-day.is-dayoff { background: var(--border); color: var(--text-light); cursor: default; }
+.mini-cal-day.is-dayoff:hover { background: var(--border); }
+
 /* ==========================================================================
    반응형
    ========================================================================== */
