@@ -141,14 +141,22 @@ public class CommunityController {
 
     // 글 수정 폼
     @GetMapping("/{postId}/edit")
-    public String editForm(@PathVariable int postId, Model model) {
+    public String editForm(@PathVariable int postId, Model model,
+                           RedirectAttributes redirectAttributes) {
+        // 글이 사라졌으면 flash 로 넘어온 입력값이 있어도 폼을 다시 열지 않는다 — 저장할 대상이
+        // 없는데 폼만 계속 뜨면 사용자가 같은 실패를 반복하게 된다.
+        // getPost 가 아니라 findVisiblePost 를 쓴다 — 수정 폼을 여는 것이 조회수로 집계되면 안 된다.
+        PostVO current = postService.findVisiblePost(postId);
+        if (current == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "삭제되었거나 블라인드된 글입니다.");
+            return "redirect:/common/community";
+        }
+        if (current.getUserId() != currentUserId()) {
+            throw new AccessDeniedException("본인이 작성한 글만 수정할 수 있습니다.");
+        }
         // 검증 실패로 되돌아온 경우 flash 로 넘어온 post(사용자가 입력하던 값)를 그대로 쓴다
         if (!model.containsAttribute("post")) {
-            PostVO post = postService.getPost(postId);
-            if (post == null || post.getUserId() != currentUserId()) {
-                throw new AccessDeniedException("본인이 작성한 글만 수정할 수 있습니다.");
-            }
-            model.addAttribute("post", post);
+            model.addAttribute("post", current);
         }
         model.addAttribute("salons", postService.getSalonList());
         return "common/community/write";
@@ -166,6 +174,10 @@ public class CommunityController {
             postService.editPost(post, imageFile, currentUserId());
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            // 글 자체가 사라진 경우엔 폼으로 되돌려봐야 곧바로 목록으로 튕겨 나온다
+            if (postService.findVisiblePost(postId) == null) {
+                return "redirect:/common/community";
+            }
             redirectAttributes.addFlashAttribute("post", post);
             return "redirect:/common/community/" + postId + "/edit";
         }
@@ -174,34 +186,59 @@ public class CommunityController {
 
     // 글 삭제
     @PostMapping("/{postId}/delete")
-    public String delete(@PathVariable int postId) {
-        postService.removePost(postId, currentUserId());
+    public String delete(@PathVariable int postId, RedirectAttributes redirectAttributes) {
+        try {
+            postService.removePost(postId, currentUserId());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
         return "redirect:/common/community";
     }
 
     // 댓글 작성
     @PostMapping("/{postId}/comment")
     public String writeComment(@PathVariable int postId,
-                               @ModelAttribute CommentVO comment) {
+                               @ModelAttribute CommentVO comment,
+                               RedirectAttributes redirectAttributes) {
         comment.setPostId(postId);
         comment.setUserId(currentUserId());
-        postService.writeComment(comment);
+        try {
+            postService.writeComment(comment);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            // 글이 사라진 경우 상세로 보내면 목록으로 다시 튕기면서 안내가 사라진다
+            if (postService.findVisiblePost(postId) == null) {
+                return "redirect:/common/community";
+            }
+        }
         return "redirect:/common/community/" + postId;
     }
 
     // 댓글 삭제
     @PostMapping("/{postId}/comment/{commentId}/delete")
     public String deleteComment(@PathVariable int postId,
-                                @PathVariable int commentId) {
-        postService.removeComment(commentId, currentUserId());
+                                @PathVariable int commentId,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            postService.removeComment(commentId, currentUserId());
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        }
         return "redirect:/common/community/" + postId;
     }
 
     // 좋아요 / 별로예요 토글
     @PostMapping("/{postId}/react")
     public String react(@PathVariable int postId,
-                        @RequestParam String type) {
-        postService.react(postId, currentUserId(), type);
+                        @RequestParam String type,
+                        RedirectAttributes redirectAttributes) {
+        try {
+            postService.react(postId, currentUserId(), type);
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            // 글이 사라진 경우 상세로 보내면 목록으로 다시 튕기면서 안내가 사라진다
+            return "redirect:/common/community";
+        }
         return "redirect:/common/community/" + postId;
     }
 
@@ -209,14 +246,17 @@ public class CommunityController {
     @PostMapping("/{postId}/report")
     public String report(@PathVariable int postId,
                          @RequestParam String reason,
-                         @RequestParam(required = false) String reasonDetail) {
+                         @RequestParam(required = false) String reasonDetail,
+                         RedirectAttributes redirectAttributes) {
         try {
             postService.reportPost(postId, currentUserId(), reason, reasonDetail);
             return "redirect:/common/community/" + postId + "?reported=true";
         } catch (IllegalStateException e) {
             return "redirect:/common/community/" + postId + "?reported=duplicate";
         } catch (IllegalArgumentException e) {
-            return "redirect:/common/community/" + postId + "?reported=invalid";
+            // 실패 사유가 한 가지가 아니므로 고정 문구 대신 서비스가 준 메시지를 그대로 보여준다
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/common/community/" + postId;
         }
     }
 
@@ -225,14 +265,17 @@ public class CommunityController {
     public String reportComment(@PathVariable int postId,
                                 @PathVariable int commentId,
                                 @RequestParam String reason,
-                                @RequestParam(required = false) String reasonDetail) {
+                                @RequestParam(required = false) String reasonDetail,
+                                RedirectAttributes redirectAttributes) {
         try {
             postService.reportComment(commentId, currentUserId(), reason, reasonDetail);
             return "redirect:/common/community/" + postId + "?reported=true";
         } catch (IllegalStateException e) {
             return "redirect:/common/community/" + postId + "?reported=duplicate";
         } catch (IllegalArgumentException e) {
-            return "redirect:/common/community/" + postId + "?reported=invalid";
+            // 사유 미선택과 이미 삭제된 댓글이 같은 예외라 고정 문구로는 잘못 안내된다
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/common/community/" + postId;
         }
     }
 }

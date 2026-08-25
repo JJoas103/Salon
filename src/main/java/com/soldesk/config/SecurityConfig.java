@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -23,6 +25,7 @@ import org.springframework.security.web.access.expression.WebExpressionAuthoriza
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.util.StringUtils;
 
+import com.soldesk.security.ActiveSuspensionAuthorizationManager;
 import com.soldesk.security.AjaxAwareAuthenticationFailureHandler;
 import com.soldesk.security.OAuth2LoginFailureHandler;
 import com.soldesk.security.UserDetailService;
@@ -42,6 +45,10 @@ public class SecurityConfig {
     // Spring이 JDK 동적 프록시(이 인터페이스만 구현)로 감싸서, 구체 클래스 타입 필드로는 주입에 실패한다.
     @Autowired
     private OAuth2UserService<OAuth2UserRequest, OAuth2User> customOAuth2UserService;//구글/네이버 로그인 후 Users와 연결
+
+    // 커뮤니티 변경 액션의 제재 여부를 매 요청 DB에서 재확인한다(로그인 시점 캐시 권한으로는 즉시 반영 불가)
+    @Autowired
+    private ActiveSuspensionAuthorizationManager activeSuspensionAuthorizationManager;
 
     @Value("${google.client-id:dummy-google-client-id}")
     private String googleClientId;
@@ -97,8 +104,10 @@ public class SecurityConfig {
                     new AntPathRequestMatcher("/common/community/*/react"),
                     new AntPathRequestMatcher("/common/community/*/report")
                 )
-                // 정지(SUSPENDED)된 계정은 커뮤니티 변경 액션만 막힌다 (로그인 자체는 계속 가능)
-                .access(new WebExpressionAuthorizationManager("isAuthenticated() and !hasAuthority('SUSPENDED')"))
+                // 정지(SUSPENDED)된 계정은 커뮤니티 변경 액션만 막힌다 (로그인 자체는 계속 가능).
+                // 캐시된 SUSPENDED 권한이 아니라 매 요청 DB를 다시 읽는다 — 관리자가 방금 건 제재도
+                // 재로그인 없이 즉시 적용되고, 만료된 제재도 즉시 풀린다.
+                .access(activeSuspensionAuthorizationManager)
                 .requestMatchers(
                     new AntPathRequestMatcher("/common/community/**")
                 )
@@ -133,13 +142,20 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // 정지된 회원이 커뮤니티 탭에 접근하려 하면 안내 페이지로, 그 외 접근 거부는 기존 기본 처리(403)로
+    // 정지된 회원이 커뮤니티 탭에 접근하려 하면 안내 페이지로, 그 외 접근 거부는 403 에러 페이지로.
+    //
+    // URI 접두사만 보고 분기하면 커뮤니티에서 발생한 "모든" 접근 거부가 제재 안내로 가버린다.
+    // 실제로는 블라인드/삭제된 글에 대한 작업이나 남의 글 접근도 같은 예외를 타므로, 제재당한 적 없는
+    // 회원이 "제재당한 유저입니다"라는 거짓 안내를 받았다. 실제 제재 상태를 함께 확인해 분기한다.
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
         return (request, response, ex) -> {
-            if (request.getRequestURI().startsWith(request.getContextPath() + "/common/community")) {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (request.getRequestURI().startsWith(request.getContextPath() + "/common/community")
+                    && activeSuspensionAuthorizationManager.shouldShowSuspendedNotice(auth)) {
                 response.sendRedirect(request.getContextPath() + "/common/community/suspended");
             } else {
+                // web.xml 의 403 매핑을 타고 views/error/403.jsp 가 렌더링된다
                 response.sendError(HttpServletResponse.SC_FORBIDDEN);
             }
         };

@@ -30,6 +30,10 @@
         </a>
       </div>
 
+      <c:if test="${not empty errorMessage}">
+        <p class="error-text" style="margin-bottom:16px;"><c:out value="${errorMessage}" /></p>
+      </c:if>
+
       <%-- 검색 바 --%>
       <div class="post-search">
         <form action="${ctx}/common/community" method="get" class="post-search-form">
