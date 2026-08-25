@@ -35,8 +35,8 @@
           <c:if test="${param.reported == 'duplicate'}">
             <p class="error-text" style="margin-bottom:16px;">이미 신고한 게시글입니다.</p>
           </c:if>
-          <c:if test="${param.reported == 'invalid'}">
-            <p class="error-text" style="margin-bottom:16px;">신고 사유를 선택해주세요.</p>
+          <c:if test="${not empty errorMessage}">
+            <p class="error-text" style="margin-bottom:16px;"><c:out value="${errorMessage}" /></p>
           </c:if>
 
           <%-- 글 헤더 --%>

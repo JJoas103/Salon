@@ -36,7 +36,16 @@ public class CustomUserDetails implements UserDetails {
         this.userName = user.getUserName();
         this.role = role;
         this.provider = user.getProvider();
-        this.currentlySuspended = "banned".equals(user.getStatus())
+        this.currentlySuspended = isSuspended(user);
+    }
+
+    /**
+     * 제재 판정 규칙. 로그인 시점(이 클래스)과 커뮤니티 변경 액션 시점
+     * (ActiveSuspensionAuthorizationManager)이 같은 규칙을 써야 하므로 패키지 공용으로 둔다.
+     * — resolveRole()을 UserDetailService에 공용으로 둔 것과 같은 이유.
+     */
+    static boolean isSuspended(UserVO user) {
+        return "banned".equals(user.getStatus())
                 || ("suspended".equals(user.getStatus())
                     && user.getSuspendedUntil() != null
                     && user.getSuspendedUntil().isAfter(LocalDateTime.now()));

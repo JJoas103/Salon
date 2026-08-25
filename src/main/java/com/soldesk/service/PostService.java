@@ -15,6 +15,12 @@ public interface PostService {
 
     PostVO getPost(int postId);
 
+    /**
+     * 조회수를 올리지 않는 단순 조회(노출 중인 글만).
+     * 존재/노출 여부 확인용 -- getPost 는 조회수를 증가시키므로 그 목적으로 쓰면 안 된다.
+     */
+    PostVO findVisiblePost(int postId);
+
     void writePost(PostVO post, MultipartFile imageFile) throws IOException;
 
     void editPost(PostVO post, MultipartFile imageFile, int userId) throws IOException;

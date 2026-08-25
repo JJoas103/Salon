@@ -65,7 +65,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<PostVO> getPostList(String category, String sort, int page, int size) {
-        int offset = (page - 1) * size;
+        int offset = (Math.max(page, 1) - 1) * size; // 음수 offset은 LIMIT 절에서 SQL 오류가 난다
         if (category == null || category.isEmpty()) {
             return postMapper.findAll(sort, offset, size);
         }
@@ -102,8 +102,13 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void editPost(PostVO post, MultipartFile imageFile, int userId) throws IOException {
+        // findById는 status='visible'만 돌려주므로, 블라인드/삭제된 글은 작성자 본인이어도 null이다.
+        // 이걸 소유권 위반과 같은 예외로 묶으면 정지된 적 없는 작성자가 제재 안내 화면을 보게 된다.
         PostVO existing = postMapper.findById(post.getPostId());
-        if (existing == null || existing.getUserId() != userId) {
+        if (existing == null) {
+            throw new IllegalArgumentException("삭제되었거나 블라인드된 글입니다.");
+        }
+        if (existing.getUserId() != userId) {
             throw new AccessDeniedException("본인이 작성한 글만 수정할 수 있습니다.");
         }
         // 새 이미지가 올라온 경우에만 교체. 아니면 hidden 필드로 넘어온 기존 파일명 유지
@@ -121,7 +126,10 @@ public class PostServiceImpl implements PostService {
     @Transactional
     public void removePost(int postId, int userId) {
         PostVO post = postMapper.findById(postId);
-        if (post == null || post.getUserId() != userId) {
+        if (post == null) {
+            throw new IllegalArgumentException("삭제되었거나 블라인드된 글입니다.");
+        }
+        if (post.getUserId() != userId) {
             throw new AccessDeniedException("본인이 작성한 글만 삭제할 수 있습니다.");
         }
         deletePostCascade(post);
@@ -138,6 +146,20 @@ public class PostServiceImpl implements PostService {
     }
 
     @Override
+    public PostVO findVisiblePost(int postId) {
+        return postMapper.findById(postId);
+    }
+
+    // 글에 무언가를 쓰는 액션(댓글·반응·신고)이 공유하는 선행 조건.
+    // 상세 페이지를 열어둔 사이 글이 삭제/블라인드될 수 있는데, 글은 소프트 삭제라 행이 남아 있어
+    // FK로는 걸러지지 않는다 -- 확인하지 않으면 죽은 글에 조용히 기록이 쌓인다.
+    private void requireVisiblePost(int postId) {
+        if (findVisiblePost(postId) == null) {
+            throw new IllegalArgumentException("삭제되었거나 블라인드된 글입니다.");
+        }
+    }
+
+    @Override
     public List<CommentVO> getComments(int postId) {
         return commentMapper.findByPostId(postId);
     }
@@ -145,14 +167,26 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void writeComment(CommentVO comment) {
+        requireVisiblePost(comment.getPostId());
+        // 글쓰기(writePost)와 동일하게 공백을 정리한다 — HTML required는 공백만 있는 입력을 막지 못한다
+        String content = comment.getContent() != null ? comment.getContent().trim() : "";
+        if (content.isEmpty()) {
+            throw new IllegalArgumentException("댓글 내용을 입력해주세요.");
+        }
+        comment.setContent(content);
         commentMapper.insert(comment);
     }
 
     @Override
     @Transactional
     public void removeComment(int commentId, int userId) {
+        // 댓글은 하드 삭제라 null 은 "이미 삭제됨"을 뜻한다(중복 클릭, 관리자가 먼저 처리한 경우).
+        // 소유권 위반과 같은 예외로 묶으면 자기 댓글을 지우려던 사용자가 접근 거부 화면을 보게 된다.
         CommentVO comment = commentMapper.findById(commentId);
-        if (comment == null || comment.getUserId() != userId) {
+        if (comment == null) {
+            throw new IllegalArgumentException("이미 삭제된 댓글입니다.");
+        }
+        if (comment.getUserId() != userId) {
             throw new AccessDeniedException("본인이 작성한 댓글만 삭제할 수 있습니다.");
         }
         commentMapper.delete(commentId);
@@ -182,6 +216,12 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void react(int postId, int userId, String type) {
+        requireVisiblePost(postId);
+        // reaction_type 은 ENUM('like','dislike') 라 다른 값은 SQL 오류로 터진다.
+        // 아래 카운터 로직도 "like" 가 아니면 전부 dislike 로 취급하므로 집계까지 틀어진다.
+        if (!"like".equals(type) && !"dislike".equals(type)) {
+            throw new IllegalArgumentException("올바르지 않은 반응 유형입니다.");
+        }
         PostLikeVO existing = postLikeMapper.findByPostAndUser(postId, userId);
         if (existing == null) {
             postLikeMapper.insert(postId, userId, type);
@@ -211,7 +251,7 @@ public class PostServiceImpl implements PostService {
 
     @Override
     public List<PostVO> searchPosts(String searchType, String keyword, String sort, int page, int size) {
-        int offset = (page - 1) * size;
+        int offset = (Math.max(page, 1) - 1) * size; // 음수 offset은 LIMIT 절에서 SQL 오류가 난다
         return postMapper.search(searchType, "%" + keyword + "%", sort, offset, size);
     }
 
@@ -223,6 +263,7 @@ public class PostServiceImpl implements PostService {
     @Override
     @Transactional
     public void reportPost(int postId, int userId, String reason, String reasonDetail) {
+        requireVisiblePost(postId);
         PostReportVO existing = postReportMapper.findByPostAndUser(postId, userId);
         if (existing != null) {
             throw new IllegalStateException("이미 신고한 게시글입니다.");
@@ -311,6 +352,11 @@ public class PostServiceImpl implements PostService {
         }
         if (!REPORT_REASON_LABELS.containsKey(reason)) {
             throw new IllegalArgumentException("올바르지 않은 신고 사유입니다.");
+        }
+        // 댓글은 하드 삭제라, 신고 버튼이 그려진 뒤 삭제됐으면 comment_reports FK 위반으로 터진다
+        // (관리자가 신고된 댓글을 처리하는 동안 다른 신고자가 버튼을 누르는 경우가 대표적)
+        if (commentMapper.findById(commentId) == null) {
+            throw new IllegalArgumentException("이미 삭제된 댓글입니다.");
         }
         commentReportMapper.insert(commentId, userId, reason, reasonDetail);
         // 게시글 신고와 달리 자동 블라인드 없음 -- 댓글은 관리자가 검토할 때까지 그대로 노출된다

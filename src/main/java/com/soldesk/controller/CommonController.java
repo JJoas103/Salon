@@ -202,7 +202,13 @@ public class CommonController {
     @PostMapping("/my-community/comments/{commentId}/delete")
     public String deleteMyComment(@PathVariable int commentId, Authentication authentication) {
         UserVO user = userService.getUser(authentication.getName());
-        postService.removeComment(commentId, user.getUserId());
+        try {
+            postService.removeComment(commentId, user.getUserId());
+        } catch (IllegalArgumentException e) {
+            // 이미 지워진 기록이면 사용자가 원한 상태가 이미 된 것이다 -- 아래 deleteReplyOnMyPost 가
+            // 쓰는 removeCommentAsPostOwner 도 같은 상황을 조용히 무시한다.
+            // (소유권 위반인 AccessDeniedException 은 그대로 전파시켜 403 으로 남긴다)
+        }
         return "redirect:/common/my-community?tab=comments";
     }
 
