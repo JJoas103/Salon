@@ -16,7 +16,7 @@
          먼저 처리되는 쪽이 "${...:기본값}" 플레이스홀더를 자기 프로퍼티에 없다는 이유로 기본값으로
          먼저 확정시켜버려서, 나중 placeholder가 실제 값을 읽어도 이미 반영이 안 되는 문제가 있었다.
          SecurityConfig가 root/web 두 컨텍스트 모두에서 스캔되므로 이 파일도 양쪽에 등록한다. -->
-    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties,classpath:properties/oauth2.properties" ignore-resource-not-found="true" />
+    <context:property-placeholder location="classpath:properties/db.properties,classpath:properties/app.properties,classpath:properties/oauth2.properties,classpath:properties/payment.properties" ignore-resource-not-found="true" />
 
 
     <!-- service / mapper 패키지 스캔 (controller 는 dispatcher 가 스캔) -->
