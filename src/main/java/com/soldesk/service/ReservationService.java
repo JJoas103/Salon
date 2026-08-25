@@ -88,7 +88,10 @@ public class ReservationService {
     @Transactional
     public List<ReservationVO> getRevList(int userId) {
         List<ReservationVO> list = resvMapper.getRevList(userId);
-        list.forEach(this::fillPaymentLabel);
+        list.forEach(reservation -> {
+            fillPaymentLabel(reservation);
+            fillDisplayFields(reservation);
+        });
         return list;
     }
 
