@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,8 @@ public class PostServiceImpl implements PostService {
     @Autowired
     private UserService userService;
 
-    private static final int REPORT_BLIND_THRESHOLD = 5;
+    @Value("${report.blind-threshold:5}")
+    private int reportBlindThreshold;
 
     // 신고 사유 코드 -> 한글 라벨 (관리자 화면 요약 표시용)
     private static final Map<String, String> REPORT_REASON_LABELS = new LinkedHashMap<>();
@@ -235,7 +237,7 @@ public class PostServiceImpl implements PostService {
 
         PostVO post = postMapper.findByIdAny(postId);
         if (post != null
-                && post.getReportCount() >= REPORT_BLIND_THRESHOLD
+                && post.getReportCount() >= reportBlindThreshold
                 && !"blinded".equals(post.getStatus())) {
             postMapper.blindPost(postId);
         }
