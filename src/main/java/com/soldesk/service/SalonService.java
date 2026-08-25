@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -108,6 +110,7 @@ public class SalonService {
         salonMapper.closeSalon(salonId);
         // 폐업하면 검색에서도 빠져야 한다 (indexSalon 이 미노출 매장을 색인에서 지운다)
         salonSearchService.indexSalon(salonId);
+        triggerAiReindexAfterCommit();
     }// 매장 폐업 처리: 존재하지 않거나 이미 폐업된 매장 재처리 방지
 
     @Transactional
@@ -122,6 +125,7 @@ public class SalonService {
         salonMapper.reopenSalon(salonId);
         // 재개하면 다시 검색에 나타나야 한다 (active 상태였다면 indexSalon 이 색인에 넣는다)
         salonSearchService.indexSalon(salonId);
+        triggerAiReindexAfterCommit();
     }// 매장 폐업 취소(재개): 존재하지 않거나 이미 운영중인 매장 재처리 방지
 
     @Transactional
@@ -142,6 +146,7 @@ public class SalonService {
         // 검색은 엘라스틱서치가 답한다. 여기서 색인을 같이 갱신하지 않으면 점주가 주소를 고쳐도
         // 재기동 전까지 검색 결과에 옛 주소·좌표가 그대로 나온다.
         salonSearchService.indexSalon(salon.getSalonId());
+        triggerAiReindexAfterCommit();
     }// 점주가 매장정보 관리 화면에서 직접 수정 (소유 검증)
 
     @Transactional(readOnly = true)
@@ -165,7 +170,7 @@ public class SalonService {
     public void registerService(int ownerId, ServiceVO service) {
         assertOwnsSalon(service.getSalonId(), ownerId);
         salonMapper.insertService(service);
-        triggerAiReindex();
+        triggerAiReindexAfterCommit();
     }// 점주 시술 메뉴 등록 (소유 검증)
 
     @Transactional
@@ -177,7 +182,7 @@ public class SalonService {
         assertOwnsSalon(existing.getSalonId(), ownerId);
         service.setSalonId(existing.getSalonId());
         salonMapper.updateService(service);
-        triggerAiReindex();
+        triggerAiReindexAfterCommit();
     }// 점주 시술 메뉴 수정 (소유 검증)
 
     @Transactional
@@ -188,7 +193,7 @@ public class SalonService {
         }
         assertOwnsSalon(existing.getSalonId(), ownerId);
         salonMapper.deleteService(serviceId);
-        triggerAiReindex();
+        triggerAiReindexAfterCommit();
     }// 점주 시술 메뉴 삭제 (소유 검증)
 
     @Transactional(readOnly = true)
@@ -226,10 +231,24 @@ public class SalonService {
         }
         // 승인되는 순간 검색에도 나타나야 한다 (다음 재기동까지 기다리지 않도록)
         salonSearchService.indexSalon(salonId);
+        triggerAiReindexAfterCommit();
     }// 관리자 2차 승인 — 손님에게 정상 노출
-    /** 시술 메뉴가 바뀔 때마다 ai-service 의 검색 인덱스를 즉시 새로고침한다.
+    /** 시술·매장 노출 정보가 바뀌면 transaction commit 뒤 ai-service 검색 인덱스를 새로고침한다.
      *  ai-service 가 꺼져 있어도 점주의 메뉴 등록/수정/삭제 자체는 막으면 안 되므로 예외를 삼킨다 —
-     *  다음 CRUD 나 ai-service 재기동 시 어차피 최신 상태로 다시 맞춰진다. */
+     *  다음 CRUD 또는 첫 상담의 hash 검사에서 최신 상태로 다시 맞춰진다. */
+    private void triggerAiReindexAfterCommit() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            triggerAiReindex();
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                triggerAiReindex();
+            }
+        });
+    }
+
     private void triggerAiReindex() {
         try {
             restTemplate.postForEntity(fastApiUrl + "/api/reindex", null, Void.class);

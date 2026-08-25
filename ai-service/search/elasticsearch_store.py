@@ -1,5 +1,7 @@
 # Elasticsearch 실질적인 기능을 담당
 
+import hashlib
+import json
 import os
 from typing import Any
 
@@ -67,8 +69,14 @@ def load_products() -> list[dict[str, Any]]:
         })
     return products
 
-def _index_mappings(embedding_dims: int) -> dict[str, Any]:
+def _catalog_hash(products: list[dict[str, Any]]) -> str:
+    # service_id가 TRUNCATE 뒤 재사용돼도 내용 변화까지 감지해야 함
+    canonical = json.dumps(products, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+    return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+
+def _index_mappings(embedding_dims: int, catalog_hash: str) -> dict[str, Any]:
     return {
+        '_meta': {'catalog_hash': catalog_hash},
         'properties': {
             'service_id':   {'type': 'keyword'},
             'salon_id':     {'type': 'keyword'},
@@ -91,10 +99,12 @@ def _index_mappings(embedding_dims: int) -> dict[str, Any]:
 
 # ── 인덱스 새로고침 (무조건 재생성) ─────────────────
 # 카탈로그가 작아 통째로 다시 만듦 — 일부만 갱신하다 누락되는 것보다 안전함
-def rebuild_index() -> dict[str, Any]:
+def rebuild_index(products: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     ensure_elasticsearch()
 
-    products = load_products()
+    if products is None:
+        products = load_products()
+    catalog_hash = _catalog_hash(products)
 
     model = get_embedding_model()
     vectors = (
@@ -109,7 +119,7 @@ def rebuild_index() -> dict[str, Any]:
     client.indices.delete(index=INDEX_NAME, ignore_unavailable=True)
     client.indices.create(
         index=INDEX_NAME,
-        mappings=_index_mappings(embedding_dims),
+        mappings=_index_mappings(embedding_dims, catalog_hash),
     )
 
     if products:
@@ -132,15 +142,24 @@ def rebuild_index() -> dict[str, Any]:
         'message': '시술 인덱스를 새로 고쳤습니다.'
     }
 
-# ── 인덱스 준비 (없을 때만 새로고침) ────────────────
-# prepare_service_index 툴의 진입점 — 최신화는 rebuild_index 가 하므로
-# 여기서는 완전히 비어있는 최초 상태만 채움
+# ── 인덱스 준비 및 DB 정합성 확인 ─────────────────
+# SQL 시드·복원은 Spring CRUD를 거치지 않으므로 첫 상담에서 원본 카탈로그 hash를 대조함
 def prepare_index() -> dict[str, Any]:
     ensure_elasticsearch()
 
+    products = load_products()
+    current_hash = _catalog_hash(products)
+
     if client.indices.exists(index=INDEX_NAME):
         stored_count = client.count(index=INDEX_NAME)['count']
-        if stored_count > 0:
+        mappings = client.indices.get_mapping(index=INDEX_NAME)
+        stored_hash = (
+            mappings.get(INDEX_NAME, {})
+            .get('mappings', {})
+            .get('_meta', {})
+            .get('catalog_hash')
+        )
+        if stored_count == len(products) and stored_hash == current_hash:
             return {
                 'created': False,
                 'index': INDEX_NAME,
@@ -148,7 +167,7 @@ def prepare_index() -> dict[str, Any]:
                 'message': '기존 시술 인덱스를 사용합니다.'
             }
 
-    return rebuild_index()
+    return rebuild_index(products)
 
 # ── 하이브리드 검색 ──────────────────────────────
 def hybrid_search(
