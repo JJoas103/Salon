@@ -146,13 +146,19 @@
               </span>
 
               <c:choose>
-                <c:when test="${reserve.status eq 'pending'}">
+                <c:when test="${reserve.displayStatus eq '결제중'}">
                   <span class="status-badge status-upcoming">확정 대기</span>
                 </c:when>
-                <c:when test="${reserve.status eq 'confirmed'}">
+                <c:when test="${reserve.displayStatus eq '결제 미완료'}">
+                  <span class="status-badge">결제 미완료</span>
+                </c:when>
+                <c:when test="${reserve.displayStatus eq '예약됨'}">
                   <span class="status-badge status-upcoming">이용 예정 (확정)</span>
                 </c:when>
-                <c:when test="${reserve.status eq 'completed'}">
+                <c:when test="${reserve.displayStatus eq '진행중'}">
+                  <span class="status-badge status-upcoming">이용 중</span>
+                </c:when>
+                <c:when test="${reserve.displayStatus eq '완료'}">
                   <span class="status-badge">이용 완료</span>
                 </c:when>
                 <c:when test="${reserve.status eq 'cancelled'}">
