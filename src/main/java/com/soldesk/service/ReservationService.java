@@ -87,6 +87,10 @@ public class ReservationService {
 
     @Transactional
     public List<ReservationVO> getRevList(int userId) {
+        // 예약 가능 시간 화면을 거치지 않고 예약 내역으로 바로 들어와도
+        // 10분이 지난 결제 이탈 건을 동일한 기준으로 정리한다.
+        expireStalePending();
+
         List<ReservationVO> list = resvMapper.getRevList(userId);
         list.forEach(reservation -> {
             fillPaymentLabel(reservation);

@@ -146,12 +146,6 @@
               </span>
 
               <c:choose>
-                <c:when test="${reserve.displayStatus eq '결제중'}">
-                  <span class="status-badge status-upcoming">확정 대기</span>
-                </c:when>
-                <c:when test="${reserve.displayStatus eq '결제 미완료'}">
-                  <span class="status-badge">결제 미완료</span>
-                </c:when>
                 <c:when test="${reserve.displayStatus eq '예약됨'}">
                   <span class="status-badge status-upcoming">이용 예정 (확정)</span>
                 </c:when>
@@ -201,6 +195,11 @@
                 <div class="res-meta-item">
                   <span>시술 상품 / 소요 시간</span>
                   <strong>${reserve.serviceName} / ${reserve.durationMinutes > 0 ? reserve.durationMinutes : 60}분 소요 예상</strong>
+                </div>
+
+                <div class="res-meta-item">
+                  <span>담당 디자이너</span>
+                  <strong><c:out value="${reserve.stylistName}"/></strong>
                 </div>
 
                 <%-- 결제까지 못 간 예약은 Payments 행이 없어(LEFT JOIN) 금액이 0이다.

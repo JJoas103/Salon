@@ -60,6 +60,7 @@
             se.category AS category,
             se.concern AS concern,
             se.duration_minutes AS duration_minutes,
+            st.stylist_name AS stylist_name,
             p.original_amount,
             p.coupon_discount,
             p.point_used,
@@ -69,9 +70,18 @@
           ON s.salon_id = r.salon_id
         JOIN Services se
           ON se.service_id = r.service_id
+        JOIN Stylists st
+          ON st.stylist_id = r.stylist_id
         LEFT JOIN Payments p
           ON p.reservation_id = r.reservation_id
         WHERE r.user_id = #{userId}
+          AND (
+              r.status IN ('confirmed', 'completed')
+              OR (
+                  r.status = 'cancelled'
+                  AND (r.cancel_type IS NOT NULL OR r.reject_reason IS NOT NULL)
+              )
+          )
         ORDER BY r.reservation_time DESC
 
     </select>
