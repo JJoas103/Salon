@@ -1,6 +1,8 @@
 -- ============================================================
 --  salu 시연용 더미 데이터
---  실행:  mysql -u root -p salu < sql/seed_demo.sql
+--  실행:  mysql --default-character-set=utf8mb4 -u root -p salu < sql/seed_demo.sql
+--         (Windows 클라이언트는 기본 charset 이 cp949 라 옵션을 빼면 한글이 깨진다.
+--          아래 SET NAMES 로도 막아두었지만 옵션까지 주는 쪽이 확실하다)
 --
 --  몇 번을 실행해도 같은 상태가 된다 (전부 지우고 다시 넣는다).
 --  리허설로 예약이 쌓이면 이 파일을 다시 실행해 초기 상태로 되돌린다.
@@ -11,6 +13,8 @@
 --  로컬 계정 비밀번호: 기존 DB 의 test 계정들과 같은 해시를 그대로 썼다.
 --  (그 계정들에 쓰던 비밀번호로 로그인된다. user2 는 소셜 계정이라 비밀번호 없음)
 -- ============================================================
+
+SET NAMES utf8mb4;
 
 USE salu;
 
@@ -65,6 +69,23 @@ INSERT INTO Users
 (5, 'user1@salu.com',  '$2a$10$TzYP1yrIyYSK/6T.vFwfS.I1A9K807yKxkV0T590Gnr0XrydyUAWq', '최손님',   '010-0000-0005', 'customer', 'local',  NULL, 8000),
 (6, 'user2@salu.com',  NULL,                                                            '정소셜',   '010-0000-0006', 'customer', 'google', 'google-1001', 1500),
 (7, 'user3@salu.com',  '$2a$10$TzYP1yrIyYSK/6T.vFwfS.I1A9K807yKxkV0T590Gnr0XrydyUAWq', '한작성',   '010-0000-0007', 'customer', 'local',  NULL, 0);
+
+--  8~17 : 매장 리뷰/예약 이력을 채우는 배경 손님들.
+--  시연 주인공(손님1·2·3)의 예약내역·마이페이지가 더미로 뒤덮이면 안 되므로,
+--  매장 20곳의 예약·리뷰는 전부 이 계정들 몫으로 돌린다.
+--  point_balance 는 0 으로 두고 Point_Transactions 도 만들지 않는다
+--  (원장 합계 = point_balance 불변식을 깨지 않기 위해서다).
+INSERT INTO Users
+    (user_id, email, password, user_name, phone_number, user_type, provider, provider_id, point_balance)
+SELECT 7 + n,
+       CONCAT('guest', n, '@salu.com'),
+       '$2a$10$TzYP1yrIyYSK/6T.vFwfS.I1A9K807yKxkV0T590Gnr0XrydyUAWq',
+       CONCAT(ELT(n, '김', '이', '박', '최', '정', '강', '조', '윤', '장', '임'),
+              ELT(n, '서연', '지훈', '하은', '도현', '수아', '민준', '예린', '시우', '나윤', '건우')),
+       CONCAT('010-3333-', LPAD(n, 4, '0')),
+       'customer', 'local', NULL, 0
+FROM (SELECT 1 AS n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+      UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10) g;
 
 
 -- ============================================================
@@ -132,7 +153,13 @@ INSERT INTO Services
 (8, 2, '히피펌',           '펌',     120000, 150, '자연스러운 웨이브 연출',   '볼륨, 생머리, 스타일링'),
 (9, 2, '뿌리 염색',        '염색',   55000,  80, '자란 뿌리만 컬러 보정',     '새치, 뿌리 톤'),
 (10, 4, '기본 컷',         '컷',     20000,  40, '성수점 오픈 기념 커트',     '기본 손질'),
-(11, 4, '베이직 펌',       '펌',     100000, 140, '성수점 오픈 기념 펌',       '볼륨');
+(11, 4, '베이직 펌',       '펌',     100000, 140, '성수점 오픈 기념 펌',       '볼륨'),
+--  1·2 번은 시연 본선 매장이라 아래 추가 매장 20곳(7종)보다 메뉴가 적으면 안 된다.
+--  카테고리 필터에서 "세트"·"클리닉" 을 골랐을 때 강남/홍대점이 빠지는 것도 어색하다.
+(12, 1, '드라이 세트',     '세트',   30000,  40, '행사·모임용 드라이 스타일링', '스타일링, 볼륨'),
+(13, 2, '여성 디자인컷',   '컷',     33000,  60, '얼굴형에 맞춘 디자인 커트',   '얼굴형 보완, 볼륨'),
+(14, 2, '헤어 클리닉',     '클리닉', 75000,  70, '손상모 집중 영양 트리트먼트', '손상모, 푸석함, 갈라짐'),
+(15, 2, '드라이 세트',     '세트',   28000,  40, '행사·모임용 드라이 스타일링', '스타일링, 볼륨');
 
 
 -- ============================================================
@@ -144,7 +171,9 @@ INSERT INTO Stylists (stylist_id, salon_id, stylist_name, phone_number, descript
 (3, 1, '김디자이너', '010-1111-0003', '경력 5년 · 컬러 전문'),
 (4, 2, '최원장', '010-1111-0004', '경력 10년 · 남성 커트 전문'),
 (5, 2, '정실장', '010-1111-0005', '경력 6년 · 웨이브 펌 전문'),
-(6, 4, '오디자이너', '010-1111-0006', '성수점 오픈 멤버');
+(6, 4, '오디자이너', '010-1111-0006', '성수점 오픈 멤버'),
+--  홍대점도 3명으로 맞춘다 (2명이면 디자이너 선택 단계가 사실상 둘 중 하나가 된다)
+(7, 2, '한디자이너', '010-1111-0007', '경력 4년 · 컬러와 클리닉 담당');
 
 
 -- ============================================================
@@ -189,6 +218,42 @@ CROSS JOIN (
     UNION ALL SELECT '뿌리염색',     '염색', 50000,  90,  '뿌리 컬러 보정',       '새치, 뿌리 톤'
 ) t;
 
+-- 추가 매장별 시술 3종 더 (클리닉/세트/디자인컷) — 컷·펌·염색만 있으면
+-- 카테고리 필터에서 "클리닉"·"세트" 를 고르는 순간 20곳이 통째로 사라진다.
+INSERT INTO Services (salon_id, service_name, category, price, duration_minutes, description, concern)
+SELECT s.salon_id, t.service_name, t.category,
+       t.base_price + (s.salon_id * 300), t.duration_minutes, t.description, t.concern
+FROM (SELECT salon_id FROM Salons WHERE salon_id BETWEEN 5 AND 24) s
+CROSS JOIN (
+    SELECT '여성 디자인컷' AS service_name, '컷'   AS category, 32000 AS base_price, 60 AS duration_minutes, '얼굴형에 맞춘 디자인 커트' AS description, '얼굴형 보완, 볼륨' AS concern
+    UNION ALL SELECT '헤어 클리닉',  '클리닉', 70000, 70, '손상모 집중 영양 트리트먼트', '손상모, 푸석함, 갈라짐'
+    UNION ALL SELECT '드라이 세트',  '세트',   25000, 40, '행사·모임용 드라이 스타일링', '스타일링, 볼륨'
+) t;
+
+-- 매장 성격(Salons.description)에 맞춘 대표 시술 1종.
+-- 20곳이 전부 같은 메뉴만 갖고 있으면 매장 비교·AI 추천에서 답이 하나로 고정된다.
+INSERT INTO Services (salon_id, service_name, category, price, duration_minutes, description, concern) VALUES
+(5,  '가르마펌',          '펌',     70000,  90,  '남성 가르마 라인 고정 펌',        '뻗침, 앞머리, 스타일링'),
+(6,  '애쉬 탈색',         '염색',   180000, 240, '2회 탈색 후 애쉬 톤 마무리',      '탈색모, 컬러 유지'),
+(7,  '디지털펌',          '펌',     160000, 200, '열펌으로 컬을 오래 유지',          '곱슬머리, 볼륨, 컬 유지'),
+(8,  '남성 컷',           '컷',     22000,  40,  '두상에 맞춘 남성 커트',            '숱 많음, 뻗침'),
+(9,  '두피 스케일링',     '클리닉', 58000,  50,  '두피 각질과 피지를 제거하는 케어', '두피 트러블, 비듬, 지성두피'),
+(10, '웨딩 헤어 세트',    '세트',   120000, 90,  '예식·행사용 업스타일',             '스타일링, 행사'),
+(11, '어르신 파마',       '펌',     45000,  100, '짧은 모발용 클래식 파마',          '볼륨, 새치'),
+(12, '전체 염색',         '염색',   85000,  120, '뿌리부터 끝까지 균일한 컬러',      '새치, 컬러 유지'),
+(13, '남성 다운펌',       '펌',     55000,  70,  '뜨는 옆머리를 눌러주는 펌',        '뻗침, 숱 많음'),
+(14, '두피 집중 케어',    '클리닉', 130000, 90,  '두피 스케일링 + 앰플 관리 패키지', '탈모, 두피 트러블, 손상모'),
+(15, '내추럴 볼륨펌',     '펌',     110000, 150, '뿌리 볼륨 위주의 자연스러운 펌',   '볼륨, 생머리'),
+(16, '스피드 컷',         '컷',     15000,  25,  '예약 없이 빠르게 받는 커트',       '기본 손질'),
+(17, '레이어드 컷',       '컷',     38000,  70,  '층을 낸 여성 커트',                '얼굴형 보완, 볼륨'),
+(18, '학생 컷',           '컷',     14000,  30,  '학생증 제시 시 할인 커트',         '기본 손질'),
+(19, '점심시간 컷',       '컷',     28000,  30,  '30분 안에 끝내는 직장인 커트',     '기본 손질, 스타일링'),
+(20, '새치 염색',         '염색',   48000,  70,  '새치만 자연스럽게 커버',           '새치, 뿌리 톤'),
+(21, '볼륨 매직',         '펌',     140000, 180, '뿌리 볼륨과 매직을 동시에',        '곱슬머리, 볼륨 다운, 뻗침'),
+(22, '옴브레 염색',       '염색',   150000, 180, '뿌리에서 끝으로 흐르는 그라데이션','탈색모, 컬러 유지'),
+(23, '남성 스포츠컷',     '컷',     20000,  30,  '짧고 단정한 남성 커트',            '숱 많음, 기본 손질'),
+(24, '프라이빗 디자인컷', '컷',     55000,  80,  '1:1 상담 후 진행하는 디자인 커트', '얼굴형 보완, 손상모');
+
 -- 추가 매장 영업시간 (7일)
 INSERT INTO Salon_Operating_Hours (salon_id, day_of_week, open_time, close_time)
 SELECT s.salon_id, d.day_of_week, d.open_time, d.close_time
@@ -203,10 +268,25 @@ CROSS JOIN (
     UNION ALL SELECT '일', '11:00:00', '18:00:00'
 ) d;
 
--- 추가 매장별 디자이너 1명 (예약 가능하도록. 스케줄은 아래 공통 INSERT 가 채운다)
+-- 추가 매장별 디자이너 3명 (원장/실장/디자이너).
+-- 1명뿐이면 예약 화면의 디자이너 선택 단계가 사실상 건너뛰어지고, 그 1명이 휴무인 날은
+-- 매장 전체가 예약 불가로 보인다. 성(姓)은 salon_id 로 돌려 매장마다 다른 조합이 나온다.
+-- 스케줄은 아래 공통 INSERT 가 Stylists 전체를 대상으로 한꺼번에 채운다.
 INSERT INTO Stylists (salon_id, stylist_name, phone_number, description)
-SELECT salon_id, CONCAT('디자이너', salon_id), '010-2222-0000', '대표 디자이너'
-FROM Salons WHERE salon_id BETWEEN 5 AND 24;
+SELECT s.salon_id,
+       CONCAT(ELT(MOD(s.salon_id * 3 + t.n, 12) + 1,
+                  '김','이','박','최','정','강','조','윤','장','임','한','오'),
+              t.title),
+       CONCAT('010-2222-', LPAD(s.salon_id * 3 + t.n, 4, '0')),
+       t.description
+FROM (SELECT salon_id FROM Salons WHERE salon_id BETWEEN 5 AND 24) s
+CROSS JOIN (
+    SELECT 1 AS n, '원장'     AS title, '경력 12년 · 매장 총괄 · 커트 전문'  AS description
+    UNION ALL SELECT 2, '실장',     '경력 7년 · 펌과 볼륨 매직 전문'
+    UNION ALL SELECT 3, '디자이너', '경력 4년 · 컬러와 트렌드 스타일링'
+) t
+-- 디자이너 목록은 stylist_id 순으로 나온다. ORDER BY 가 없으면 원장이 맨 뒤로 밀린다.
+ORDER BY s.salon_id, t.n;
 
 
 -- ============================================================
@@ -231,10 +311,27 @@ UPDATE Stylist_Schedules
 -- ============================================================
 --  SalonNotices
 -- ============================================================
+--  매장 3(준비중·필수정보 미입력)만 일부러 비워 둔다. 여기에 공지를 넣어도
+--  필수정보 체크리스트(주소/영업시간/시술메뉴/디자이너)에는 안 잡히지만,
+--  "아무것도 없는 매장" 이라는 시연 전제가 흐려진다.
 INSERT INTO SalonNotices (notice_id, salon_id, title, content) VALUES
 (1, 1, '8월 휴무 안내', '매주 셋째 주 화요일은 정기 휴무입니다. 예약에 참고해 주세요.'),
 (2, 1, '신규 클리닉 오픈', '두피 스케일링 메뉴가 새로 추가되었습니다. 8월 한정 20% 할인.'),
-(3, 2, '주차 안내', '건물 지하 2층 주차장 이용 시 2시간 무료입니다.');
+(3, 2, '주차 안내', '건물 지하 2층 주차장 이용 시 2시간 무료입니다.'),
+(4, 2, '컬러 시술 예약 안내', '탈색이 포함된 컬러는 시술 시간이 길어 마감 3시간 전까지만 예약을 받습니다.'),
+(5, 4, '오픈 예정 안내', '성수점은 준비를 마치는 대로 오픈합니다. 오픈 첫 주 전 시술 10% 할인 예정입니다.');
+
+-- 추가 매장 20곳 공지 2건씩. 매장 상세의 공지 탭이 전부 비어 있으면
+-- 매장을 아무거나 눌러 보여 주는 시연에서 빈 화면이 나온다.
+INSERT INTO SalonNotices (salon_id, title, content)
+SELECT s.salon_id, t.title, CONCAT(s.salon_name, t.content)
+FROM (SELECT salon_id, salon_name FROM Salons WHERE salon_id BETWEEN 5 AND 24) s
+JOIN (
+    SELECT 0 AS grp, '정기 휴무 안내'    AS title, ' 은 매월 첫째 주 월요일 정기 휴무입니다.'                      AS content
+    UNION ALL SELECT 0, '신규 고객 이벤트', ' 첫 방문 고객께 트리트먼트 1회를 무료로 드립니다.'
+    UNION ALL SELECT 1, '주차 안내',        ' 방문 고객께 인근 주차장 2시간 무료 주차권을 드립니다.'
+    UNION ALL SELECT 1, '예약제 운영 안내', ' 은 100% 예약제로 운영됩니다. 방문 전 예약 부탁드립니다.'
+) t ON t.grp = MOD(s.salon_id, 2);
 
 
 -- ============================================================
@@ -333,6 +430,130 @@ INSERT INTO Reviews (review_id, user_id, salon_id, reservation_id, rating, comme
 
 
 -- ============================================================
+--  매장별 예약 이력 — 손님에게 노출되는 매장(active) 전부
+-- ============================================================
+--  위의 예약 1~9 는 시나리오가 정해진 시연용이라 손대지 않는다.
+--  여기서는 매장 목록·상세·점주 대시보드가 비어 보이지 않도록 배경 예약을 깐다.
+--
+--  전부 배경 손님(user_id 8~17) 명의다. 아래 결제·리뷰 INSERT 도
+--  "user_id BETWEEN 8 AND 17" 하나로 이 예약들만 골라낸다
+--  (reservation_id > 9 같은 AUTO_INCREMENT 가정에 기대지 않기 위해서다).
+--
+--  매장당 10~16건 (salon_id 로 갈린다) — n 별 성격:
+--    4,5,9,14 → 확정(미래)   7 → 취소(손님 자가취소)   12 → 취소(노쇼)   나머지 → 완료(과거)
+--
+--  건수를 이보다 줄이면 매장당 리뷰가 2~3건까지 떨어지고, 그러면 평균 별점이
+--  표본이 작아 크게 튄다 (아래에서 평균을 다시 계산하므로 목록의 별점이 통째로 흔들린다).
+INSERT INTO Reservations
+    (user_id, salon_id, stylist_id, service_id, reservation_time, status, reject_reason, cancel_type)
+WITH RECURSIVE seq(n) AS (
+    SELECT 1 UNION ALL SELECT n + 1 FROM seq WHERE n < 16
+),
+sal AS (
+    SELECT salon_id FROM Salons WHERE activation_status = 'active' AND closed_at IS NULL
+),
+st AS (
+    SELECT salon_id, stylist_id,
+           ROW_NUMBER() OVER (PARTITION BY salon_id ORDER BY stylist_id) AS rn,
+           COUNT(*)     OVER (PARTITION BY salon_id)                     AS cnt
+    FROM Stylists
+),
+sv AS (
+    SELECT salon_id, service_id,
+           ROW_NUMBER() OVER (PARTITION BY salon_id ORDER BY service_id) AS rn,
+           COUNT(*)     OVER (PARTITION BY salon_id)                     AS cnt
+    FROM Services
+)
+SELECT 8 + MOD(sal.salon_id * 3 + seq.n, 10),
+       sal.salon_id,
+       st.stylist_id,
+       sv.service_id,
+       CASE WHEN seq.n IN (4, 5, 9, 14)
+            THEN CURDATE() + INTERVAL (seq.n - 3 + MOD(sal.salon_id, 5)) DAY
+                           + INTERVAL (11 + MOD(sal.salon_id + seq.n, 7)) HOUR
+            ELSE CURDATE() - INTERVAL (seq.n * 6 + MOD(sal.salon_id, 7)) DAY
+                           + INTERVAL (11 + MOD(sal.salon_id + seq.n, 7)) HOUR
+       END,
+       CASE WHEN seq.n IN (4, 5, 9, 14) THEN 'confirmed'
+            WHEN seq.n IN (7, 12)        THEN 'cancelled'
+            ELSE                              'completed' END,
+       CASE WHEN seq.n = 7  THEN '고객 요청으로 취소되었습니다.'
+            WHEN seq.n = 12 THEN '예약 시간에 방문하지 않으셨습니다.'
+            ELSE NULL END,
+       CASE WHEN seq.n = 7  THEN 'user_cancelled'
+            WHEN seq.n = 12 THEN 'no_show'
+            ELSE NULL END
+FROM sal
+CROSS JOIN seq
+JOIN st ON st.salon_id = sal.salon_id AND st.rn = MOD(seq.n, st.cnt) + 1
+JOIN sv ON sv.salon_id = sal.salon_id AND sv.rn = MOD(seq.n * 2, sv.cnt) + 1
+WHERE seq.n <= 10 + MOD(sal.salon_id, 7);
+
+
+-- 배경 예약의 결제 — Payments 는 예약과 1:1 이라, 없으면 예약 상세에서 결제 정보가 빈다.
+-- 쿠폰·적립금은 쓰지 않은 정가 결제로 둔다 (User_Coupons 재고를 건드리지 않기 위해서다).
+-- paid_at 이 미래가 되지 않도록 NOW() 로 잘라 둔다 (확정 예약은 시술일이 아직 안 왔다).
+INSERT INTO Payments
+    (reservation_id, user_id, amount, original_amount, coupon_discount, point_used,
+     user_coupon_id, pg_provider, payment_method, payment_status, transaction_id, paid_at)
+SELECT r.reservation_id, r.user_id, sv.price, sv.price, 0, 0,
+       NULL, 'KAKAOPAY', '카카오페이',
+       -- 노쇼는 환불하지 않는다 (선불 금액을 매장이 정산한다) — 예약 1~9 의 8번과 같은 규칙
+       CASE WHEN r.cancel_type = 'user_cancelled' THEN 'refunded' ELSE 'completed' END,
+       CONCAT('DEMO-TID-', LPAD(r.reservation_id, 6, '0')),
+       LEAST(r.reservation_time - INTERVAL 1 DAY, NOW())
+FROM Reservations r
+JOIN Services sv ON sv.service_id = r.service_id
+WHERE r.user_id BETWEEN 8 AND 17;
+
+
+-- 배경 예약의 리뷰 — 완료 예약 중 6건에 1건은 일부러 리뷰를 비운다.
+-- (전부 리뷰가 달려 있으면 "리뷰 작성 가능" 목록이 비어 리뷰 작성 시연을 못 한다)
+-- 별점은 Salons.average_rating(위에서 손으로 정해 둔 목표값) 을 중심으로 흔들고,
+-- 실제 평균은 이 블록 아래에서 다시 계산해 덮어쓴다.
+INSERT INTO Reviews (user_id, salon_id, reservation_id, rating, comment, created_at)
+SELECT t.user_id, t.salon_id, t.reservation_id, t.rating,
+       CASE WHEN t.rating >= 4
+            THEN ELT(MOD(t.reservation_id, 6) + 1,
+                     '상담부터 마무리까지 꼼꼼하셨어요. 다음에도 여기로 올 것 같습니다.',
+                     '원하는 스타일을 사진으로 보여드렸는데 거의 그대로 나왔어요.',
+                     '매장이 깔끔하고 대기 없이 바로 시술 들어가서 좋았습니다.',
+                     '가격 대비 만족도가 높아요. 주변에도 추천했습니다.',
+                     '두피가 예민한 편인데 자극 없이 편하게 받았어요.',
+                     '시술 후 홈케어 방법까지 알려주셔서 도움이 많이 됐습니다.')
+            ELSE ELT(MOD(t.reservation_id, 3) + 1,
+                     '결과는 무난했는데 예약 시간보다 조금 밀려서 기다렸습니다.',
+                     '시술은 괜찮았지만 매장이 붐벼서 조금 정신없었어요.',
+                     '나쁘지 않았어요. 다만 상담이 조금 더 자세했으면 좋았을 것 같습니다.')
+       END,
+       t.created_at
+FROM (
+    SELECT r.user_id, r.salon_id, r.reservation_id,
+           -- 오프셋을 reservation_id 나머지로 잡으면 매장마다 +1/-1 개수가 안 맞아
+           -- 평균이 목표값에서 0.5 넘게 밀린다. 매장 안에서의 순번으로 돌려 균형을 맞춘다.
+           LEAST(5, GREATEST(1,
+               CAST(ROUND(s.average_rating) AS SIGNED)
+               + CASE MOD(ROW_NUMBER() OVER (PARTITION BY r.salon_id ORDER BY r.reservation_id), 4)
+                      WHEN 1 THEN 1 WHEN 3 THEN -1 ELSE 0 END
+           )) AS rating,
+           r.reservation_time + INTERVAL 1 DAY AS created_at
+    FROM Reservations r
+    JOIN Salons s ON s.salon_id = r.salon_id
+    WHERE r.user_id BETWEEN 8 AND 17
+      AND r.status = 'completed'
+      AND MOD(r.reservation_id, 6) <> 0
+) t;
+
+
+-- Salons.average_rating 는 Reviews 를 캐시한 값이다 (ReviewMapper.refreshSalonAverageRating
+-- 과 같은 식으로 다시 계산한다). 위에서 손으로 적어 둔 목표값이 실제 리뷰와 어긋난 채
+-- 남으면, 매장 목록의 별점과 상세의 리뷰 목록이 서로 다른 숫자를 말하게 된다.
+UPDATE Salons s
+   SET s.average_rating = COALESCE(
+         (SELECT ROUND(AVG(rv.rating), 1) FROM Reviews rv WHERE rv.salon_id = s.salon_id), 0);
+
+
+-- ============================================================
 --  Wishlists
 -- ============================================================
 INSERT INTO Wishlists (user_id, salon_id) VALUES
@@ -419,3 +640,21 @@ INSERT INTO Notifications (user_id, type, title, message, link_url, ref_id, is_r
 (5, 'COUPON',      '쿠폰이 발급되었습니다', '여름맞이 20% 할인 쿠폰이 도착했습니다', '/common/coupons', 1, 0, NOW() - INTERVAL 2 DAY),
 (5, 'CHAT',        '새 메시지가 도착했습니다', '살루 헤어 강남점: 3시간 정도 소요됩니다', '/common/chat?chatId=1', 1, 1, NOW() - INTERVAL 2 HOUR),
 (5, 'NOTICE',      '매장 새 공지사항', '살루 헤어 강남점 · 신규 클리닉 오픈', '/common/salonmap', 2, 0, NOW() - INTERVAL 6 HOUR);
+
+
+-- ============================================================
+--  적재 결과 요약 — 실행하면 그대로 화면에 찍힌다.
+--  매장 3(준비중·필수정보 미입력)만 시술/디자이너/영업시간이 0 이어야 정상이다.
+-- ============================================================
+SELECT s.salon_id                                  AS id,
+       s.salon_name                                AS 매장,
+       s.activation_status                         AS 상태,
+       (SELECT COUNT(*) FROM Services            x WHERE x.salon_id = s.salon_id) AS 시술,
+       (SELECT COUNT(*) FROM Stylists            x WHERE x.salon_id = s.salon_id) AS 디자이너,
+       (SELECT COUNT(*) FROM Salon_Operating_Hours x WHERE x.salon_id = s.salon_id) AS 영업요일,
+       (SELECT COUNT(*) FROM SalonNotices        x WHERE x.salon_id = s.salon_id) AS 공지,
+       (SELECT COUNT(*) FROM Reservations        x WHERE x.salon_id = s.salon_id) AS 예약,
+       (SELECT COUNT(*) FROM Reviews             x WHERE x.salon_id = s.salon_id) AS 리뷰,
+       s.average_rating                            AS 평점
+FROM Salons s
+ORDER BY s.salon_id;

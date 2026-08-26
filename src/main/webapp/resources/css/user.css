@@ -238,6 +238,15 @@ body {
 .salon-info-label { font-size: 14px; font-weight: 600; color: var(--text-sub); }
 .salon-info-value { margin-left: auto; font-size: 15px; font-weight: 700; }
 
+/* 운영시간: 한 줄에는 오늘 것만 쓰고, 요일 7개는 화살표로 펼친다 */
+.salon-hours-toggle { border: 0; background: none; padding: 4px; margin-left: -6px; cursor: pointer; color: var(--text-sub); font-size: 13px; line-height: 1; }
+.salon-hours-toggle i { transition: transform 0.15s ease; }
+.salon-hours-toggle.is-open i { transform: rotate(180deg); }
+.salon-hours-list { list-style: none; margin: 0 0 8px; padding: 8px 16px; border-radius: var(--radius-md); background: var(--bg-sub); }
+.salon-hours-list li { display: flex; justify-content: space-between; gap: 12px; padding: 5px 0; font-size: 14px; color: var(--text-sub); }
+.salon-hours-list li.is-today { color: var(--text-main); font-weight: 700; }
+.salon-hours-list li.is-closed { color: var(--text-light); }
+
 .salon-notice-list-view { padding-top: 14px; }
 .salon-notice-list { display: flex; flex-direction: column; gap: 14px; }
 .salon-notice-item { display: flex; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }

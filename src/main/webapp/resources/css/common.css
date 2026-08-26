@@ -68,6 +68,19 @@
   color: var(--success);
 }
 
+/* 아이콘만 있는 버튼처럼, 화면에는 안 보이지만 스크린리더에는 읽혀야 하는 텍스트 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .input-error {
   border-color: var(--danger) !important;
   box-shadow: 0 0 0 3px var(--danger-soft);

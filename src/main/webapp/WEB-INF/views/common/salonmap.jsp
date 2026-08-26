@@ -97,7 +97,12 @@
                     <div class="salon-info-icon"><i class="far fa-clock"></i></div>
                     <span class="salon-info-label">운영시간</span>
                     <span class="salon-info-value" id="detail-hours">-</span>
+                    <button type="button" class="salon-hours-toggle" id="detail-hours-toggle"
+                            aria-expanded="false" aria-controls="detail-hours-list" hidden>
+                      <i class="fas fa-chevron-down"></i><span class="sr-only">요일별 운영시간 보기</span>
+                    </button>
                   </div>
+                  <ul class="salon-hours-list" id="detail-hours-list" hidden></ul>
                   <div class="salon-info-row">
                     <div class="salon-info-icon"><i class="fas fa-tag"></i></div>
                     <span class="salon-info-label">가격대</span>
@@ -255,6 +260,88 @@
     document.querySelectorAll('.salon-detail-tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () { showTab(btn.dataset.tab); });
     });
+
+    /* ---- 정보 탭 · 운영시간 ----
+       한 줄에는 오늘 영업시간만 쓰고, 요일 7개는 펼쳤을 때만 보여준다.
+       Salon_Operating_Hours 는 휴무인 요일의 행을 아예 만들지 않으므로,
+       빠진 요일을 "휴무"로 읽는 것은 여기서 한다. */
+    const HOURS_DAY_ORDER = ['월', '화', '수', '목', '금', '토', '일'];
+    const hoursValueElement = document.getElementById('detail-hours');
+    const hoursListElement = document.getElementById('detail-hours-list');
+    const hoursToggleButton = document.getElementById('detail-hours-toggle');
+
+    /* DB 의 TIME 은 "10:00:00" 으로 넘어온다. 초는 버린다 */
+    function formatHourTime(time) {
+      return typeof time === 'string' ? time.slice(0, 5) : '';
+    }
+
+    function todayDayKo() {
+      return ['일', '월', '화', '수', '목', '금', '토'][new Date().getDay()];
+    }
+
+    function collapseHours() {
+      hoursListElement.hidden = true;
+      hoursToggleButton.classList.remove('is-open');
+      hoursToggleButton.setAttribute('aria-expanded', 'false');
+    }
+
+    hoursToggleButton.addEventListener('click', function () {
+      const willOpen = hoursListElement.hidden;
+      hoursListElement.hidden = !willOpen;
+      hoursToggleButton.classList.toggle('is-open', willOpen);
+      hoursToggleButton.setAttribute('aria-expanded', String(willOpen));
+    });
+
+    function renderHours(hours) {
+      const byDay = new Map();
+      (hours || []).forEach(function (hour) { byDay.set(hour.dayOfWeek, hour); });
+
+      const today = todayDayKo();
+      const todayHour = byDay.get(today);
+      if (byDay.size === 0) {
+        hoursValueElement.textContent = '정보 없음';
+      } else if (todayHour) {
+        hoursValueElement.textContent = '오늘 ' + formatHourTime(todayHour.openTime)
+          + ' ~ ' + formatHourTime(todayHour.closeTime);
+      } else {
+        hoursValueElement.textContent = '오늘 휴무';
+      }
+
+      hoursListElement.replaceChildren();
+      HOURS_DAY_ORDER.forEach(function (day) {
+        const hour = byDay.get(day);
+        const item = document.createElement('li');
+        if (day === today) item.classList.add('is-today');
+        if (!hour) item.classList.add('is-closed');
+        const dayElement = document.createElement('span');
+        dayElement.textContent = day;
+        const timeElement = document.createElement('span');
+        timeElement.textContent = hour
+          ? formatHourTime(hour.openTime) + ' ~ ' + formatHourTime(hour.closeTime)
+          : '휴무';
+        item.append(dayElement, timeElement);
+        hoursListElement.appendChild(item);
+      });
+
+      hoursToggleButton.hidden = byDay.size === 0;
+    }
+
+    /* 매장을 고를 때마다 그 매장의 운영시간을 새로 받아온다 */
+    function loadHours(salonId) {
+      collapseHours();
+      hoursValueElement.textContent = '-';
+      hoursToggleButton.hidden = true;
+      fetch(CONTEXT_PATH + 'common/salons/' + salonId + '/hours')
+        .then(function (response) {
+          if (!response.ok) {
+            console.error('운영시간 조회 실패: HTTP ' + response.status);
+            return [];
+          }
+          return response.json();
+        })
+        .then(renderHours)
+        .catch(function (error) { console.error('운영시간 조회 실패:', error); });
+    }
 
     /* ---- 공지사항 목록 ⇄ 상세 (salon-list-panel ⇄ salon-detail-panel 과 같은 패턴) ---- */
     let currentNotices = [];
@@ -652,13 +739,12 @@
       wishlistButton.classList.toggle('is-active', wishlisted);
       wishlistButton.innerHTML = '<i class="' + (wishlisted ? 'fas' : 'far')
         + ' fa-heart"></i> ' + (wishlisted ? '찜완료' : '찜하기');
-      /* 운영시간은 Salon_Operating_Hours 를 아직 조회하지 않아 표시할 값이 없다 */
-      document.getElementById('detail-hours').textContent = '-';
       document.getElementById('detail-price').textContent = formatPrice(salon.minimumPrice);
       document.getElementById('btn-reserve').disabled = false;
       document.getElementById('detail-chat-salon-id').value = String(salon.salonId);
       document.getElementById('btn-chat').disabled = false;
       showTab('info');
+      loadHours(salon.salonId);
       loadNotices(salon.salonId);
       loadReviews(salon.salonId);
       updatePinStyles();
@@ -674,7 +760,10 @@
       document.getElementById('detail-name').textContent = '-';
       document.getElementById('detail-address').textContent = '-';
       document.getElementById('detail-rating').textContent = '-';
-      document.getElementById('detail-hours').textContent = '-';
+      hoursValueElement.textContent = '-';
+      hoursListElement.replaceChildren();
+      hoursToggleButton.hidden = true;
+      collapseHours();
       document.getElementById('detail-price').textContent = '-';
       document.getElementById('btn-reserve').disabled = true;
       document.getElementById('detail-chat-salon-id').value = '';

@@ -1,7 +1,8 @@
 -- ============================================================
 --  salu 스키마 catch-up (기존 DB 를 최신 schema.sql 과 같은 상태로 맞춘다)
 --
---  실행:  mysql -u root -p salu < sql/migration_catchup.sql
+--  실행:  mysql --default-character-set=utf8mb4 -u root -p salu < sql/migration_catchup.sql
+--         (Windows 클라이언트는 기본 charset 이 cp949 라 옵션을 빼면 한글이 깨진다)
 --
 --  누구를 위한 파일인가
 --    - 새로 DB 를 만드는 사람  → 이 파일 말고 sql/schema.sql 을 실행한다
@@ -19,6 +20,8 @@
 --    sql/archive/restore_original_salons_utf8.sql, sql/salon_coordinates.sql,
 --    sql/seed_operating_hours.sql
 -- ============================================================
+
+SET NAMES utf8mb4;
 
 -- ---------- 멱등 헬퍼 ----------
 DROP PROCEDURE IF EXISTS salu_add_column;

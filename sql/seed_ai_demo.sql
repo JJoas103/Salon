@@ -8,11 +8,14 @@
 --  카테고리를 고르게 채워 검색·정렬·매장비교가 모두 답이 갈리도록 함
 --  매장별 성격(Salons.description)에 맞춰 취급 시술과 가격대를 다르게 둠
 --
---  실행:  mysql -u root -p salu < sql/seed_ai_demo.sql
+--  실행:  mysql --default-character-set=utf8mb4 -u root -p salu < sql/seed_ai_demo.sql
+--         (Windows 클라이언트는 기본 charset 이 cp949 라 옵션을 빼면 한글이 깨진다)
 --  여러 번 실행해도 같은 결과가 되도록 매장명+시술명 기준으로 중복을 건너뜀
 --  시술을 늘린 뒤에는 ai-service 재색인이 필요함:
 --    curl -X POST http://localhost:8000/api/reindex
 -- ============================================================
+
+SET NAMES utf8mb4;
 
 USE salu;
 
