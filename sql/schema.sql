@@ -76,6 +76,9 @@
 
 -- ⚠ 이 파일은 salu 데이터베이스를 통째로 지우고 다시 만든다.
 --   기존 데이터를 남기고 스키마만 맞추려면 sql/migration_catchup.sql 을 실행할 것.
+-- Windows 클라이언트는 기본 charset 이 cp949 라 한글 주석/데이터가 깨진다.
+SET NAMES utf8mb4;
+
 DROP DATABASE IF EXISTS salu;
 
 CREATE DATABASE salu

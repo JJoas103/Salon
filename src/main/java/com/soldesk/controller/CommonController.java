@@ -49,6 +49,7 @@ import com.soldesk.vo.MessageVO;
 import com.soldesk.vo.PasswordChangeVO;
 import com.soldesk.vo.ReservationVO;
 import com.soldesk.vo.SalonNoticeVO;
+import com.soldesk.vo.SalonOperatingHourVO;
 import com.soldesk.vo.SalonVO;
 import com.soldesk.vo.UserVO;
 
@@ -562,6 +563,18 @@ public class CommonController {
     @ResponseBody
     public List<SalonNoticeVO> salonNotices(@PathVariable int salonId) {
         return salonNoticeService.getBySalonId(salonId);
+    }
+
+    /**
+     * 지도 상세 카드의 "운영시간"이 매장을 고를 때마다 호출하는 JSON.
+     * 영업시간은 매장당 최대 7행이라 목록(salonsJson)에 전부 실으면 매장 수만큼 곱해진다.
+     * 공지·리뷰와 같이 고른 매장 것만 따로 받아온다.
+     * 휴무인 요일은 행 자체가 없으므로, 빠진 요일을 휴무로 읽는 쪽은 화면이다.
+     */
+    @GetMapping("/salons/{salonId}/hours")
+    @ResponseBody
+    public List<SalonOperatingHourVO> salonOperatingHours(@PathVariable int salonId) {
+        return salonService.getOperatingHours(salonId);
     }
 
 
