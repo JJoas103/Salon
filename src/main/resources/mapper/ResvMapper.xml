@@ -72,6 +72,13 @@
         LEFT JOIN Payments p
           ON p.reservation_id = r.reservation_id
         WHERE r.user_id = #{userId}
+          AND (
+              r.status IN ('confirmed', 'completed')
+              OR (
+                  r.status = 'cancelled'
+                  AND (r.cancel_type IS NOT NULL OR r.reject_reason IS NOT NULL)
+              )
+          )
         ORDER BY r.reservation_time DESC
 
     </select>
