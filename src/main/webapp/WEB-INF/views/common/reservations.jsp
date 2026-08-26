@@ -197,6 +197,11 @@
                   <strong>${reserve.serviceName} / ${reserve.durationMinutes > 0 ? reserve.durationMinutes : 60}분 소요 예상</strong>
                 </div>
 
+                <div class="res-meta-item">
+                  <span>담당 디자이너</span>
+                  <strong><c:out value="${reserve.stylistName}"/></strong>
+                </div>
+
                 <%-- 결제까지 못 간 예약은 Payments 행이 없어(LEFT JOIN) 금액이 0이다.
                      그때는 금액을 붙이지 않는다 — "0원" 은 무료 시술처럼 읽힌다. --%>
                 <div class="res-meta-item">
